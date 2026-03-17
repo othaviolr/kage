@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: kage-postgres
+    environment:
+      POSTGRES_DB: kage_db
+      POSTGRES_USER: kage
+      POSTGRES_PASSWORD: kage_shadow_2024
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: kage-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: kage
+      RABBITMQ_DEFAULT_PASS: kage_shadow_2024
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
