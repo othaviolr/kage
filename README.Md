@@ -4,7 +4,7 @@ Sistema bancário digital completo construído com Java e Spring Boot.
 
 ## O que é
 
-KAGE (影 - "sombra" em japonês) é um projeto de portfólio que simula um banco digital moderno, do tipo Nubank ou Inter. Foi desenvolvido pra demonstrar domínio de arquitetura enterprise, DDD e padrões de projeto usados em fintechs de verdade.
+KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do tipo Nubank ou Inter. Foi desenvolvido pra demonstrar domínio de arquitetura enterprise, DDD e padrões de projeto usados em fintechs de verdade.
 
 ## Funcionalidades
 
