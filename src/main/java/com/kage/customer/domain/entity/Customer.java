@@ -29,6 +29,24 @@ public class Customer {
         this.updatedAt = LocalDateTime.now();
     }
 
+    private Customer(UUID id, PersonalInfo personalInfo, Address address,
+                     KycStatus kycStatus, CustomerStatus status,
+                     LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.id = id;
+        this.personalInfo = personalInfo;
+        this.address = address;
+        this.kycStatus = kycStatus;
+        this.status = status;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public static Customer reconstitute(UUID id, PersonalInfo personalInfo, Address address,
+                                        KycStatus kycStatus, CustomerStatus status,
+                                        LocalDateTime createdAt, LocalDateTime updatedAt) {
+        return new Customer(id, personalInfo, address, kycStatus, status, createdAt, updatedAt);
+    }
+
     public static Customer create(PersonalInfo personalInfo, Address address) {
         return new Customer(UUID.randomUUID(), personalInfo, address);
     }
