@@ -2,7 +2,7 @@ package com.kage.account.infrastructure.persistence;
 
 import com.kage.account.domain.entity.Account;
 import com.kage.account.domain.valueobject.Limits;
-import com.kage.account.domain.valueobject.Money;
+import com.kage.shared.domain.valueobject.Money;
 
 public class AccountMapper {
 

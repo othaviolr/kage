@@ -3,8 +3,8 @@ package com.kage.account.domain.entity;
 import com.kage.account.domain.enums.AccountStatus;
 import com.kage.account.domain.enums.AccountType;
 import com.kage.account.domain.valueobject.Limits;
-import com.kage.account.domain.valueobject.Money;
 import com.kage.shared.domain.exception.DomainException;
+import com.kage.shared.domain.valueobject.Money;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
