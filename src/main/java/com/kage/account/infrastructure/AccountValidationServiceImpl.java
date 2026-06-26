@@ -18,8 +18,7 @@ public class AccountValidationServiceImpl implements AccountValidationService {
 
     @Override
     public void validateBalanceAndLimits(UUID accountId, Money amount) {
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new DomainException("Conta não encontrada"));
+        Account account = accountRepository.findById(accountId).orElseThrow(() -> new DomainException("Conta não encontrada"));
 
         if (account.getAvailableBalance().isLessThan(amount)) {
             throw new DomainException("Saldo insuficiente para realizar o PIX");
