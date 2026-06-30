@@ -21,8 +21,7 @@ public class AccountPixEventConsumer {
 
     @RabbitListener(queues = "pix.sent.queue")
     public void onPixSent(PixSentEvent event) {
-        Account account = accountRepository.findById(event.sourceAccountId())
-                .orElseThrow(() -> new DomainException("Conta de origem não encontrada"));
+        Account account = accountRepository.findById(event.sourceAccountId()).orElseThrow(() -> new DomainException("Conta de origem não encontrada"));
 
         account.debit(new Money(event.amount()));
 
