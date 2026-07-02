@@ -1,12 +1,12 @@
 package com.kage.customer.domain.valueobject;
 
-import com.kage.shared.domain.exception.DomainException;
+import com.kage.shared.domain.exception.ValidationException;
 
 public record Phone(String value) {
 
     public Phone {
         if (value == null || !isValid(value)) {
-            throw new DomainException("Telefone inválido: " + value);
+            throw new ValidationException("Telefone inválido: " + value);
         }
         value = value.replaceAll("[^0-9]", "");
     }

@@ -1,12 +1,12 @@
 package com.kage.customer.domain.valueobject;
 
-import com.kage.shared.domain.exception.DomainException;
+import com.kage.shared.domain.exception.ValidationException;
 
 public record Cpf(String value) {
 
     public Cpf {
         if (value == null || !isValid(value)) {
-            throw new DomainException("CPF inválido: " + value);
+            throw new ValidationException("CPF inválido: " + value);
         }
         value = value.replaceAll("[^0-9]", "");
     }

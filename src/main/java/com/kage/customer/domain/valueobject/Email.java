@@ -1,12 +1,12 @@
 package com.kage.customer.domain.valueobject;
 
-import com.kage.shared.domain.exception.DomainException;
+import com.kage.shared.domain.exception.ValidationException;
 
 public record Email(String value) {
 
     public Email {
         if (value == null || !isValid(value)) {
-            throw new DomainException("Email inválido: " + value);
+            throw new ValidationException("Email inválido: " + value);
         }
         value = value.toLowerCase().strip();
     }
