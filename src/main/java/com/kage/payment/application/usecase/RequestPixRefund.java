@@ -5,7 +5,7 @@ import com.kage.payment.domain.entity.PixTransaction;
 import com.kage.payment.domain.enums.PixTransactionStatus;
 import com.kage.payment.domain.repository.PixRefundRepository;
 import com.kage.payment.domain.repository.PixTransactionRepository;
-import com.kage.shared.domain.exception.DomainException;
+import com.kage.shared.domain.exception.*;
 import com.kage.shared.domain.valueobject.Money;
 
 import java.util.UUID;
@@ -21,18 +21,18 @@ public class RequestPixRefund {
     }
 
     public Output execute(Input input) {
-        PixTransaction transaction = pixTransactionRepository.findById(input.originalTransactionId()).orElseThrow(() -> new DomainException("Transação PIX não encontrada"));
+        PixTransaction transaction = pixTransactionRepository.findById(input.originalTransactionId()).orElseThrow(() -> new NotFoundException("Transação PIX não encontrada"));
 
         if (transaction.getStatus() != PixTransactionStatus.COMPLETED) {
-            throw new DomainException("Apenas transações concluídas podem ser estornadas");
+            throw new BusinessRuleException("Apenas transações concluídas podem ser estornadas");
         }
 
-        pixRefundRepository.findByOriginalTransactionId(input.originalTransactionId()).ifPresent(r -> { throw new DomainException("Já existe um estorno para esta transação"); });
+        pixRefundRepository.findByOriginalTransactionId(input.originalTransactionId()).ifPresent(r -> { throw new ConflictException("Já existe um estorno para esta transação"); });
 
         Money refundAmount = input.refundAmount() != null ? input.refundAmount() : transaction.getAmount();
 
         if (refundAmount.isGreaterThan(transaction.getAmount())) {
-            throw new DomainException("Valor do estorno não pode ser maior que o valor original");
+            throw new BusinessRuleException("Valor do estorno não pode ser maior que o valor original");
         }
 
         PixRefund refund = PixRefund.create(input.originalTransactionId(), input.reason(), refundAmount);

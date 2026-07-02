@@ -3,7 +3,7 @@ package com.kage.account.application.usecase;
 import com.kage.account.domain.entity.Account;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.domain.valueobject.Limits;
-import com.kage.shared.domain.exception.DomainException;
+import com.kage.shared.domain.exception.NotFoundException;
 import com.kage.shared.domain.valueobject.Money;
 
 import java.math.BigDecimal;
@@ -23,7 +23,8 @@ public class UpdateLimits {
     }
 
     public Output execute(Input input) {
-        Account account = accountRepository.findById(input.accountId()).orElseThrow(() -> new DomainException("Conta não encontrada"));
+        Account account = accountRepository.findById(input.accountId())
+                .orElseThrow(() -> new NotFoundException("Conta não encontrada"));
 
         Limits newLimits = new Limits(Money.of(input.dailyTransferLimit()), Money.of(input.monthlyTransferLimit()), Money.of(input.pixDailyLimit()), Money.of(input.pixNightLimit()));
 

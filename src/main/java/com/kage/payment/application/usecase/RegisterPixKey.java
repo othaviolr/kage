@@ -3,6 +3,7 @@ package com.kage.payment.application.usecase;
 import com.kage.payment.domain.entity.PixKey;
 import com.kage.payment.domain.enums.PixKeyType;
 import com.kage.payment.domain.repository.PixKeyRepository;
+import com.kage.shared.domain.exception.ConflictException;
 import com.kage.shared.domain.exception.DomainException;
 
 import java.util.UUID;
@@ -17,7 +18,7 @@ public class RegisterPixKey {
 
     public Output execute(Input input) {
         if (pixKeyRepository.existsByKeyTypeAndKeyValue(input.keyType(), input.keyValue())) {
-            throw new DomainException("Chave PIX já cadastrada no sistema");
+            throw new ConflictException("Chave PIX já cadastrada no sistema");
         }
 
         PixKey pixKey = PixKey.create(input.accountId(), input.keyType(), input.keyValue());

@@ -7,6 +7,7 @@ import com.kage.customer.domain.valueobject.Cpf;
 import com.kage.customer.domain.valueobject.Email;
 import com.kage.customer.domain.valueobject.PersonalInfo;
 import com.kage.customer.domain.valueobject.Phone;
+import com.kage.shared.domain.exception.ConflictException;
 import com.kage.shared.domain.exception.DomainException;
 
 public class CreateCustomerUseCase {
@@ -19,11 +20,11 @@ public class CreateCustomerUseCase {
 
     public CreateCustomerOutput execute(CreateCustomerInput input) {
         if (customerRepository.existsByCpf(input.cpf())) {
-            throw new DomainException("CPF já cadastrado");
+            throw new ConflictException("CPF já cadastrado");
         }
 
         if (customerRepository.existsByEmail(input.email())) {
-            throw new DomainException("Email já cadastrado");
+            throw new ConflictException("Email já cadastrado");
         }
 
         var personalInfo = new PersonalInfo(

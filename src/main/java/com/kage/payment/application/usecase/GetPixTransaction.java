@@ -3,6 +3,7 @@ package com.kage.payment.application.usecase;
 import com.kage.payment.domain.entity.PixTransaction;
 import com.kage.payment.domain.repository.PixTransactionRepository;
 import com.kage.shared.domain.exception.DomainException;
+import com.kage.shared.domain.exception.NotFoundException;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -16,7 +17,7 @@ public class GetPixTransaction {
     }
 
     public Output execute(UUID transactionId) {
-        PixTransaction transaction = pixTransactionRepository.findById(transactionId).orElseThrow(() -> new DomainException("Transação PIX não encontrada"));
+        PixTransaction transaction = pixTransactionRepository.findById(transactionId).orElseThrow(() -> new NotFoundException("Transação PIX não encontrada"));
 
         return new Output(
                 transaction.getTransactionId(),

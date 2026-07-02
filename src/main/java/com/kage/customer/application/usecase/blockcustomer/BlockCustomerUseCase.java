@@ -2,6 +2,7 @@ package com.kage.customer.application.usecase.blockcustomer;
 
 import com.kage.customer.domain.repository.CustomerRepository;
 import com.kage.shared.domain.exception.DomainException;
+import com.kage.shared.domain.exception.NotFoundException;
 
 public class BlockCustomerUseCase {
 
@@ -13,7 +14,7 @@ public class BlockCustomerUseCase {
 
     public BlockCustomerOutput execute(BlockCustomerInput input) {
         var customer = customerRepository.findById(input.id())
-                .orElseThrow(() -> new DomainException("Cliente não encontrado"));
+                .orElseThrow(() -> new NotFoundException("Cliente não encontrado"));
 
         customer.block();
 

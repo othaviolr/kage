@@ -3,6 +3,7 @@ package com.kage.customer.application.usecase.updateaddress;
 import com.kage.customer.domain.repository.CustomerRepository;
 import com.kage.customer.domain.valueobject.Address;
 import com.kage.shared.domain.exception.DomainException;
+import com.kage.shared.domain.exception.NotFoundException;
 
 public class UpdateAddressUseCase {
 
@@ -14,7 +15,7 @@ public class UpdateAddressUseCase {
 
     public UpdateAddressOutput execute(UpdateAddressInput input) {
         var customer = customerRepository.findById(input.id())
-                .orElseThrow(() -> new DomainException("Cliente não encontrado"));
+                .orElseThrow(() -> new NotFoundException("Cliente não encontrado"));
 
         var newAddress = new Address(
                 input.street(),

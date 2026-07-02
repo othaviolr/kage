@@ -6,7 +6,10 @@ import com.kage.payment.domain.enums.TransactionType;
 import com.kage.payment.domain.repository.PixKeyRepository;
 import com.kage.payment.domain.repository.PixTransactionRepository;
 import com.kage.payment.domain.service.AccountValidationService;
+import com.kage.shared.domain.exception.BusinessRuleException;
+import com.kage.shared.domain.exception.ConflictException;
 import com.kage.shared.domain.exception.DomainException;
+import com.kage.shared.domain.exception.NotFoundException;
 import com.kage.shared.domain.valueobject.Money;
 
 import java.time.LocalDateTime;
@@ -25,14 +28,14 @@ public class SendPix {
     }
 
     public Output execute(Input input) {
-        PixKey targetKey = pixKeyRepository.findByKeyValue(input.targetPixKey()).orElseThrow(() -> new DomainException("Chave PIX destino não encontrada"));
+        PixKey targetKey = pixKeyRepository.findByKeyValue(input.targetPixKey()).orElseThrow(() -> new NotFoundException("Chave PIX destino não encontrada"));
 
         if (!targetKey.getKeyStatus().name().equals("ACTIVE")) {
-            throw new DomainException("Chave PIX destino não está ativa");
+            throw new BusinessRuleException("Chave PIX destino não está ativa");
         }
 
         if (targetKey.getAccountId().equals(input.sourceAccountId())) {
-            throw new DomainException("Não é possível enviar PIX para a própria conta");
+            throw new BusinessRuleException("Não é possível enviar PIX para a própria conta");
         }
 
         accountValidationService.validateBalanceAndLimits(input.sourceAccountId(), input.amount());

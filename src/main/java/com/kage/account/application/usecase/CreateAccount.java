@@ -3,7 +3,7 @@ package com.kage.account.application.usecase;
 import com.kage.account.domain.entity.Account;
 import com.kage.account.domain.enums.AccountType;
 import com.kage.account.domain.repository.AccountRepository;
-import com.kage.shared.domain.exception.DomainException;
+import com.kage.shared.domain.exception.ValidationException;
 
 import java.util.UUID;
 
@@ -33,7 +33,7 @@ public class CreateAccount {
         try {
             return AccountType.valueOf(type.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new DomainException("Tipo de conta inválido: " + type);
+            throw new ValidationException("Tipo de conta inválido: " + type);
         }
     }
 

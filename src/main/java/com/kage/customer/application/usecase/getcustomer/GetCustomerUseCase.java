@@ -2,6 +2,7 @@ package com.kage.customer.application.usecase.getcustomer;
 
 import com.kage.customer.domain.repository.CustomerRepository;
 import com.kage.shared.domain.exception.DomainException;
+import com.kage.shared.domain.exception.NotFoundException;
 
 public class GetCustomerUseCase {
 
@@ -13,7 +14,7 @@ public class GetCustomerUseCase {
 
     public GetCustomerOutput execute(GetCustomerInput input) {
         var customer = customerRepository.findById(input.id())
-                .orElseThrow(() -> new DomainException("Cliente não encontrado"));
+                .orElseThrow(() -> new NotFoundException("Cliente não encontrado"));
 
         return GetCustomerOutput.from(customer);
     }

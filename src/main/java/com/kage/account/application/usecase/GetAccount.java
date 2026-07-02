@@ -2,7 +2,7 @@ package com.kage.account.application.usecase;
 
 import com.kage.account.domain.entity.Account;
 import com.kage.account.domain.repository.AccountRepository;
-import com.kage.shared.domain.exception.DomainException;
+import com.kage.shared.domain.exception.NotFoundException;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -20,7 +20,8 @@ public class GetAccount {
     }
 
     public Output execute(Input input) {
-        Account account = accountRepository.findById(input.accountId()).orElseThrow(() -> new DomainException("Conta não encontrada"));
+        Account account = accountRepository.findById(input.accountId())
+                .orElseThrow(() -> new NotFoundException("Conta não encontrada"));
 
         return new Output(
                 account.getId(),
