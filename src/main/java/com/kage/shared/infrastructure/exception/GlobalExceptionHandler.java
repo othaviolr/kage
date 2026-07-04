@@ -31,9 +31,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponse> handleValidation(ValidationException ex, HttpServletRequest request) {
-        List<ErrorResponse.FieldErrorResponse> fieldErrors = ex.fieldErrors().stream()
-                .map(fe -> new ErrorResponse.FieldErrorResponse(fe.field(), fe.message()))
-                .toList();
+        List<ErrorResponse.FieldErrorResponse> fieldErrors = ex.fieldErrors().stream().map(fe -> new ErrorResponse.FieldErrorResponse(fe.field(), fe.message())).toList();
 
         ErrorResponse body = ErrorResponse.of(
                 HttpStatus.BAD_REQUEST.value(),
