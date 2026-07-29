@@ -3,6 +3,7 @@ package com.kage.account.domain.entity;
 import com.kage.account.domain.enums.AccountStatus;
 import com.kage.account.domain.enums.AccountType;
 import com.kage.account.domain.valueobject.Limits;
+import com.kage.shared.domain.exception.BusinessRuleException;
 import com.kage.shared.domain.exception.DomainException;
 import com.kage.shared.domain.valueobject.Money;
 
@@ -57,44 +58,44 @@ public class Account {
     }
 
     public void credit(Money amount) {
-        if (this.status == AccountStatus.CLOSED) throw new DomainException("Não é possível creditar em uma conta encerrada");
+        if (this.status == AccountStatus.ACTIVE) throw new BusinessRuleException("Não é possível creditar em uma conta encerrada");
         this.balance = this.balance.add(amount);
         this.availableBalance = this.availableBalance.add(amount);
         this.updatedAt = LocalDateTime.now();
     }
 
     public void debit(Money amount) {
-        if (this.status != AccountStatus.ACTIVE) throw new DomainException("Conta não está ativa");
-        if (amount.isGreaterThan(this.availableBalance)) throw new DomainException("Saldo disponível insuficiente");
-        if (amount.isGreaterThan(this.limits.dailyTransferLimit())) throw new DomainException("Valor excede o limite diário de transferência");
+        if (this.status != AccountStatus.ACTIVE) throw new BusinessRuleException("Conta não está ativa");
+        if (amount.isGreaterThan(this.availableBalance)) throw new BusinessRuleException("Saldo disponível insuficiente");
+        if (amount.isGreaterThan(this.limits.dailyTransferLimit())) throw new BusinessRuleException("Valor excede o limite diário de transferência");
         this.balance = this.balance.subtract(amount);
         this.availableBalance = this.availableBalance.subtract(amount);
         this.updatedAt = LocalDateTime.now();
     }
 
     public void block() {
-        if (this.status == AccountStatus.CLOSED) throw new DomainException("Conta já está encerrada");
-        if (this.status == AccountStatus.BLOCKED) throw new DomainException("Conta já está bloqueada");
+        if (this.status == AccountStatus.CLOSED) throw new BusinessRuleException("Conta já está encerrada");
+        if (this.status == AccountStatus.BLOCKED) throw new BusinessRuleException("Conta já está bloqueada");
         this.status = AccountStatus.BLOCKED;
         this.updatedAt = LocalDateTime.now();
     }
 
     public void unblock() {
-        if (this.status != AccountStatus.BLOCKED) throw new DomainException("Conta não está bloqueada");
+        if (this.status != AccountStatus.BLOCKED) throw new BusinessRuleException("Conta não está bloqueada");
         this.status = AccountStatus.ACTIVE;
         this.updatedAt = LocalDateTime.now();
     }
 
     public void close() {
-        if (this.status == AccountStatus.CLOSED) throw new DomainException("Conta já está encerrada");
-        if (!this.balance.isZero()) throw new DomainException("Não é possível encerrar uma conta com saldo");
+        if (this.status == AccountStatus.CLOSED) throw new BusinessRuleException("Conta já está encerrada");
+        if (!this.balance.isZero()) throw new BusinessRuleException("Não é possível encerrar uma conta com saldo");
         this.status = AccountStatus.CLOSED;
         this.closedAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
 
     public void updateLimits(Limits newLimits) {
-        if (this.status != AccountStatus.ACTIVE) throw new DomainException("Somente contas ativas podem ter limites alterados");
+        if (this.status != AccountStatus.ACTIVE) throw new BusinessRuleException("Somente contas ativas podem ter limites alterados");
         this.limits = newLimits;
         this.updatedAt = LocalDateTime.now();
     }
