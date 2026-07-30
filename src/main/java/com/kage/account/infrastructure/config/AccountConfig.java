@@ -44,4 +44,8 @@ public class AccountConfig {
     public UpdateLimits updateLimits(AccountRepository accountRepository) {
         return new UpdateLimits(accountRepository);
     }
+
+    @Bean DepositAccount depositAccount(AccountRepository accountRepository) {
+        return new DepositAccount(accountRepository);
+    }
 }
