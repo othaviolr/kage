@@ -18,16 +18,19 @@ public class AccountController {
     private final UnblockAccount unblockAccount;
     private final CloseAccount closeAccount;
     private final UpdateLimits updateLimits;
+    private final DepositAccount depositAccount;
 
     public AccountController(CreateAccount createAccount, GetAccount getAccount,
                              BlockAccount blockAccount, UnblockAccount unblockAccount,
-                             CloseAccount closeAccount, UpdateLimits updateLimits) {
+                             CloseAccount closeAccount, UpdateLimits updateLimits,
+                             DepositAccount depositAccount) {
         this.createAccount = createAccount;
         this.getAccount = getAccount;
         this.blockAccount = blockAccount;
         this.unblockAccount = unblockAccount;
         this.closeAccount = closeAccount;
         this.updateLimits = updateLimits;
+        this.depositAccount = depositAccount;
     }
 
     @PostMapping
@@ -39,6 +42,13 @@ public class AccountController {
     public ResponseEntity<GetAccount.Output> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(getAccount.execute(new GetAccount.Input(id)));
     }
+
+    @PostMapping("/{id}/deposit")
+    public ResponseEntity<DepositAccount.Output> deposit(@PathVariable UUID id, @RequestBody DepositRequest request) {
+        return ResponseEntity.ok(depositAccount.execute(new DepositAccount.Input(id, request.amount())));
+    }
+
+    public record DepositRequest(BigDecimal amount) {}
 
     @PatchMapping("/{id}/block")
     public ResponseEntity<BlockAccount.Output> block(@PathVariable UUID id) {
