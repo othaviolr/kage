@@ -58,7 +58,7 @@ public class Account {
     }
 
     public void credit(Money amount) {
-        if (this.status == AccountStatus.ACTIVE) throw new BusinessRuleException("Não é possível creditar em uma conta encerrada");
+        if (this.status != AccountStatus.ACTIVE) throw new BusinessRuleException("Não é possível creditar em uma conta encerrada");
         this.balance = this.balance.add(amount);
         this.availableBalance = this.availableBalance.add(amount);
         this.updatedAt = LocalDateTime.now();
