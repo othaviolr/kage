@@ -12,6 +12,9 @@ public class PixEventPublisher {
     }
 
     public void publishPixSent(SendPix.Output output) {
-        rabbitTemplate.convertAndSend("pix.exchange", "pix.sent", output);
+        PixSentEvent event = new PixSentEvent(output.transactionId(), output.sourceAccountId(),
+                output.targetPixKey(), output.targetAccountId(), output.amount(), output.status(), output.e2eId(), output.createdAt());
+
+        rabbitTemplate.convertAndSend("pix.exchange", "pix.sent", event);
     }
 }
