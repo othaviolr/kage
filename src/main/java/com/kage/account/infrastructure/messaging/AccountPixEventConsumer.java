@@ -2,6 +2,7 @@ package com.kage.account.infrastructure.messaging;
 
 import com.kage.account.domain.entity.Account;
 import com.kage.account.domain.repository.AccountRepository;
+import com.kage.shared.domain.exception.BusinessRuleException;
 import com.kage.shared.domain.exception.DomainException;
 import com.kage.shared.domain.valueobject.Money;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -21,11 +22,15 @@ public class AccountPixEventConsumer {
 
     @RabbitListener(queues = "pix.sent.queue")
     public void onPixSent(PixSentEvent event) {
-        Account account = accountRepository.findById(event.sourceAccountId()).orElseThrow(() -> new DomainException("Conta de origem não encontrada"));
+        Account source = accountRepository.findById(event.sourceAccountId()).orElseThrow(() -> new BusinessRuleException("Conta de origem não encontrada"));
 
-        account.debit(new Money(event.amount()));
+        Account target = accountRepository.findById(event.targetAccountId()).orElseThrow(() -> new BusinessRuleException("Conta de destino não encontrada"));
 
-        accountRepository.save(account);
+        source.debit(new Money(event.amount()));
+        target.credit(new Money(event.amount()));
+
+        accountRepository.save(source);
+        accountRepository.save(target);
 
         rabbitTemplate.convertAndSend("pix.exchange", "pix.debit.confirmed", event.transactionId());
     }
