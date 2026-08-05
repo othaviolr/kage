@@ -2,8 +2,10 @@ package com.kage.account.infrastructure.config;
 
 import com.kage.account.application.usecase.*;
 import com.kage.account.domain.repository.AccountRepository;
+import com.kage.account.infrastructure.messaging.AccountEventPublisher;
 import com.kage.account.infrastructure.persistence.AccountJpaRepository;
 import com.kage.account.infrastructure.persistence.AccountRepositoryImpl;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -47,5 +49,10 @@ public class AccountConfig {
 
     @Bean DepositAccount depositAccount(AccountRepository accountRepository) {
         return new DepositAccount(accountRepository);
+    }
+
+    @Bean
+    public AccountEventPublisher accountEventPublisher(RabbitTemplate rabbitTemplate) {
+        return new AccountEventPublisher(rabbitTemplate);
     }
 }
