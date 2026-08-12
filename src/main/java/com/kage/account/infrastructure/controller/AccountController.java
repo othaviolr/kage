@@ -53,7 +53,8 @@ public class AccountController {
         return ResponseEntity.ok(output);
     }
 
-    public record DepositRequest(BigDecimal amount) {}
+    public record DepositRequest(BigDecimal amount) {
+    }
 
     @PatchMapping("/{id}/block")
     public ResponseEntity<BlockAccount.Output> block(@PathVariable UUID id) {
@@ -77,5 +78,7 @@ public class AccountController {
                 id, request.dailyTransferLimit(), request.monthlyTransferLimit(), request.pixDailyLimit(), request.pixNightLimit())));
     }
 
-    public record LimitsRequest(BigDecimal dailyTransferLimit, BigDecimal monthlyTransferLimit, BigDecimal pixDailyLimit, BigDecimal pixNightLimit) {}
+    public record LimitsRequest(BigDecimal dailyTransferLimit, BigDecimal monthlyTransferLimit,
+                                BigDecimal pixDailyLimit, BigDecimal pixNightLimit) {
+    }
 }
