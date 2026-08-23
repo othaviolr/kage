@@ -73,6 +73,15 @@ public class Account {
         this.updatedAt = LocalDateTime.now();
     }
 
+    public void withdraw(Money amount){
+        if (this.status != AccountStatus.ACTIVE) throw new BusinessRuleException("Conta não está ativa");
+        if (amount.isGreaterThan(this.availableBalance)) throw new BusinessRuleException("Saldo disponível insuficiente");
+        if (amount.isGreaterThan(this.limits.dailyWithdrawalLimit())) throw new BusinessRuleException("Valor excede o limite diário de saque");
+        this.balance = this.balance.subtract(amount);
+        this.availableBalance = this.availableBalance.subtract(amount);
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public void block() {
         if (this.status == AccountStatus.CLOSED) throw new BusinessRuleException("Conta já está encerrada");
         if (this.status == AccountStatus.BLOCKED) throw new BusinessRuleException("Conta já está bloqueada");

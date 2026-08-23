@@ -55,4 +55,9 @@ public class AccountConfig {
     public AccountEventPublisher accountEventPublisher(RabbitTemplate rabbitTemplate) {
         return new AccountEventPublisher(rabbitTemplate);
     }
+
+    @Bean
+    public WithdrawAccount withdrawAccount(AccountRepository accountRepository) {
+        return new WithdrawAccount(accountRepository);
+    }
 }

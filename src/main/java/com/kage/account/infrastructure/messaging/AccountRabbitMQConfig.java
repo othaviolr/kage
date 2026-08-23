@@ -21,4 +21,14 @@ public class AccountRabbitMQConfig {
     public Binding accountDepositMadeBinding(){
         return BindingBuilder.bind(accountDepositMadeQueue()).to(accountExchange()).with("account.deposit.made");
     }
+
+    @Bean
+    public Queue accountWithdrawalMadeQueue(){
+        return QueueBuilder.durable("account.withdrawal.made.queue").build();
+    }
+
+    @Bean
+    public Binding accountWithdrawalMadeBinding(){
+        return BindingBuilder.bind(accountWithdrawalMadeQueue()).to(accountExchange()).with("account.withdrawal.made");
+    }
 }

@@ -21,11 +21,13 @@ public class AccountController {
     private final UpdateLimits updateLimits;
     private final DepositAccount depositAccount;
     private final AccountEventPublisher accountEventPublisher;
+    private final WithdrawAccount withdrawAccount;
 
     public AccountController(CreateAccount createAccount, GetAccount getAccount,
                              BlockAccount blockAccount, UnblockAccount unblockAccount,
                              CloseAccount closeAccount, UpdateLimits updateLimits,
-                             DepositAccount depositAccount, AccountEventPublisher accountEventPublisher) {
+                             DepositAccount depositAccount, AccountEventPublisher accountEventPublisher,
+                             WithdrawAccount withdrawAccount) {
         this.createAccount = createAccount;
         this.getAccount = getAccount;
         this.blockAccount = blockAccount;
@@ -33,6 +35,7 @@ public class AccountController {
         this.closeAccount = closeAccount;
         this.updateLimits = updateLimits;
         this.depositAccount = depositAccount;
+        this.withdrawAccount = withdrawAccount;
         this.accountEventPublisher = accountEventPublisher;
     }
 
@@ -54,6 +57,16 @@ public class AccountController {
     }
 
     public record DepositRequest(BigDecimal amount) {
+    }
+
+    @PostMapping("/{id}/withdraw")
+    public ResponseEntity<WithdrawAccount.Output> withdraw(@PathVariable UUID id, @RequestBody WithdrawRequest request) {
+        WithdrawAccount.Output output = withdrawAccount.execute(new WithdrawAccount.Input(id, request.amount()));
+        accountEventPublisher.publishWithdrawalMade(output, request.amount());
+        return ResponseEntity.ok(output);
+    }
+
+    public record WithdrawRequest(BigDecimal amount) {
     }
 
     @PatchMapping("/{id}/block")
