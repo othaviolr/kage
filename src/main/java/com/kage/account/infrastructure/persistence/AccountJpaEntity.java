@@ -50,6 +50,9 @@ public class AccountJpaEntity {
     @Column(name = "pix_night_limit", nullable = false, precision = 19, scale = 2)
     private BigDecimal pixNightLimit;
 
+    @Column(name = "daily_withdrawal_limit", nullable = false)
+    private BigDecimal dailyWithdrawalLimit;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AccountStatus status;
@@ -97,4 +100,6 @@ public class AccountJpaEntity {
     public void setClosedAt(LocalDateTime closedAt) { this.closedAt = closedAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public BigDecimal getDailyWithdrawalLimit() { return dailyWithdrawalLimit; }
+    public void setDailyWithdrawalLimit(BigDecimal dailyWithdrawalLimit) { this.dailyWithdrawalLimit = dailyWithdrawalLimit; }
 }

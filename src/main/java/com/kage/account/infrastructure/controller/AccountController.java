@@ -75,10 +75,11 @@ public class AccountController {
     public ResponseEntity<UpdateLimits.Output> updateLimits(@PathVariable UUID id,
                                                             @RequestBody LimitsRequest request) {
         return ResponseEntity.ok(updateLimits.execute(new UpdateLimits.Input(
-                id, request.dailyTransferLimit(), request.monthlyTransferLimit(), request.pixDailyLimit(), request.pixNightLimit())));
+                id, request.dailyTransferLimit(), request.monthlyTransferLimit(),
+                request.pixDailyLimit(), request.pixNightLimit(), request.dailyWithdrawalLimit())));
     }
 
     public record LimitsRequest(BigDecimal dailyTransferLimit, BigDecimal monthlyTransferLimit,
-                                BigDecimal pixDailyLimit, BigDecimal pixNightLimit) {
+                                BigDecimal pixDailyLimit, BigDecimal pixNightLimit, BigDecimal dailyWithdrawalLimit) {
     }
 }

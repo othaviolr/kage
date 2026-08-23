@@ -12,9 +12,12 @@ import java.util.UUID;
 public class UpdateLimits {
 
     public record Input(UUID accountId, BigDecimal dailyTransferLimit, BigDecimal monthlyTransferLimit,
-                        BigDecimal pixDailyLimit, BigDecimal pixNightLimit) {}
+                        BigDecimal pixDailyLimit, BigDecimal pixNightLimit, BigDecimal dailyWithdrawalLimit) {
+    }
+
     public record Output(UUID accountId, BigDecimal dailyTransferLimit, BigDecimal monthlyTransferLimit,
-                         BigDecimal pixDailyLimit, BigDecimal pixNightLimit) {}
+                         BigDecimal pixDailyLimit, BigDecimal pixNightLimit, BigDecimal dailyWithdrawalLimit) {
+    }
 
     private final AccountRepository accountRepository;
 
@@ -26,7 +29,13 @@ public class UpdateLimits {
         Account account = accountRepository.findById(input.accountId())
                 .orElseThrow(() -> new NotFoundException("Conta não encontrada"));
 
-        Limits newLimits = new Limits(Money.of(input.dailyTransferLimit()), Money.of(input.monthlyTransferLimit()), Money.of(input.pixDailyLimit()), Money.of(input.pixNightLimit()));
+        Limits newLimits = new Limits(
+                Money.of(input.dailyTransferLimit()),
+                Money.of(input.monthlyTransferLimit()),
+                Money.of(input.pixDailyLimit()),
+                Money.of(input.pixNightLimit()),
+                Money.of(input.dailyWithdrawalLimit())
+        );
 
         account.updateLimits(newLimits);
         accountRepository.save(account);
@@ -36,7 +45,8 @@ public class UpdateLimits {
                 account.getLimits().dailyTransferLimit().amount(),
                 account.getLimits().monthlyTransferLimit().amount(),
                 account.getLimits().pixDailyLimit().amount(),
-                account.getLimits().pixNightLimit().amount()
+                account.getLimits().pixNightLimit().amount(),
+                account.getLimits().dailyWithdrawalLimit().amount()
         );
     }
 }

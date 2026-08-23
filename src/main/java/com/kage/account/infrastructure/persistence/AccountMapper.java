@@ -20,6 +20,7 @@ public class AccountMapper {
         entity.setMonthlyTransferLimit(account.getLimits().monthlyTransferLimit().amount());
         entity.setPixDailyLimit(account.getLimits().pixDailyLimit().amount());
         entity.setPixNightLimit(account.getLimits().pixNightLimit().amount());
+        entity.setDailyWithdrawalLimit(account.getLimits().dailyWithdrawalLimit().amount());
         entity.setStatus(account.getStatus());
         entity.setOpenedAt(account.getOpenedAt());
         entity.setClosedAt(account.getClosedAt());
@@ -28,7 +29,7 @@ public class AccountMapper {
     }
 
     public static Account toDomain(AccountJpaEntity entity) {
-        Limits limits = new Limits(Money.of(entity.getDailyTransferLimit()), Money.of(entity.getMonthlyTransferLimit()), Money.of(entity.getPixDailyLimit()), Money.of(entity.getPixNightLimit()));
+        Limits limits = new Limits(Money.of(entity.getDailyTransferLimit()), Money.of(entity.getMonthlyTransferLimit()), Money.of(entity.getPixDailyLimit()), Money.of(entity.getPixNightLimit()), Money.of(entity.getDailyWithdrawalLimit()));
 
         return Account.reconstitute(
                 entity.getId(),
