@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: kage_db
       POSTGRES_USER: kage
-      POSTGRES_PASSWORD: kage_shadow_2024
+      POSTGRES_PASSWORD: kage123
     ports:
       - "5432:5432"
     volumes:
