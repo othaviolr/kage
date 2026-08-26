@@ -25,11 +25,12 @@ public class Account {
     private final LocalDateTime openedAt;
     private LocalDateTime closedAt;
     private LocalDateTime updatedAt;
+    private final Long version;
 
     private Account(UUID id, UUID customerId, String accountNumber, String accountDigit,
                     String branch, AccountType type, Money balance, Money availableBalance,
                     Limits limits, AccountStatus status, LocalDateTime openedAt,
-                    LocalDateTime closedAt, LocalDateTime updatedAt) {
+                    LocalDateTime closedAt, LocalDateTime updatedAt, Long version) {
         this.id = id;
         this.customerId = customerId;
         this.accountNumber = accountNumber;
@@ -43,18 +44,21 @@ public class Account {
         this.openedAt = openedAt;
         this.closedAt = closedAt;
         this.updatedAt = updatedAt;
+        this.version = version;
     }
 
     public static Account create(UUID customerId, AccountType type, String accountNumber, String accountDigit) {
-        return new Account(UUID.randomUUID(), customerId, accountNumber, accountDigit, "0001", type, Money.ZERO, Money.ZERO, Limits.defaultLimits(), AccountStatus.ACTIVE, LocalDateTime.now(), null, LocalDateTime.now());
+        return new Account(UUID.randomUUID(), customerId, accountNumber, accountDigit, "0001", type,
+                Money.ZERO, Money.ZERO, Limits.defaultLimits(), AccountStatus.ACTIVE,
+                LocalDateTime.now(), null, LocalDateTime.now(), null);
     }
 
     public static Account reconstitute(UUID id, UUID customerId, String accountNumber, String accountDigit,
                                        String branch, AccountType type, Money balance, Money availableBalance,
                                        Limits limits, AccountStatus status, LocalDateTime openedAt,
-                                       LocalDateTime closedAt, LocalDateTime updatedAt) {
+                                       LocalDateTime closedAt, LocalDateTime updatedAt, Long version) {
         return new Account(id, customerId, accountNumber, accountDigit, branch, type,
-                balance, availableBalance, limits, status, openedAt, closedAt, updatedAt);
+                balance, availableBalance, limits, status, openedAt, closedAt, updatedAt, version);
     }
 
     public void credit(Money amount) {
@@ -122,4 +126,5 @@ public class Account {
     public LocalDateTime getOpenedAt() { return openedAt; }
     public LocalDateTime getClosedAt() { return closedAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public Long getVersion() { return version; }
 }

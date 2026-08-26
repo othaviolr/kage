@@ -66,6 +66,10 @@ public class AccountJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     public AccountJpaEntity() {}
 
     public UUID getId() { return id; }
@@ -102,4 +106,5 @@ public class AccountJpaEntity {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public BigDecimal getDailyWithdrawalLimit() { return dailyWithdrawalLimit; }
     public void setDailyWithdrawalLimit(BigDecimal dailyWithdrawalLimit) { this.dailyWithdrawalLimit = dailyWithdrawalLimit; }
+    public Long getVersion() { return version; } void setVersion(Long version) { this.version = version; }
 }

@@ -25,6 +25,7 @@ public class AccountMapper {
         entity.setOpenedAt(account.getOpenedAt());
         entity.setClosedAt(account.getClosedAt());
         entity.setUpdatedAt(account.getUpdatedAt());
+        entity.setVersion(account.getVersion());
         return entity;
     }
 
@@ -44,7 +45,8 @@ public class AccountMapper {
                 entity.getStatus(),
                 entity.getOpenedAt(),
                 entity.getClosedAt(),
-                entity.getUpdatedAt()
+                entity.getUpdatedAt(),
+                entity.getVersion()
         );
     }
 }
