@@ -2,7 +2,6 @@ package com.kage.payment.infrastructure.controller;
 
 import com.kage.payment.application.usecase.*;
 import com.kage.payment.domain.enums.PixKeyType;
-import com.kage.payment.infrastructure.messaging.PixEventPublisher;
 import com.kage.shared.domain.valueobject.Money;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,9 +22,8 @@ public class PaymentController {
     private final RequestPixRefund requestPixRefund;
     private final ApprovePixRefund approvePixRefund;
     private final RejectPixRefund rejectPixRefund;
-    private final PixEventPublisher pixEventPublisher;
 
-    public PaymentController(RegisterPixKey registerPixKey, DeletePixKey deletePixKey, GetPixKey getPixKey, SendPix sendPix, GetPixTransaction getPixTransaction, RequestPixRefund requestPixRefund, ApprovePixRefund approvePixRefund, RejectPixRefund rejectPixRefund, PixEventPublisher pixEventPublisher) {
+    public PaymentController(RegisterPixKey registerPixKey, DeletePixKey deletePixKey, GetPixKey getPixKey, SendPix sendPix, GetPixTransaction getPixTransaction, RequestPixRefund requestPixRefund, ApprovePixRefund approvePixRefund, RejectPixRefund rejectPixRefund) {
         this.registerPixKey = registerPixKey;
         this.deletePixKey = deletePixKey;
         this.getPixKey = getPixKey;
@@ -34,7 +32,6 @@ public class PaymentController {
         this.requestPixRefund = requestPixRefund;
         this.approvePixRefund = approvePixRefund;
         this.rejectPixRefund = rejectPixRefund;
-        this.pixEventPublisher = pixEventPublisher;
     }
 
     @PostMapping("/keys")
@@ -57,8 +54,6 @@ public class PaymentController {
     @PostMapping("/send")
     public ResponseEntity<SendPix.Output> sendPix(@RequestBody SendPixRequest request) {
         SendPix.Output output = sendPix.execute(new SendPix.Input(request.sourceAccountId(), request.targetPixKey(), Money.of(request.amount()), request.description()));
-
-        pixEventPublisher.publishPixSent(output);
         return ResponseEntity.status(HttpStatus.CREATED).body(output);
     }
 

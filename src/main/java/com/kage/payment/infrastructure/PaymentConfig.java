@@ -1,5 +1,6 @@
 package com.kage.payment.infrastructure;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.infrastructure.AccountValidationServiceImpl;
 import com.kage.payment.application.usecase.*;
@@ -8,12 +9,14 @@ import com.kage.payment.domain.repository.PixRefundRepository;
 import com.kage.payment.domain.repository.PixTransactionRepository;
 import com.kage.payment.domain.service.AccountValidationService;
 import com.kage.payment.infrastructure.controller.PaymentController;
+import com.kage.payment.infrastructure.messaging.OutboxPixEventPublisher;
 import com.kage.payment.infrastructure.messaging.PixEventConsumer;
-import com.kage.payment.infrastructure.messaging.PixEventPublisher;
+import com.kage.payment.infrastructure.messaging.PixOutboxPublisher;
 import com.kage.payment.infrastructure.persistence.*;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @Configuration
 public class PaymentConfig {
@@ -54,10 +57,16 @@ public class PaymentConfig {
     }
 
     @Bean
+    public PixEventPublisher pixEventPublisher(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+        return new OutboxPixEventPublisher(jdbcTemplate, objectMapper);
+    }
+
+    @Bean
     public SendPix sendPix(PixKeyRepository pixKeyRepository,
                            PixTransactionRepository pixTransactionRepository,
-                           AccountValidationService accountValidationService) {
-        return new SendPix(pixKeyRepository, pixTransactionRepository, accountValidationService);
+                           AccountValidationService accountValidationService,
+                           PixEventPublisher pixEventPublisher) {
+        return new SendPix(pixKeyRepository, pixTransactionRepository, accountValidationService, pixEventPublisher);
     }
 
     @Bean
@@ -82,13 +91,13 @@ public class PaymentConfig {
     }
 
     @Bean
-    public PixEventPublisher pixEventPublisher(RabbitTemplate rabbitTemplate) {
-        return new PixEventPublisher(rabbitTemplate);
+    public PixEventConsumer pixEventConsumer(PixTransactionRepository pixTransactionRepository) {
+        return new PixEventConsumer(pixTransactionRepository);
     }
 
     @Bean
-    public PixEventConsumer pixEventConsumer(PixTransactionRepository pixTransactionRepository) {
-        return new PixEventConsumer(pixTransactionRepository);
+    public PixOutboxPublisher pixOutboxPublisher(JdbcTemplate jdbcTemplate, RabbitTemplate rabbitTemplate, ObjectMapper objectMapper) {
+        return new PixOutboxPublisher(jdbcTemplate, rabbitTemplate, objectMapper);
     }
 
     @Bean
@@ -99,10 +108,13 @@ public class PaymentConfig {
                                                GetPixTransaction getPixTransaction,
                                                RequestPixRefund requestPixRefund,
                                                ApprovePixRefund approvePixRefund,
-                                               RejectPixRefund rejectPixRefund,
-                                               PixEventPublisher pixEventPublisher) {
+                                               RejectPixRefund rejectPixRefund) {
         return new PaymentController(registerPixKey, deletePixKey, getPixKey, sendPix,
-                getPixTransaction, requestPixRefund, approvePixRefund, rejectPixRefund,
-                pixEventPublisher);
+                getPixTransaction, requestPixRefund, approvePixRefund, rejectPixRefund);
+    }
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
     }
 }
