@@ -20,13 +20,19 @@ public class PaymentRabbitMQConfig {
     // fila que o Account vai ouvir para debitar o saldo
     @Bean
     public Queue pixSentQueue() {
-        return QueueBuilder.durable("pix.sent.queue").build();
+        return QueueBuilder.durable("pix.sent.queue")
+                .deadLetterExchange("payment.dlx")
+                .deadLetterRoutingKey("pix.sent.dlq")
+                .build();
     }
 
     // fila que o Payment vai ouvir para confirmar a transação
     @Bean
     public Queue pixDebitConfirmedQueue() {
-        return QueueBuilder.durable("pix.debit.confirmed.queue").build();
+        return QueueBuilder.durable("pix.debit.confirmed.queue")
+                .deadLetterExchange("payment.dlx")
+                .deadLetterRoutingKey("pix.debit.confirmed.dlq")
+                .build();
     }
 
     // binding: pix.exchange + routing key "pix.sent" → pix.sent.queue
@@ -51,5 +57,34 @@ public class PaymentRabbitMQConfig {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(jsonMessageConverter);
         return template;
+    }
+
+    @Bean
+    public DirectExchange paymentDlx() {
+        return new DirectExchange("payment.dlx");
+    }
+
+    @Bean
+    public Queue pixSentDlq() {
+        return QueueBuilder.durable("pix.sent.dlq").build();
+    }
+
+    @Bean
+    public Binding pixSentDlqBinding() {
+        return BindingBuilder.bind(pixSentDlq())
+                .to(paymentDlx())
+                .with("pix.sent.dlq");
+    }
+
+    @Bean
+    public Queue pixDebitConfirmedDlq() {
+        return QueueBuilder.durable("pix.debit.confirmed.dlq").build();
+    }
+
+    @Bean
+    public Binding pixDebitConfirmedDlqBinding() {
+        return BindingBuilder.bind(pixDebitConfirmedDlq())
+                .to(paymentDlx())
+                .with("pix.debit.confirmed.dlq");
     }
 }
