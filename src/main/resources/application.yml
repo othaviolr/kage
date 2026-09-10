@@ -23,6 +23,15 @@ spring:
     port: 5672
     username: kage
     password: kage_shadow_2024
+    listener:
+      simple:
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1000
+          multiplier: 2.0
+          max-interval: 10000
+        default-requeue-rejected: false
 
 server:
   port: 8080

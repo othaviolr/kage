@@ -93,12 +93,12 @@ public class PaymentConfig {
 
     @Bean
     public PixEventConsumer pixEventConsumer(PixTransactionRepository pixTransactionRepository,
-                                             ProcessedEventRepository processedEventRepository) {
-        return new PixEventConsumer(pixTransactionRepository, processedEventRepository);
+                                             ProcessedEventRepository paymentProcessedEventRepository) {
+        return new PixEventConsumer(pixTransactionRepository, paymentProcessedEventRepository);
     }
 
     @Bean
-    public ProcessedEventRepository processedEventRepository(JdbcTemplate jdbcTemplate) {
+    public ProcessedEventRepository paymentProcessedEventRepository(JdbcTemplate jdbcTemplate) {
         return new ProcessedEventRepository(jdbcTemplate);
     }
 
