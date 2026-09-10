@@ -13,6 +13,7 @@ import com.kage.payment.infrastructure.messaging.OutboxPixEventPublisher;
 import com.kage.payment.infrastructure.messaging.PixEventConsumer;
 import com.kage.payment.infrastructure.messaging.PixOutboxPublisher;
 import com.kage.payment.infrastructure.persistence.*;
+import com.kage.payment.infrastructure.persistence.idempotency.ProcessedEventRepository;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -91,8 +92,14 @@ public class PaymentConfig {
     }
 
     @Bean
-    public PixEventConsumer pixEventConsumer(PixTransactionRepository pixTransactionRepository) {
-        return new PixEventConsumer(pixTransactionRepository);
+    public PixEventConsumer pixEventConsumer(PixTransactionRepository pixTransactionRepository,
+                                             ProcessedEventRepository processedEventRepository) {
+        return new PixEventConsumer(pixTransactionRepository, processedEventRepository);
+    }
+
+    @Bean
+    public ProcessedEventRepository processedEventRepository(JdbcTemplate jdbcTemplate) {
+        return new ProcessedEventRepository(jdbcTemplate);
     }
 
     @Bean
