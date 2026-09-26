@@ -4,6 +4,7 @@ import com.kage.shared.domain.exception.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -32,6 +33,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleOptimisticLocking(ObjectOptimisticLockingFailureException ex, HttpServletRequest request) {
         logger.warn("Conflito de concorrência otimista na requisição {}: {}", request.getRequestURI(), ex.getMessage());
         return build(HttpStatus.CONFLICT, "O recurso foi modificado por outra operação simultânea. Tente novamente.", request);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex, HttpServletRequest request) {
+        logger.warn("Violação de integridade de dados na requisição {}: {}", request.getRequestURI(), ex.getMessage());
+        return build(HttpStatus.CONFLICT, "O registro já existe ou conflita com dados existentes.", request);
     }
 
     @ExceptionHandler(BusinessRuleException.class)
