@@ -50,7 +50,7 @@ Acesse:
 
 ## Por que "Kage"?
 
-Bancos tradicionais operam à luz do dia com processos lentos. KAGE opera nas sombras - rápido, digital, invisível até você precisar. A temática cybercore emo é sobre construir sistemas que funcionam silenciosamente nos bastidores, processando transações enquanto você dorme.
+Nasceu do meu interesse por bancos e fintechs. Conforme fui estudando arquitetura de sistemas financeiros, percebi que a melhor forma de realmente entender esse universo seria construir meu próprio banco digital do zero. O que começou como um projeto de estudo foi crescendo. Contas, cartões, Pix, pagamentos, limites, transações, validações e toda a complexidade que existe por trás de uma simples operação passaram a fazer parte do KAGE. Durante meses, o KAGE foi meu laboratório: um espaço para testar ideias, tomar decisões de arquitetura e transformar conhecimento em algo real.
 
 ---
 
