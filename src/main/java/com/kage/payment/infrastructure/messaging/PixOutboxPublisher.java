@@ -7,6 +7,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -42,7 +43,7 @@ public class PixOutboxPublisher {
                 PixSentEvent event = objectMapper.readValue(row.payload(), PixSentEvent.class);
                 rabbitTemplate.convertAndSend(row.exchange(), row.routingKey(), event);
 
-                jdbcTemplate.update("UPDATE pix_outbox SET published_at = ? WHERE id = ?", Instant.now(), row.id());
+                jdbcTemplate.update("UPDATE pix_outbox SET published_at = ? WHERE id = ?", Timestamp.from(Instant.now()), row.id());
             } catch (Exception e) {
                 logger.warn("Falha ao publicar evento do outbox (id={}), tentando novamente na próxima execução", row.id(), e);
             }

@@ -5,6 +5,7 @@ import com.kage.payment.application.usecase.PixEventPublisher;
 import com.kage.payment.application.usecase.SendPix;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -32,7 +33,7 @@ public class OutboxPixEventPublisher implements PixEventPublisher {
 
         jdbcTemplate.update(
                 "INSERT INTO pix_outbox (id, payload, exchange, routing_key, created_at) VALUES (?, ?, ?, ?, ?)",
-                UUID.randomUUID(), payload, "pix.exchange", "pix.sent", Instant.now()
+                UUID.randomUUID(), payload, "pix.exchange", "pix.sent", Timestamp.from(Instant.now())
         );
     }
 }
