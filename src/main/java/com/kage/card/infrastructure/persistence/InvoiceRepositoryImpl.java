@@ -50,4 +50,11 @@ public class InvoiceRepositoryImpl implements InvoiceRepository {
         return invoiceJpaRepository.findByCardIdAndReferenceMonth(cardId, referenceMonth.toString())
                 .map(entity -> InvoiceMapper.toDomain(entity, invoiceItemJpaRepository.findByInvoiceId(entity.getId())));
     }
+
+    @Override
+    public List<Invoice> findByCardId(UUID cardId) {
+        return invoiceJpaRepository.findByCardIdOrderByReferenceMonthDesc(cardId).stream()
+                .map(entity -> InvoiceMapper.toDomain(entity, invoiceItemJpaRepository.findByInvoiceId(entity.getId())))
+                .toList();
+    }
 }

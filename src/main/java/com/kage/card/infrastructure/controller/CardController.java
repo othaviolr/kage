@@ -18,14 +18,19 @@ public class CardController {
     private final BlockCard blockCard;
     private final UnblockCard unblockCard;
     private final RegisterPurchase registerPurchase;
+    private final GetInvoice getInvoice;
+    private final ListInvoices listInvoices;
 
     public CardController(IssueCard issueCard, GetCard getCard, BlockCard blockCard,
-                          UnblockCard unblockCard, RegisterPurchase registerPurchase) {
+                          UnblockCard unblockCard, RegisterPurchase registerPurchase,
+                          GetInvoice getInvoice, ListInvoices listInvoices) {
         this.issueCard = issueCard;
         this.getCard = getCard;
         this.blockCard = blockCard;
         this.unblockCard = unblockCard;
         this.registerPurchase = registerPurchase;
+        this.getInvoice = getInvoice;
+        this.listInvoices = listInvoices;
     }
 
     @PostMapping
@@ -55,6 +60,16 @@ public class CardController {
         RegisterPurchase.Output output = registerPurchase.execute(new RegisterPurchase.Input(
                 id, request.purchaseId(), request.description(), request.amount(), purchasedAt));
         return ResponseEntity.status(HttpStatus.CREATED).body(output);
+    }
+
+    @GetMapping("/{id}/invoices")
+    public ResponseEntity<ListInvoices.Output> listInvoices(@PathVariable UUID id) {
+        return ResponseEntity.ok(listInvoices.execute(new ListInvoices.Input(id)));
+    }
+
+    @GetMapping("/{id}/invoices/{referenceMonth}")
+    public ResponseEntity<GetInvoice.Output> getInvoice(@PathVariable UUID id, @PathVariable String referenceMonth) {
+        return ResponseEntity.ok(getInvoice.execute(new GetInvoice.Input(id, referenceMonth)));
     }
 
     public record PurchaseRequest(UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt) {
