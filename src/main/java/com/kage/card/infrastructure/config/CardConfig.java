@@ -45,4 +45,14 @@ public class CardConfig {
     public RegisterPurchase registerPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
         return new RegisterPurchase(cardRepository, invoiceRepository);
     }
+
+    @Bean
+    public GetInvoice getInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
+        return new GetInvoice(cardRepository, invoiceRepository);
+    }
+
+    @Bean
+    public ListInvoices listInvoices(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
+        return new ListInvoices(cardRepository, invoiceRepository);
+    }
 }
