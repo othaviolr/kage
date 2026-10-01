@@ -1882,7 +1882,8 @@
                   "  pm.expect(Number(j.invoiceTotal)).to.eql(1200);",
                   "  pm.expect(j.duplicate).to.eql(false);",
                   "});",
-                  "pm.collectionVariables.set('invoiceId', j.invoiceId);"
+                  "pm.collectionVariables.set('invoiceId', j.invoiceId);",
+                  "pm.collectionVariables.set('referenceMonth', j.referenceMonth);"
                 ]
               }
             }
@@ -2319,9 +2320,237 @@
               }
             }
           ]
+        },
+        {
+          "name": "3.18 Buscar fatura do mês (total=1500, 2 itens)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/{{referenceMonth}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "{{referenceMonth}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Fatura OPEN do cartão, total 1500, 2 itens', () => {",
+                  "  pm.expect(j.invoiceId).to.eql(pm.collectionVariables.get('invoiceId'));",
+                  "  pm.expect(j.cardId).to.eql(pm.collectionVariables.get('cardId'));",
+                  "  pm.expect(j.referenceMonth).to.eql(pm.collectionVariables.get('referenceMonth'));",
+                  "  pm.expect(j.status).to.eql('OPEN');",
+                  "  pm.expect(Number(j.total)).to.eql(1500);",
+                  "  pm.expect(j.paidAt == null).to.eql(true);",
+                  "  pm.expect(j.items).to.have.lengthOf(2);",
+                  "});",
+                  "pm.test('Itens são as compras 3.6 (1200) e 3.8 (300)', () => {",
+                  "  const amounts = j.items.map(i => Number(i.amount)).sort((a, b) => a - b);",
+                  "  pm.expect(amounts).to.eql([300, 1200]);",
+                  "  pm.expect(j.items.map(i => i.purchaseId)).to.include(pm.collectionVariables.get('purchaseId'));",
+                  "  j.items.forEach(i => pm.expect(i).to.have.all.keys('id', 'purchaseId', 'description', 'amount', 'purchasedAt'));",
+                  "});",
+                  "pm.test('Fecha dia 10 e vence dia 20', () => {",
+                  "  pm.expect(String(j.closingDate).slice(8, 10)).to.eql('10');",
+                  "  pm.expect(String(j.dueDate).slice(8, 10)).to.eql('20');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.19 Listar faturas do cartão (1 fatura aberta)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Resumo da única fatura: OPEN, total 1500, 2 itens', () => {",
+                  "  pm.expect(j.cardId).to.eql(pm.collectionVariables.get('cardId'));",
+                  "  pm.expect(j.invoices).to.have.lengthOf(1);",
+                  "  const inv = j.invoices[0];",
+                  "  pm.expect(inv.invoiceId).to.eql(pm.collectionVariables.get('invoiceId'));",
+                  "  pm.expect(inv.referenceMonth).to.eql(pm.collectionVariables.get('referenceMonth'));",
+                  "  pm.expect(inv.status).to.eql('OPEN');",
+                  "  pm.expect(Number(inv.total)).to.eql(1500);",
+                  "  pm.expect(inv.itemCount).to.eql(2);",
+                  "});",
+                  "pm.test('Resumo não traz a lista de itens', () => pm.expect(j.invoices[0]).to.not.have.property('items'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.20 Fatura de mês sem compras -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/2000-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "2000-01"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem de fatura não encontrada', () => {",
+                  "  pm.expect(j.status).to.eql(404);",
+                  "  pm.expect(j.message).to.include('Fatura não encontrada');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.21 Mês de referência inválido -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/setembro",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "setembro"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem orienta o formato yyyy-MM', () => {",
+                  "  pm.expect(j.status).to.eql(400);",
+                  "  pm.expect(j.message).to.include('yyyy-MM');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.22 Fatura de cartão inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/00000000-0000-0000-0000-000000000000/invoices/{{referenceMonth}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "00000000-0000-0000-0000-000000000000",
+                "invoices",
+                "{{referenceMonth}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Cartão não encontrado', () => pm.expect(pm.response.json().message).to.include('Cartão não encontrado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.23 Listar faturas de cartão inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/00000000-0000-0000-0000-000000000000/invoices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "00000000-0000-0000-0000-000000000000",
+                "invoices"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Cartão não encontrado', () => pm.expect(pm.response.json().message).to.include('Cartão não encontrado'));"
+                ]
+              }
+            }
+          ]
         }
       ],
-      "description": "Não existe GET de fatura: o total da fatura é conferido pela resposta da compra. Emissão não valida se customer/conta existem."
+      "description": "Faturas consultadas por GET /api/cards/{id}/invoices e /invoices/{yyyy-MM} (3.18 a 3.23); o mês de referência vem da resposta da compra 3.6. Emissão não valida se customer/conta existem."
     },
     {
       "name": "4. Pix - Setup (2 contas)",
@@ -4018,7 +4247,7 @@
       ]
     },
     {
-      "name": "9. Robustez (esperado 400)",
+      "name": "9. Robustez HTTP (4xx esperado)",
       "item": [
         {
           "name": "9.1 Aprovar estorno sem ?processedBy",
@@ -4045,7 +4274,16 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test('Corpo no formato ErrorResponse', () => {",
+                  "  pm.expect(j.status).to.eql(400);",
+                  "  pm.expect(j.error).to.eql('Bad Request');",
+                  "  pm.expect(j.path).to.eql('/api/pix/refunds/00000000-0000-0000-0000-000000000000/approve');",
+                  "  pm.expect(j.message).to.eql('Parâmetro obrigatório ausente: processedBy');",
+                  "  pm.expect(j.fieldErrors).to.be.an('array').that.is.empty;",
+                  "  pm.expect(j).to.have.property('timestamp');",
+                  "});"
                 ]
               }
             }
@@ -4074,7 +4312,16 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test('Corpo no formato ErrorResponse', () => {",
+                  "  pm.expect(j.status).to.eql(400);",
+                  "  pm.expect(j.error).to.eql('Bad Request');",
+                  "  pm.expect(j.path).to.eql('/api/customers/nao-e-uuid');",
+                  "  pm.expect(j.message).to.eql('Valor inválido para o parâmetro \\'id\\'');",
+                  "  pm.expect(j.fieldErrors).to.be.an('array').that.is.empty;",
+                  "  pm.expect(j).to.have.property('timestamp');",
+                  "});"
                 ]
               }
             }
@@ -4116,7 +4363,16 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test('Corpo no formato ErrorResponse', () => {",
+                  "  pm.expect(j.status).to.eql(400);",
+                  "  pm.expect(j.error).to.eql('Bad Request');",
+                  "  pm.expect(j.path).to.eql('/api/customers');",
+                  "  pm.expect(j.message).to.eql('Corpo da requisição ausente ou malformado');",
+                  "  pm.expect(j.fieldErrors).to.be.an('array').that.is.empty;",
+                  "  pm.expect(j).to.have.property('timestamp');",
+                  "});"
                 ]
               }
             }
@@ -4159,14 +4415,154 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test('Corpo no formato ErrorResponse', () => {",
+                  "  pm.expect(j.status).to.eql(400);",
+                  "  pm.expect(j.error).to.eql('Bad Request');",
+                  "  pm.expect(j.path).to.eql('/api/pix/keys');",
+                  "  pm.expect(j.message).to.eql('Corpo da requisição ausente ou malformado');",
+                  "  pm.expect(j.fieldErrors).to.be.an('array').that.is.empty;",
+                  "  pm.expect(j).to.have.property('timestamp');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.5 Corpo ausente -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test('Corpo no formato ErrorResponse', () => {",
+                  "  pm.expect(j.status).to.eql(400);",
+                  "  pm.expect(j.error).to.eql('Bad Request');",
+                  "  pm.expect(j.path).to.eql('/api/customers');",
+                  "  pm.expect(j.message).to.eql('Corpo da requisição ausente ou malformado');",
+                  "  pm.expect(j.fieldErrors).to.be.an('array').that.is.empty;",
+                  "  pm.expect(j).to.have.property('timestamp');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.6 Rota inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rota-que-nao-existe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rota-que-nao-existe"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test('Corpo no formato ErrorResponse', () => {",
+                  "  pm.expect(j.status).to.eql(404);",
+                  "  pm.expect(j.error).to.eql('Not Found');",
+                  "  pm.expect(j.path).to.eql('/api/rota-que-nao-existe');",
+                  "  pm.expect(j.message).to.eql('Recurso não encontrado');",
+                  "  pm.expect(j.fieldErrors).to.be.an('array').that.is.empty;",
+                  "  pm.expect(j).to.have.property('timestamp');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.7 Método não suportado -> 405",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 405', () => pm.response.to.have.status(405));",
+                  "const j = pm.response.json();",
+                  "pm.test('Corpo no formato ErrorResponse', () => {",
+                  "  pm.expect(j.status).to.eql(405);",
+                  "  pm.expect(j.error).to.eql('Method Not Allowed');",
+                  "  pm.expect(j.path).to.eql('/api/customers/00000000-0000-0000-0000-000000000000');",
+                  "  pm.expect(j.message).to.eql('Método PUT não suportado para este recurso');",
+                  "  pm.expect(j.fieldErrors).to.be.an('array').that.is.empty;",
+                  "  pm.expect(j).to.have.property('timestamp');",
+                  "});"
                 ]
               }
             }
           ]
         }
       ],
-      "description": "Estes 4 provavelmente retornam 500 hoje: o GlobalExceptionHandler não trata MissingServletRequestParameterException, MethodArgumentTypeMismatchException nem HttpMessageNotReadableException, e o handler de Exception.class devolve 500. Se ficarem vermelhos, é o gap a corrigir."
+      "description": "Falhas de contrato HTTP (parâmetro ausente, tipo errado, JSON inválido ou ausente, rota inexistente, método não suportado) devem virar 4xx no formato ErrorResponse, nunca 500. Tratadas pelo GlobalExceptionHandler e travadas pelo GlobalExceptionHandlerTest."
     }
   ],
   "variable": [
@@ -4196,6 +4592,10 @@
     },
     {
       "key": "invoiceId",
+      "value": ""
+    },
+    {
+      "key": "referenceMonth",
       "value": ""
     },
     {
