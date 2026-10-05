@@ -5,6 +5,7 @@ import com.kage.customer.application.usecase.blockcustomer.BlockCustomerUseCase;
 import com.kage.customer.application.usecase.createcustomer.CreateCustomerUseCase;
 import com.kage.customer.application.usecase.getcustomer.GetCustomerUseCase;
 import com.kage.customer.application.usecase.rejectkyc.RejectKycUseCase;
+import com.kage.customer.application.usecase.unblockcustomer.UnblockCustomerUseCase;
 import com.kage.customer.application.usecase.updateaddress.UpdateAddressUseCase;
 import com.kage.customer.domain.repository.CustomerRepository;
 import org.springframework.context.annotation.Bean;
@@ -26,6 +27,11 @@ public class CustomerConfig {
     @Bean
     public BlockCustomerUseCase blockCustomerUseCase(CustomerRepository customerRepository) {
         return new BlockCustomerUseCase(customerRepository);
+    }
+
+    @Bean
+    public UnblockCustomerUseCase unblockCustomerUseCase(CustomerRepository customerRepository) {
+        return new UnblockCustomerUseCase(customerRepository);
     }
 
     @Bean

@@ -15,6 +15,9 @@ import com.kage.customer.application.usecase.getcustomer.GetCustomerUseCase;
 import com.kage.customer.application.usecase.rejectkyc.RejectKycInput;
 import com.kage.customer.application.usecase.rejectkyc.RejectKycOutput;
 import com.kage.customer.application.usecase.rejectkyc.RejectKycUseCase;
+import com.kage.customer.application.usecase.unblockcustomer.UnblockCustomerInput;
+import com.kage.customer.application.usecase.unblockcustomer.UnblockCustomerOutput;
+import com.kage.customer.application.usecase.unblockcustomer.UnblockCustomerUseCase;
 import com.kage.customer.application.usecase.updateaddress.UpdateAddressInput;
 import com.kage.customer.application.usecase.updateaddress.UpdateAddressOutput;
 import com.kage.customer.application.usecase.updateaddress.UpdateAddressUseCase;
@@ -31,6 +34,7 @@ public class CustomerController {
     private final CreateCustomerUseCase createCustomerUseCase;
     private final GetCustomerUseCase getCustomerUseCase;
     private final BlockCustomerUseCase blockCustomerUseCase;
+    private final UnblockCustomerUseCase unblockCustomerUseCase;
     private final ApproveKycUseCase approveKycUseCase;
     private final RejectKycUseCase rejectKycUseCase;
     private final UpdateAddressUseCase updateAddressUseCase;
@@ -38,12 +42,14 @@ public class CustomerController {
     public CustomerController(CreateCustomerUseCase createCustomerUseCase,
                               GetCustomerUseCase getCustomerUseCase,
                               BlockCustomerUseCase blockCustomerUseCase,
+                              UnblockCustomerUseCase unblockCustomerUseCase,
                               ApproveKycUseCase approveKycUseCase,
                               RejectKycUseCase rejectKycUseCase,
                               UpdateAddressUseCase updateAddressUseCase) {
         this.createCustomerUseCase = createCustomerUseCase;
         this.getCustomerUseCase = getCustomerUseCase;
         this.blockCustomerUseCase = blockCustomerUseCase;
+        this.unblockCustomerUseCase = unblockCustomerUseCase;
         this.approveKycUseCase = approveKycUseCase;
         this.rejectKycUseCase = rejectKycUseCase;
         this.updateAddressUseCase = updateAddressUseCase;
@@ -64,6 +70,12 @@ public class CustomerController {
     @PatchMapping("/{id}/block")
     public ResponseEntity<BlockCustomerOutput> block(@PathVariable UUID id) {
         var output = blockCustomerUseCase.execute(new BlockCustomerInput(id));
+        return ResponseEntity.ok(output);
+    }
+
+    @PatchMapping("/{id}/unblock")
+    public ResponseEntity<UnblockCustomerOutput> unblock(@PathVariable UUID id) {
+        var output = unblockCustomerUseCase.execute(new UnblockCustomerInput(id));
         return ResponseEntity.ok(output);
     }
 
