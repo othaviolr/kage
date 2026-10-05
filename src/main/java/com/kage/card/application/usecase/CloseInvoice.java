@@ -4,29 +4,33 @@ import com.kage.card.domain.entity.Invoice;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
 import com.kage.shared.domain.exception.NotFoundException;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.util.List;
 import java.util.UUID;
 
-public class GetInvoice {
+/**
+ * Fecha a fatura de um mês (OPEN -> CLOSED): a partir daí ela não aceita novos lançamentos e passa a
+ * poder ser paga. Hoje o fechamento é disparado manualmente (simula o job de fechamento do dia de
+ * corte); a regra de que só fatura aberta fecha vive em Invoice.close().
+ */
+public class CloseInvoice {
 
     public record Input(UUID cardId, String referenceMonth) {}
-    public record ItemOutput(UUID id, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt) {}
-    public record Output(UUID invoiceId, UUID cardId, String referenceMonth, LocalDate closingDate, LocalDate dueDate,
-                         String status, BigDecimal total, LocalDateTime paidAt, List<ItemOutput> items) {}
+    public record Output(UUID invoiceId, UUID cardId, String referenceMonth, String status,
+                         BigDecimal total, LocalDate closingDate, LocalDate dueDate) {}
 
     private final CardRepository cardRepository;
     private final InvoiceRepository invoiceRepository;
 
-    public GetInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
+    public CloseInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
         this.cardRepository = cardRepository;
         this.invoiceRepository = invoiceRepository;
     }
 
+    @Transactional
     public Output execute(Input input) {
         YearMonth referenceMonth = ReferenceMonths.parse(input.referenceMonth());
 
@@ -36,13 +40,10 @@ public class GetInvoice {
         Invoice invoice = invoiceRepository.findByCardIdAndReferenceMonth(input.cardId(), referenceMonth)
                 .orElseThrow(() -> new NotFoundException("Fatura não encontrada para o mês " + referenceMonth));
 
-        List<ItemOutput> items = invoice.getItems().stream()
-                .map(item -> new ItemOutput(item.id(), item.purchaseId(), item.description(),
-                        item.amount().amount(), item.purchasedAt()))
-                .toList();
+        invoice.close();
+        Invoice saved = invoiceRepository.save(invoice);
 
-        return new Output(invoice.getId(), invoice.getCardId(), invoice.getReferenceMonth().toString(),
-                invoice.getClosingDate(), invoice.getDueDate(), invoice.getStatus().name(),
-                invoice.total().amount(), invoice.getPaidAt(), items);
+        return new Output(saved.getId(), saved.getCardId(), saved.getReferenceMonth().toString(),
+                saved.getStatus().name(), saved.total().amount(), saved.getClosingDate(), saved.getDueDate());
     }
 }
