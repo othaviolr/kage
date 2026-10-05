@@ -80,7 +80,8 @@ public class Customer {
         if (this.status != CustomerStatus.BLOCKED) {
             throw new DomainException("Cliente não está bloqueado");
         }
-        this.status = CustomerStatus.ACTIVE;
+        // desbloquear não pode "aprovar" o cliente: sem KYC aprovado ele volta a INACTIVE
+        this.status = isKycApproved() ? CustomerStatus.ACTIVE : CustomerStatus.INACTIVE;
         this.updatedAt = LocalDateTime.now();
     }
 

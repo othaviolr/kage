@@ -731,6 +731,169 @@
               }
             }
           ]
+        },
+        {
+          "name": "1.19 Bloquear customer A (KYC aprovado)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{customerId}}/block",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{customerId}}",
+                "block"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('BLOCKED', () => pm.expect(pm.response.json().status).to.eql('BLOCKED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.20 Desbloquear customer A -> volta ACTIVE (KYC aprovado)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{customerId}}/unblock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{customerId}}",
+                "unblock"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ACTIVE', () => pm.expect(pm.response.json().status).to.eql('ACTIVE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.21 Desbloquear customer A de novo -> 422",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{customerId}}/unblock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{customerId}}",
+                "unblock"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(422);",
+                  "  pm.expect(j.message).to.include('não está bloqueado');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.22 Desbloquear customer B -> INACTIVE (KYC rejeitado não ativa)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{customerBId}}/unblock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{customerBId}}",
+                "unblock"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('INACTIVE: desbloquear não aprova o cliente', () => pm.expect(pm.response.json().status).to.eql('INACTIVE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.23 Desbloquear customer inexistente -> 404",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/00000000-0000-0000-0000-000000000000/unblock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "00000000-0000-0000-0000-000000000000",
+                "unblock"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(404);",
+                  "  pm.expect(j.message).to.include('Cliente não encontrado');",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ],
       "description": "Cadastro, KYC, endereço e bloqueio. Não há autenticação (SecurityConfig = permitAll)."
@@ -2544,6 +2707,671 @@
                 "exec": [
                   "pm.test('Status 404', () => pm.response.to.have.status(404));",
                   "pm.test('Cartão não encontrado', () => pm.expect(pm.response.json().message).to.include('Cartão não encontrado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.24 Fechar fatura do mês (OPEN -> CLOSED, total 1500)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/{{referenceMonth}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "{{referenceMonth}}",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Fatura CLOSED, mesmo id/mês, total 1500', () => {",
+                  "  pm.expect(j.status).to.eql('CLOSED');",
+                  "  pm.expect(j.invoiceId).to.eql(pm.collectionVariables.get('invoiceId'));",
+                  "  pm.expect(j.cardId).to.eql(pm.collectionVariables.get('cardId'));",
+                  "  pm.expect(j.referenceMonth).to.eql(pm.collectionVariables.get('referenceMonth'));",
+                  "  pm.expect(Number(j.total)).to.eql(1500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.25 Fechar a mesma fatura de novo -> 422",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/{{referenceMonth}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "{{referenceMonth}}",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(422);",
+                  "  pm.expect(j.message).to.include('Somente faturas abertas');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.26 Fechar fatura de mês sem compras -> 404",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/2000-01/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "2000-01",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(404);",
+                  "  pm.expect(j.message).to.include('Fatura não encontrada');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.27 Fechar com mês de referência inválido -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/setembro/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "setembro",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(400);",
+                  "  pm.expect(j.message).to.include('yyyy-MM');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.28 Fechar fatura de cartão inexistente -> 404",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/00000000-0000-0000-0000-000000000000/invoices/{{referenceMonth}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "00000000-0000-0000-0000-000000000000",
+                "invoices",
+                "{{referenceMonth}}",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(404);",
+                  "  pm.expect(j.message).to.include('Cartão não encontrado');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.29 Compra de 100.00 com a fatura do mês fechada -> cai na próxima fatura",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{latePurchaseId}}\",\n  \"description\": \"Compra após o fechamento\",\n  \"amount\": 100.0,\n  \"purchasedAt\": \"{{purchasedAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('latePurchaseId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "const [y, m] = pm.collectionVariables.get('referenceMonth').split('-').map(Number);",
+                  "const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;",
+                  "pm.collectionVariables.set('nextReferenceMonth', next);",
+                  "pm.test('Lançada na fatura seguinte, que acabou de abrir', () => {",
+                  "  pm.expect(j.referenceMonth).to.eql(next);",
+                  "  pm.expect(j.invoiceId).to.not.eql(pm.collectionVariables.get('invoiceId'));",
+                  "  pm.expect(Number(j.invoiceTotal)).to.eql(100);",
+                  "  pm.expect(Number(j.availableLimit)).to.eql(3400);",
+                  "  pm.expect(j.duplicate).to.eql(false);",
+                  "});",
+                  "pm.collectionVariables.set('nextInvoiceId', j.invoiceId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.30 Repetir a compra tardia (idempotência após o fechamento)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{latePurchaseId}}\",\n  \"description\": \"Compra após o fechamento\",\n  \"amount\": 100.0,\n  \"purchasedAt\": \"{{purchasedAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Duplicada: mesma fatura, limite não debitado de novo', () => {",
+                  "  pm.expect(j.duplicate).to.eql(true);",
+                  "  pm.expect(j.invoiceId).to.eql(pm.collectionVariables.get('nextInvoiceId'));",
+                  "  pm.expect(Number(j.invoiceTotal)).to.eql(100);",
+                  "  pm.expect(Number(j.availableLimit)).to.eql(3400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.31 Repetir a compra ORIGINAL (3.6) depois do fechamento -> duplicada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{purchaseId}}\",\n  \"description\": \"Notebook - parcela única\",\n  \"amount\": 1200.0,\n  \"purchasedAt\": \"{{purchasedAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Duplicada na fatura original, sem nova cobrança', () => {",
+                  "  pm.expect(j.duplicate).to.eql(true);",
+                  "  pm.expect(j.invoiceId).to.eql(pm.collectionVariables.get('invoiceId'));",
+                  "  pm.expect(Number(j.availableLimit)).to.eql(3400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.32 Fatura fechada continua CLOSED com total 1500",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/{{referenceMonth}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "{{referenceMonth}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('CLOSED e inalterada', () => {",
+                  "  pm.expect(j.status).to.eql('CLOSED');",
+                  "  pm.expect(Number(j.total)).to.eql(1500);",
+                  "  pm.expect(j.items).to.have.lengthOf(2);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33 Listar faturas (2: próxima OPEN, anterior CLOSED)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Ordenadas da mais recente para a mais antiga', () => {",
+                  "  pm.expect(j.invoices).to.have.lengthOf(2);",
+                  "  pm.expect(j.invoices[0].referenceMonth).to.eql(pm.collectionVariables.get('nextReferenceMonth'));",
+                  "  pm.expect(j.invoices[0].status).to.eql('OPEN');",
+                  "  pm.expect(Number(j.invoices[0].total)).to.eql(100);",
+                  "  pm.expect(j.invoices[1].referenceMonth).to.eql(pm.collectionVariables.get('referenceMonth'));",
+                  "  pm.expect(j.invoices[1].status).to.eql('CLOSED');",
+                  "  pm.expect(Number(j.invoices[1].total)).to.eql(1500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.34 Cancelar cartão com limite utilizado -> 422",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "cancel"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(422);",
+                  "  pm.expect(j.message).to.include('fatura em aberto');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.35 Emitir cartão B (sem uso, p/ cancelamento)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"accountId\": \"{{accountId}}\",\n  \"creditLimit\": 1000.0,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('ACTIVE', () => pm.expect(j.status).to.eql('ACTIVE'));",
+                  "pm.collectionVariables.set('cardBId', j.cardId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.36 Cancelar cartão B (sem limite utilizado)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardBId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardBId}}",
+                "cancel"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('CANCELLED', () => {",
+                  "  pm.expect(j.cardId).to.eql(pm.collectionVariables.get('cardBId'));",
+                  "  pm.expect(j.status).to.eql('CANCELLED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.37 Cancelar cartão B de novo -> 422",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardBId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardBId}}",
+                "cancel"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(422);",
+                  "  pm.expect(j.message).to.include('já está cancelado');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.38 Compra em cartão cancelado -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardBId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardBId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Cancelado\",\n  \"amount\": 10,\n  \"purchasedAt\": \"{{purchasedAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(422);",
+                  "  pm.expect(j.message).to.include('não está ativo');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.39 Cancelar cartão inexistente -> 404",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/00000000-0000-0000-0000-000000000000/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "00000000-0000-0000-0000-000000000000",
+                "cancel"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(404);",
+                  "  pm.expect(j.message).to.include('Cartão não encontrado');",
+                  "});"
                 ]
               }
             }
@@ -4587,7 +5415,15 @@
       "value": ""
     },
     {
+      "key": "cardBId",
+      "value": ""
+    },
+    {
       "key": "purchaseId",
+      "value": ""
+    },
+    {
+      "key": "latePurchaseId",
       "value": ""
     },
     {
@@ -4595,7 +5431,15 @@
       "value": ""
     },
     {
+      "key": "nextInvoiceId",
+      "value": ""
+    },
+    {
       "key": "referenceMonth",
+      "value": ""
+    },
+    {
+      "key": "nextReferenceMonth",
       "value": ""
     },
     {
