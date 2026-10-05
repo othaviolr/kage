@@ -2,6 +2,7 @@ package com.kage.card.application.usecase;
 
 import com.kage.card.domain.entity.Card;
 import com.kage.card.domain.entity.Invoice;
+import com.kage.card.domain.enums.InvoiceStatus;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
 import com.kage.shared.domain.exception.NotFoundException;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.util.Optional;
 import java.util.UUID;
 
 public class RegisterPurchase {
@@ -37,16 +39,12 @@ public class RegisterPurchase {
         Card card = cardRepository.findById(input.cardId())
                 .orElseThrow(() -> new NotFoundException("Cartão não encontrado"));
 
-        YearMonth referenceMonth = Invoice.referenceMonthFor(input.purchasedAt().toLocalDate(), card.getClosingDay());
-        Invoice invoice = invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), referenceMonth)
-                .orElseGet(() -> Invoice.open(card.getId(), referenceMonth, card.getClosingDay(), card.getDueDay()));
-
-        boolean alreadyRegistered = invoice.getItems().stream()
-                .anyMatch(item -> item.purchaseId().equals(input.purchaseId()));
-
-        if (alreadyRegistered) {
-            return toOutput(card, invoice, true);
+        Optional<Invoice> alreadyRegistered = invoiceRepository.findByCardIdAndPurchaseId(card.getId(), input.purchaseId());
+        if (alreadyRegistered.isPresent()) {
+            return toOutput(card, alreadyRegistered.get(), true);
         }
+
+        Invoice invoice = findOpenInvoice(card, input.purchasedAt());
 
         card.authorizePurchase(new Money(input.amount()));
         invoice.addItem(input.purchaseId(), input.description(), new Money(input.amount()), input.purchasedAt());
@@ -55,6 +53,25 @@ public class RegisterPurchase {
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
         return toOutput(savedCard, savedInvoice, false);
+    }
+
+    /**
+     * Fatura que recebe a compra: a do mês de referência pela data da compra e, se ela já foi fechada
+     * (ou paga), a primeira fatura seguinte que ainda esteja aberta, criando-a se não existir. É o
+     * que um banco faz com a compra que chega depois do fechamento.
+     */
+    private Invoice findOpenInvoice(Card card, LocalDateTime purchasedAt) {
+        YearMonth month = Invoice.referenceMonthFor(purchasedAt.toLocalDate(), card.getClosingDay());
+        while (true) {
+            Optional<Invoice> existing = invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), month);
+            if (existing.isEmpty()) {
+                return Invoice.open(card.getId(), month, card.getClosingDay(), card.getDueDay());
+            }
+            if (existing.get().getStatus() == InvoiceStatus.OPEN) {
+                return existing.get();
+            }
+            month = month.plusMonths(1);
+        }
     }
 
     private Output toOutput(Card card, Invoice invoice, boolean duplicate) {

@@ -57,4 +57,10 @@ public class InvoiceRepositoryImpl implements InvoiceRepository {
                 .map(entity -> InvoiceMapper.toDomain(entity, invoiceItemJpaRepository.findByInvoiceId(entity.getId())))
                 .toList();
     }
+
+    @Override
+    public Optional<Invoice> findByCardIdAndPurchaseId(UUID cardId, UUID purchaseId) {
+        return invoiceJpaRepository.findByCardIdAndPurchaseId(cardId, purchaseId)
+                .map(entity -> InvoiceMapper.toDomain(entity, invoiceItemJpaRepository.findByInvoiceId(entity.getId())));
+    }
 }

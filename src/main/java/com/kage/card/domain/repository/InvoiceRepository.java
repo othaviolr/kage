@@ -13,4 +13,5 @@ public interface InvoiceRepository {
     Optional<Invoice> findById(UUID id);
     Optional<Invoice> findByCardIdAndReferenceMonth(UUID cardId, YearMonth referenceMonth);
     List<Invoice> findByCardId(UUID cardId);
+    Optional<Invoice> findByCardIdAndPurchaseId(UUID cardId, UUID purchaseId);
 }
