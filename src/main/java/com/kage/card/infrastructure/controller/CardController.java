@@ -20,10 +20,13 @@ public class CardController {
     private final RegisterPurchase registerPurchase;
     private final GetInvoice getInvoice;
     private final ListInvoices listInvoices;
+    private final CloseInvoice closeInvoice;
+    private final CancelCard cancelCard;
 
     public CardController(IssueCard issueCard, GetCard getCard, BlockCard blockCard,
                           UnblockCard unblockCard, RegisterPurchase registerPurchase,
-                          GetInvoice getInvoice, ListInvoices listInvoices) {
+                          GetInvoice getInvoice, ListInvoices listInvoices,
+                          CloseInvoice closeInvoice, CancelCard cancelCard) {
         this.issueCard = issueCard;
         this.getCard = getCard;
         this.blockCard = blockCard;
@@ -31,6 +34,8 @@ public class CardController {
         this.registerPurchase = registerPurchase;
         this.getInvoice = getInvoice;
         this.listInvoices = listInvoices;
+        this.closeInvoice = closeInvoice;
+        this.cancelCard = cancelCard;
     }
 
     @PostMapping
@@ -53,6 +58,11 @@ public class CardController {
         return ResponseEntity.ok(unblockCard.execute(new UnblockCard.Input(id)));
     }
 
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<CancelCard.Output> cancel(@PathVariable UUID id) {
+        return ResponseEntity.ok(cancelCard.execute(new CancelCard.Input(id)));
+    }
+
     @PostMapping("/{id}/purchases")
     public ResponseEntity<RegisterPurchase.Output> registerPurchase(@PathVariable UUID id,
                                                                      @RequestBody PurchaseRequest request) {
@@ -70,6 +80,11 @@ public class CardController {
     @GetMapping("/{id}/invoices/{referenceMonth}")
     public ResponseEntity<GetInvoice.Output> getInvoice(@PathVariable UUID id, @PathVariable String referenceMonth) {
         return ResponseEntity.ok(getInvoice.execute(new GetInvoice.Input(id, referenceMonth)));
+    }
+
+    @PatchMapping("/{id}/invoices/{referenceMonth}/close")
+    public ResponseEntity<CloseInvoice.Output> closeInvoice(@PathVariable UUID id, @PathVariable String referenceMonth) {
+        return ResponseEntity.ok(closeInvoice.execute(new CloseInvoice.Input(id, referenceMonth)));
     }
 
     public record PurchaseRequest(UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt) {

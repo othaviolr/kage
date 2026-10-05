@@ -55,4 +55,14 @@ public class CardConfig {
     public ListInvoices listInvoices(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
         return new ListInvoices(cardRepository, invoiceRepository);
     }
+
+    @Bean
+    public CloseInvoice closeInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
+        return new CloseInvoice(cardRepository, invoiceRepository);
+    }
+
+    @Bean
+    public CancelCard cancelCard(CardRepository cardRepository) {
+        return new CancelCard(cardRepository);
+    }
 }
