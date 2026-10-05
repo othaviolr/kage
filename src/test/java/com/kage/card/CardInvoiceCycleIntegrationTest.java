@@ -3,9 +3,9 @@ package com.kage.card;
 import com.kage.AbstractIntegrationTest;
 import com.kage.card.application.usecase.CancelCard;
 import com.kage.card.application.usecase.CloseInvoice;
-import com.kage.card.application.usecase.GetCard;
 import com.kage.card.application.usecase.GetInvoice;
 import com.kage.card.application.usecase.IssueCard;
+import com.kage.card.application.usecase.ListInvoices;
 import com.kage.card.application.usecase.RegisterPurchase;
 import com.kage.shared.domain.exception.BusinessRuleException;
 import org.junit.jupiter.api.Test;
@@ -19,9 +19,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Ciclo da fatura e cancelamento do cartão com Postgres real: fechar a fatura, tentar lançar compra
- * em fatura fechada (a transação inteira precisa voltar, inclusive o limite do cartão) e as regras
- * de cancelamento.
+ * Ciclo da fatura e cancelamento do cartão com Postgres real: fechar a fatura, rotear compra que
+ * chega com a fatura do mês já fechada para a próxima aberta (sem duplicar em retry) e as regras de
+ * cancelamento.
  */
 class CardInvoiceCycleIntegrationTest extends AbstractIntegrationTest {
 
@@ -43,7 +43,7 @@ class CardInvoiceCycleIntegrationTest extends AbstractIntegrationTest {
     GetInvoice getInvoice;
 
     @Autowired
-    GetCard getCard;
+    ListInvoices listInvoices;
 
     private IssueCard.Output newCard() {
         return issueCard.execute(new IssueCard.Input(
@@ -80,20 +80,36 @@ class CardInvoiceCycleIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void registerPurchase_deveRejeitarCompraEmFaturaFechadaESemConsumirLimite() {
+    void registerPurchase_deveLancarNaProximaFatura_quandoFaturaDoMesJaFechou() {
         var card = newCard();
         purchase(card.cardId(), "150.00");
         closeInvoice.execute(new CloseInvoice.Input(card.cardId(), "2026-09"));
 
-        assertThatThrownBy(() -> purchase(card.cardId(), "100.00"))
-                .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("Fatura não está aberta");
+        RegisterPurchase.Output late = purchase(card.cardId(), "100.00");
 
-        // @Transactional desfez o authorizePurchase: só os 150.00 originais seguem consumidos
-        assertThat(getCard.execute(new GetCard.Input(card.cardId())).availableLimit())
-                .isEqualByComparingTo("850.00");
+        assertThat(late.referenceMonth()).isEqualTo("2026-10");
+        assertThat(late.invoiceTotal()).isEqualByComparingTo("100.00");
+        assertThat(late.availableLimit()).isEqualByComparingTo("750.00");
+        // a fatura fechada não muda
         assertThat(getInvoice.execute(new GetInvoice.Input(card.cardId(), "2026-09")).total())
                 .isEqualByComparingTo("150.00");
+    }
+
+    @Test
+    void registerPurchase_naoDeveDuplicar_quandoRetryChegaDepoisQueAFaturaFechou() {
+        var card = newCard();
+        UUID purchaseId = UUID.randomUUID();
+        var first = registerPurchase.execute(new RegisterPurchase.Input(
+                card.cardId(), purchaseId, "Mercado", new BigDecimal("150.00"), SEPTEMBER));
+        closeInvoice.execute(new CloseInvoice.Input(card.cardId(), "2026-09"));
+
+        var retry = registerPurchase.execute(new RegisterPurchase.Input(
+                card.cardId(), purchaseId, "Mercado", new BigDecimal("150.00"), SEPTEMBER));
+
+        assertThat(retry.duplicate()).isTrue();
+        assertThat(retry.invoiceId()).isEqualTo(first.invoiceId());
+        assertThat(retry.availableLimit()).isEqualByComparingTo("850.00");
+        assertThat(listInvoices.execute(new ListInvoices.Input(card.cardId())).invoices()).hasSize(1);
     }
 
     @Test

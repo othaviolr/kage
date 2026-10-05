@@ -88,7 +88,7 @@ class RegisterPurchaseTest {
         card.authorizePurchase(Money.of("150.00")); // efeito já aplicado na tentativa anterior
 
         when(cardRepository.findById(card.getId())).thenReturn(Optional.of(card));
-        when(invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), YearMonth.of(2026, 9)))
+        when(invoiceRepository.findByCardIdAndPurchaseId(card.getId(), purchaseId))
                 .thenReturn(Optional.of(existingInvoice));
 
         RegisterPurchase.Output output = registerPurchase.execute(new RegisterPurchase.Input(
@@ -162,5 +162,95 @@ class RegisterPurchaseTest {
                 card.getId(), UUID.randomUUID(), "Compra tardia", new BigDecimal("20.00"), afterClosing));
 
         assertThat(output.referenceMonth()).isEqualTo(YearMonth.of(2026, 10).toString());
+    }
+
+    @Test
+    void execute_deveRotearParaProximaFaturaAberta_quandoFaturaDoMesJaFoiFechada() {
+        Invoice closedSeptember = Invoice.open(card.getId(), YearMonth.of(2026, 9), 10, 20);
+        closedSeptember.close();
+
+        when(cardRepository.findById(card.getId())).thenReturn(Optional.of(card));
+        when(invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), YearMonth.of(2026, 9)))
+                .thenReturn(Optional.of(closedSeptember));
+        when(invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), YearMonth.of(2026, 10)))
+                .thenReturn(Optional.empty());
+        when(cardRepository.save(any(Card.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RegisterPurchase.Output output = registerPurchase.execute(new RegisterPurchase.Input(
+                card.getId(), UUID.randomUUID(), "Mercado", new BigDecimal("150.00"), purchasedAt));
+
+        assertThat(output.referenceMonth()).isEqualTo(YearMonth.of(2026, 10).toString());
+        assertThat(output.invoiceTotal()).isEqualByComparingTo("150.00");
+        assertThat(output.availableLimit()).isEqualByComparingTo("850.00");
+        assertThat(closedSeptember.getItems()).isEmpty();
+    }
+
+    @Test
+    void execute_deveLancarNaFaturaAbertaSeguinteJaExistente_quandoFaturaDoMesFoiPaga() {
+        Invoice paidSeptember = Invoice.open(card.getId(), YearMonth.of(2026, 9), 10, 20);
+        paidSeptember.close();
+        paidSeptember.pay();
+        Invoice openOctober = Invoice.open(card.getId(), YearMonth.of(2026, 10), 10, 20);
+        openOctober.addItem(UUID.randomUUID(), "Compra anterior", Money.of("50.00"), purchasedAt);
+
+        when(cardRepository.findById(card.getId())).thenReturn(Optional.of(card));
+        when(invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), YearMonth.of(2026, 9)))
+                .thenReturn(Optional.of(paidSeptember));
+        when(invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), YearMonth.of(2026, 10)))
+                .thenReturn(Optional.of(openOctober));
+        when(cardRepository.save(any(Card.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RegisterPurchase.Output output = registerPurchase.execute(new RegisterPurchase.Input(
+                card.getId(), UUID.randomUUID(), "Farmácia", new BigDecimal("30.00"), purchasedAt));
+
+        assertThat(output.referenceMonth()).isEqualTo(YearMonth.of(2026, 10).toString());
+        assertThat(output.invoiceTotal()).isEqualByComparingTo("80.00");
+    }
+
+    @Test
+    void execute_devePularVariasFaturasFechadasSeguidas() {
+        Invoice closedSeptember = Invoice.open(card.getId(), YearMonth.of(2026, 9), 10, 20);
+        closedSeptember.close();
+        Invoice closedOctober = Invoice.open(card.getId(), YearMonth.of(2026, 10), 10, 20);
+        closedOctober.close();
+
+        when(cardRepository.findById(card.getId())).thenReturn(Optional.of(card));
+        when(invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), YearMonth.of(2026, 9)))
+                .thenReturn(Optional.of(closedSeptember));
+        when(invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), YearMonth.of(2026, 10)))
+                .thenReturn(Optional.of(closedOctober));
+        when(invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), YearMonth.of(2026, 11)))
+                .thenReturn(Optional.empty());
+        when(cardRepository.save(any(Card.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RegisterPurchase.Output output = registerPurchase.execute(new RegisterPurchase.Input(
+                card.getId(), UUID.randomUUID(), "Mercado", new BigDecimal("150.00"), purchasedAt));
+
+        assertThat(output.referenceMonth()).isEqualTo(YearMonth.of(2026, 11).toString());
+    }
+
+    @Test
+    void execute_naoDeveLancarDeNovo_quandoRetryChegaDepoisQueFaturaOriginalFechou() {
+        UUID purchaseId = UUID.randomUUID();
+        Invoice closedSeptember = Invoice.open(card.getId(), YearMonth.of(2026, 9), 10, 20);
+        closedSeptember.addItem(purchaseId, "Mercado", Money.of("150.00"), purchasedAt);
+        closedSeptember.close();
+        card.authorizePurchase(Money.of("150.00"));
+
+        when(cardRepository.findById(card.getId())).thenReturn(Optional.of(card));
+        when(invoiceRepository.findByCardIdAndPurchaseId(card.getId(), purchaseId))
+                .thenReturn(Optional.of(closedSeptember));
+
+        RegisterPurchase.Output output = registerPurchase.execute(new RegisterPurchase.Input(
+                card.getId(), purchaseId, "Mercado", new BigDecimal("150.00"), purchasedAt));
+
+        assertThat(output.duplicate()).isTrue();
+        assertThat(output.referenceMonth()).isEqualTo(YearMonth.of(2026, 9).toString());
+        assertThat(output.availableLimit()).isEqualByComparingTo("850.00");
+        verify(cardRepository, never()).save(any());
+        verify(invoiceRepository, never()).save(any());
     }
 }
