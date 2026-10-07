@@ -764,7 +764,101 @@
           ]
         },
         {
-          "name": "1.20 Desbloquear customer A -> volta ACTIVE (KYC aprovado)",
+          "name": "1.20 Criar conta com customer bloqueado -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(422);",
+                  "  pm.expect(j.message).to.include('não está ativo');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.21 Emitir cartão com customer bloqueado -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"accountId\": \"00000000-0000-0000-0000-000000000000\",\n  \"creditLimit\": 1000.0,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(422);",
+                  "  pm.expect(j.message).to.include('não está ativo');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.22 Desbloquear customer A -> volta ACTIVE (KYC aprovado)",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -795,7 +889,7 @@
           ]
         },
         {
-          "name": "1.21 Desbloquear customer A de novo -> 422",
+          "name": "1.23 Desbloquear customer A de novo -> 422",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -830,7 +924,7 @@
           ]
         },
         {
-          "name": "1.22 Desbloquear customer B -> INACTIVE (KYC rejeitado não ativa)",
+          "name": "1.24 Desbloquear customer B -> INACTIVE (KYC rejeitado não ativa)",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -861,7 +955,7 @@
           ]
         },
         {
-          "name": "1.23 Desbloquear customer inexistente -> 404",
+          "name": "1.25 Desbloquear customer inexistente -> 404",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -876,6 +970,194 @@
                 "00000000-0000-0000-0000-000000000000",
                 "unblock"
               ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(404);",
+                  "  pm.expect(j.message).to.include('Cliente não encontrado');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.26 Criar conta com customer B (KYC rejeitado) -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerBId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(422);",
+                  "  pm.expect(j.message).to.include('KYC');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.27 Criar conta para customer inexistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"00000000-0000-0000-0000-000000000000\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(404);",
+                  "  pm.expect(j.message).to.include('Cliente não encontrado');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.28 Emitir cartão com customer B (KYC rejeitado) -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerBId}}\",\n  \"accountId\": \"00000000-0000-0000-0000-000000000000\",\n  \"creditLimit\": 1000.0,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(422);",
+                  "  pm.expect(j.message).to.include('KYC');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.29 Emitir cartão para customer inexistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"00000000-0000-0000-0000-000000000000\",\n  \"accountId\": \"00000000-0000-0000-0000-000000000000\",\n  \"creditLimit\": 1000.0,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -3376,6 +3658,293 @@
               }
             }
           ]
+        },
+        {
+          "name": "3.40 Emitir cartão para customer inexistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"00000000-0000-0000-0000-000000000000\",\n  \"accountId\": \"{{accountId}}\",\n  \"creditLimit\": 1000.0,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(404);",
+                  "  pm.expect(j.message).to.include('Cliente não encontrado');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.41 Emitir cartão com conta inexistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"accountId\": \"00000000-0000-0000-0000-000000000000\",\n  \"creditLimit\": 1000.0,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(404);",
+                  "  pm.expect(j.message).to.include('Conta não encontrada');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.42 Criar customer C (ativo, sem conta)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Maria Teste da Silva\",\n  \"cpf\": \"{{ccpf}}\",\n  \"email\": \"{{cemail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1995-05-20\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"123\",\n  \"complement\": \"Apto 4\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// CPF válido (dígitos verificadores) e e-mail únicos a cada execução",
+                  "function digit(base) {",
+                  "  let sum = 0, w = base.length + 1;",
+                  "  for (const d of base) sum += d * w--;",
+                  "  const r = 11 - (sum % 11);",
+                  "  return r >= 10 ? 0 : r;",
+                  "}",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('ccpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('cemail', `kage.test+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('customerCId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.43 Aprovar KYC do customer C",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{customerCId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{customerCId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('KYC APPROVED e customer ACTIVE', () => {",
+                  "  pm.expect(j.kycStatus).to.eql('APPROVED');",
+                  "  pm.expect(j.status).to.eql('ACTIVE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.44 Emitir cartão do customer C com a conta do customer A -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerCId}}\",\n  \"accountId\": \"{{accountId}}\",\n  \"creditLimit\": 1000.0,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(422);",
+                  "  pm.expect(j.message).to.include('não pertence ao cliente');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.45 Emitir cartão com conta encerrada -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"accountId\": \"{{emptyAccountId}}\",\n  \"creditLimit\": 1000.0,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensagem esperada', () => {",
+                  "  pm.expect(j.status).to.eql(422);",
+                  "  pm.expect(j.message).to.include('não está ativa');",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ],
       "description": "Faturas consultadas por GET /api/cards/{id}/invoices e /invoices/{yyyy-MM} (3.18 a 3.23); o mês de referência vem da resposta da compra 3.6. Emissão não valida se customer/conta existem."
@@ -3447,7 +4016,43 @@
           ]
         },
         {
-          "name": "4.2 Criar conta do pagador",
+          "name": "4.2 Aprovar KYC do pagador",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{pixSrcCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{pixSrcCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('KYC APPROVED e customer ACTIVE', () => {",
+                  "  pm.expect(j.kycStatus).to.eql('APPROVED');",
+                  "  pm.expect(j.status).to.eql('ACTIVE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.3 Criar conta do pagador",
           "request": {
             "method": "POST",
             "header": [
@@ -3490,7 +4095,7 @@
           ]
         },
         {
-          "name": "4.3 Depositar 10000.00 no pagador",
+          "name": "4.4 Depositar 10000.00 no pagador",
           "request": {
             "method": "POST",
             "header": [
@@ -3535,7 +4140,7 @@
           ]
         },
         {
-          "name": "4.4 Criar customer recebedor",
+          "name": "4.5 Criar customer recebedor",
           "request": {
             "method": "POST",
             "header": [
@@ -3598,7 +4203,43 @@
           ]
         },
         {
-          "name": "4.5 Criar conta do recebedor (saldo 0)",
+          "name": "4.6 Aprovar KYC do recebedor",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{pixDstCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{pixDstCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('KYC APPROVED e customer ACTIVE', () => {",
+                  "  pm.expect(j.kycStatus).to.eql('APPROVED');",
+                  "  pm.expect(j.status).to.eql('ACTIVE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.7 Criar conta do recebedor (saldo 0)",
           "request": {
             "method": "POST",
             "header": [
@@ -5403,6 +6044,10 @@
       "value": ""
     },
     {
+      "key": "customerCId",
+      "value": ""
+    },
+    {
       "key": "accountId",
       "value": ""
     },
@@ -5460,6 +6105,14 @@
     },
     {
       "key": "bemail",
+      "value": ""
+    },
+    {
+      "key": "ccpf",
+      "value": ""
+    },
+    {
+      "key": "cemail",
       "value": ""
     },
     {
