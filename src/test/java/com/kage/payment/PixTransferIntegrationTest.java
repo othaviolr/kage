@@ -51,12 +51,12 @@ class PixTransferIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void execute_deveDebitarOrigemECreditarDestino_quandoTransferenciaParaOutroTitular() {
-        pixTransferHappyPath(UUID.randomUUID(), UUID.randomUUID());
+        pixTransferHappyPath(newActiveCustomerId(), newActiveCustomerId());
     }
 
     @Test
     void execute_deveDebitarOrigemECreditarDestino_quandoPixEntreContasDoMesmoTitular() {
-        UUID customerId = UUID.randomUUID();
+        UUID customerId = newActiveCustomerId();
 
         pixTransferHappyPath(customerId, customerId);
     }

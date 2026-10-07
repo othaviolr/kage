@@ -2,9 +2,12 @@ package com.kage.account.infrastructure.config;
 
 import com.kage.account.application.usecase.*;
 import com.kage.account.domain.repository.AccountRepository;
+import com.kage.account.domain.service.AccountCustomerValidationService;
 import com.kage.account.infrastructure.messaging.AccountEventPublisher;
 import com.kage.account.infrastructure.persistence.AccountJpaRepository;
 import com.kage.account.infrastructure.persistence.AccountRepositoryImpl;
+import com.kage.customer.domain.repository.CustomerRepository;
+import com.kage.customer.infrastructure.CustomerValidationServiceImpl;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,8 +21,14 @@ public class AccountConfig {
     }
 
     @Bean
-    public CreateAccount createAccount(AccountRepository accountRepository) {
-        return new CreateAccount(accountRepository);
+    public AccountCustomerValidationService accountCustomerValidationService(CustomerRepository customerRepository) {
+        return new CustomerValidationServiceImpl(customerRepository);
+    }
+
+    @Bean
+    public CreateAccount createAccount(AccountRepository accountRepository,
+                                       AccountCustomerValidationService accountCustomerValidationService) {
+        return new CreateAccount(accountRepository, accountCustomerValidationService);
     }
 
     @Bean

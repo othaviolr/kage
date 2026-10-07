@@ -41,8 +41,8 @@ class PixMessageIdempotencyIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void onPixSent_deveDebitarECreditarApenasUmaVez_quandoMensagemEhReentregue() {
-        var source = createAccount.execute(new CreateAccount.Input(UUID.randomUUID(), "CHECKING"));
-        var target = createAccount.execute(new CreateAccount.Input(UUID.randomUUID(), "CHECKING"));
+        var source = createAccount.execute(new CreateAccount.Input(newActiveCustomerId(), "CHECKING"));
+        var target = createAccount.execute(new CreateAccount.Input(newActiveCustomerId(), "CHECKING"));
         depositAccount.execute(new DepositAccount.Input(source.accountId(), new BigDecimal("500.00")));
 
         PixSentEvent event = new PixSentEvent(UUID.randomUUID(), source.accountId(), "chave-teste",

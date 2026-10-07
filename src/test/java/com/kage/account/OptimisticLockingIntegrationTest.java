@@ -35,7 +35,7 @@ class OptimisticLockingIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void save_deveLancarObjectOptimisticLockingFailureException_quandoDuasRequisicoesLeemAMesmaVersao() {
-        var created = createAccount.execute(new CreateAccount.Input(UUID.randomUUID(), "CHECKING"));
+        var created = createAccount.execute(new CreateAccount.Input(newActiveCustomerId(), "CHECKING"));
         depositAccount.execute(new DepositAccount.Input(created.accountId(), new BigDecimal("100.00")));
 
         // duas "requisições" concorrentes leem a conta antes de qualquer uma delas gravar

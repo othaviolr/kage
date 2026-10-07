@@ -37,8 +37,7 @@ class CardInvoiceQueryIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void getInvoice_deveRetornarFaturaComItens_quandoHaComprasNoMes() {
-        var card = issueCard.execute(new IssueCard.Input(
-                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("1000.00"), 10, 20));
+        var card = issueCard.execute(issueCardInput(new BigDecimal("1000.00"), 10, 20));
         var first = registerPurchase.execute(new RegisterPurchase.Input(
                 card.cardId(), UUID.randomUUID(), "Mercado", new BigDecimal("150.00"),
                 LocalDateTime.of(2026, 9, 3, 10, 0)));
@@ -58,8 +57,7 @@ class CardInvoiceQueryIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void getInvoice_deveLancarNotFoundException_quandoNaoHaFaturaNoMesPedido() {
-        var card = issueCard.execute(new IssueCard.Input(
-                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("1000.00"), 10, 20));
+        var card = issueCard.execute(issueCardInput(new BigDecimal("1000.00"), 10, 20));
         registerPurchase.execute(new RegisterPurchase.Input(
                 card.cardId(), UUID.randomUUID(), "Mercado", new BigDecimal("150.00"),
                 LocalDateTime.of(2026, 9, 3, 10, 0)));
@@ -70,10 +68,8 @@ class CardInvoiceQueryIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void getInvoice_naoDeveEnxergarFaturaDeOutroCartao() {
-        var cardWithPurchase = issueCard.execute(new IssueCard.Input(
-                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("1000.00"), 10, 20));
-        var otherCard = issueCard.execute(new IssueCard.Input(
-                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("1000.00"), 10, 20));
+        var cardWithPurchase = issueCard.execute(issueCardInput(new BigDecimal("1000.00"), 10, 20));
+        var otherCard = issueCard.execute(issueCardInput(new BigDecimal("1000.00"), 10, 20));
         registerPurchase.execute(new RegisterPurchase.Input(
                 cardWithPurchase.cardId(), UUID.randomUUID(), "Mercado", new BigDecimal("150.00"),
                 LocalDateTime.of(2026, 9, 3, 10, 0)));
@@ -91,8 +87,7 @@ class CardInvoiceQueryIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void listInvoices_deveRetornarFaturasDoMaisRecenteParaOMaisAntigo() {
-        var card = issueCard.execute(new IssueCard.Input(
-                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("1000.00"), 10, 20));
+        var card = issueCard.execute(issueCardInput(new BigDecimal("1000.00"), 10, 20));
         registerPurchase.execute(new RegisterPurchase.Input(
                 card.cardId(), UUID.randomUUID(), "Compra de agosto", new BigDecimal("40.00"),
                 LocalDateTime.of(2026, 8, 5, 10, 0)));
@@ -116,8 +111,7 @@ class CardInvoiceQueryIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void listInvoices_deveRetornarListaVazia_quandoCartaoNaoTemCompras() {
-        var card = issueCard.execute(new IssueCard.Input(
-                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("1000.00"), 10, 20));
+        var card = issueCard.execute(issueCardInput(new BigDecimal("1000.00"), 10, 20));
 
         ListInvoices.Output output = listInvoices.execute(new ListInvoices.Input(card.cardId()));
 

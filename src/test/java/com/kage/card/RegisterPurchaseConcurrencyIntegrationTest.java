@@ -65,8 +65,7 @@ class RegisterPurchaseConcurrencyIntegrationTest extends AbstractIntegrationTest
 
     @Test
     void save_deveLancarObjectOptimisticLockingFailureException_quandoDuasRequisicoesLeemAMesmaFaturaSemOItemDaOutra() {
-        var card = issueCard.execute(new IssueCard.Input(
-                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("1000.00"), 10, 20));
+        var card = issueCard.execute(issueCardInput(new BigDecimal("1000.00"), 10, 20));
         LocalDateTime purchasedAt = LocalDateTime.of(2026, 9, 5, 12, 0);
 
         // abre a fatura do mês com uma compra prévia, pra garantir que as duas "requisições"
