@@ -46,8 +46,7 @@ class CardInvoiceCycleIntegrationTest extends AbstractIntegrationTest {
     ListInvoices listInvoices;
 
     private IssueCard.Output newCard() {
-        return issueCard.execute(new IssueCard.Input(
-                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("1000.00"), 10, 20));
+        return issueCard.execute(issueCardInput(new BigDecimal("1000.00"), 10, 20));
     }
 
     private RegisterPurchase.Output purchase(UUID cardId, String amount) {

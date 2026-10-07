@@ -38,8 +38,7 @@ class RegisterPurchaseIdempotencyIntegrationTest extends AbstractIntegrationTest
 
     @Test
     void execute_naoDeveDebitarNemLancarDeNovo_quandoMesmoPurchaseIdReenviadoSequencialmente() {
-        var card = issueCard.execute(new IssueCard.Input(
-                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("1000.00"), 10, 20));
+        var card = issueCard.execute(issueCardInput(new BigDecimal("1000.00"), 10, 20));
         UUID purchaseId = UUID.randomUUID();
         LocalDateTime purchasedAt = LocalDateTime.of(2026, 9, 5, 12, 0);
 

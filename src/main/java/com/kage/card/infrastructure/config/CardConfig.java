@@ -1,9 +1,15 @@
 package com.kage.card.infrastructure.config;
 
+import com.kage.account.domain.repository.AccountRepository;
+import com.kage.account.infrastructure.CardAccountValidationServiceImpl;
 import com.kage.card.application.usecase.*;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
+import com.kage.card.domain.service.CardAccountValidationService;
+import com.kage.card.domain.service.CardCustomerValidationService;
 import com.kage.card.infrastructure.persistence.*;
+import com.kage.customer.domain.repository.CustomerRepository;
+import com.kage.customer.infrastructure.CustomerValidationServiceImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -22,8 +28,20 @@ public class CardConfig {
     }
 
     @Bean
-    public IssueCard issueCard(CardRepository cardRepository) {
-        return new IssueCard(cardRepository);
+    public CardCustomerValidationService cardCustomerValidationService(CustomerRepository customerRepository) {
+        return new CustomerValidationServiceImpl(customerRepository);
+    }
+
+    @Bean
+    public CardAccountValidationService cardAccountValidationService(AccountRepository accountRepository) {
+        return new CardAccountValidationServiceImpl(accountRepository);
+    }
+
+    @Bean
+    public IssueCard issueCard(CardRepository cardRepository,
+                               CardCustomerValidationService cardCustomerValidationService,
+                               CardAccountValidationService cardAccountValidationService) {
+        return new IssueCard(cardRepository, cardCustomerValidationService, cardAccountValidationService);
     }
 
     @Bean

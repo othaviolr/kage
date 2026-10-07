@@ -52,8 +52,7 @@ class CardLifecycleIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void execute_deveAutorizarCompraEAtualizarLimiteDisponivel_quandoCartaoAtivo() {
-        var card = issueCard.execute(new IssueCard.Input(
-                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("1000.00"), 10, 20));
+        var card = issueCard.execute(issueCardInput(new BigDecimal("1000.00"), 10, 20));
 
         var purchase = registerPurchase.execute(new RegisterPurchase.Input(
                 card.cardId(), UUID.randomUUID(), "Mercado", new BigDecimal("150.00"),
@@ -73,8 +72,7 @@ class CardLifecycleIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void execute_deveConsolidarComprasNaMesmaFatura_quandoAntesDoFechamento() {
-        var card = issueCard.execute(new IssueCard.Input(
-                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("1000.00"), 10, 20));
+        var card = issueCard.execute(issueCardInput(new BigDecimal("1000.00"), 10, 20));
 
         var first = registerPurchase.execute(new RegisterPurchase.Input(
                 card.cardId(), UUID.randomUUID(), "Mercado", new BigDecimal("150.00"),
@@ -92,8 +90,7 @@ class CardLifecycleIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void execute_deveAbrirFaturaSeguinte_quandoCompraAposFechamento() {
-        var card = issueCard.execute(new IssueCard.Input(
-                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("1000.00"), 10, 20));
+        var card = issueCard.execute(issueCardInput(new BigDecimal("1000.00"), 10, 20));
 
         var beforeClosing = registerPurchase.execute(new RegisterPurchase.Input(
                 card.cardId(), UUID.randomUUID(), "Compra do mês", new BigDecimal("100.00"),
@@ -109,8 +106,7 @@ class CardLifecycleIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void block_deveImpedirNovasCompras_eUnblock_deveLiberarNovamente() {
-        var card = issueCard.execute(new IssueCard.Input(
-                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("1000.00"), 10, 20));
+        var card = issueCard.execute(issueCardInput(new BigDecimal("1000.00"), 10, 20));
 
         blockCard.execute(new BlockCard.Input(card.cardId()));
         assertThat(getCard.execute(new GetCard.Input(card.cardId())).status()).isEqualTo("BLOCKED");
