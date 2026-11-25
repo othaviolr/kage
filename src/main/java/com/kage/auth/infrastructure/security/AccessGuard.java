@@ -6,6 +6,7 @@ import com.kage.payment.domain.entity.PixTransaction;
 import com.kage.payment.domain.repository.PixKeyRepository;
 import com.kage.payment.domain.repository.PixRefundRepository;
 import com.kage.payment.domain.repository.PixTransactionRepository;
+import com.kage.boleto.domain.repository.BoletoRepository;
 import com.kage.savings.domain.repository.SavingsBoxRepository;
 import com.kage.shared.domain.exception.NotFoundException;
 import com.kage.shared.domain.exception.UnauthorizedException;
@@ -31,11 +32,14 @@ public class AccessGuard {
     private final PixTransactionRepository pixTransactionRepository;
     private final PixRefundRepository pixRefundRepository;
     private final SavingsBoxRepository savingsBoxRepository;
+    private final BoletoRepository boletoRepository;
 
     public AccessGuard(AccountRepository accountRepository, CardRepository cardRepository,
                        PixKeyRepository pixKeyRepository, PixTransactionRepository pixTransactionRepository,
-                       PixRefundRepository pixRefundRepository, SavingsBoxRepository savingsBoxRepository) {
+                       PixRefundRepository pixRefundRepository, SavingsBoxRepository savingsBoxRepository,
+                       BoletoRepository boletoRepository) {
         this.savingsBoxRepository = savingsBoxRepository;
+        this.boletoRepository = boletoRepository;
         this.accountRepository = accountRepository;
         this.cardRepository = cardRepository;
         this.pixKeyRepository = pixKeyRepository;
@@ -123,6 +127,16 @@ public class AccessGuard {
                 .map(box -> !box.getCustomerId().equals(user.customerId()))
                 .orElse(false);
         if (denied) throw new NotFoundException("Caixinha não encontrada");
+    }
+
+    /** Boleto emitido: só o beneficiário (dono da conta que emitiu) vê e cancela. */
+    public void checkBoleto(UUID boletoId) {
+        AuthenticatedUser user = currentUser();
+        if (user.isAdmin()) return;
+        boolean denied = boletoRepository.findById(boletoId)
+                .map(b -> !ownsExistingAccount(user, b.getBeneficiaryAccountId()))
+                .orElse(false);
+        if (denied) throw new NotFoundException("Boleto não encontrado");
     }
 
     public void checkPixRefund(UUID refundId) {

@@ -1,5 +1,6 @@
 package com.kage.auth.infrastructure.config;
 
+import com.kage.boleto.domain.repository.BoletoRepository;
 import com.kage.savings.domain.repository.SavingsBoxRepository;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.auth.application.usecase.AdminLogin;
@@ -160,8 +161,9 @@ public class AuthConfig {
     public AccessGuard accessGuard(AccountRepository accountRepository, CardRepository cardRepository,
                                    PixKeyRepository pixKeyRepository, PixTransactionRepository pixTransactionRepository,
                                    PixRefundRepository pixRefundRepository,
-                                   SavingsBoxRepository savingsBoxRepository) {
+                                   SavingsBoxRepository savingsBoxRepository,
+                                   BoletoRepository boletoRepository) {
         return new AccessGuard(accountRepository, cardRepository, pixKeyRepository, pixTransactionRepository,
-                pixRefundRepository, savingsBoxRepository);
+                pixRefundRepository, savingsBoxRepository, boletoRepository);
     }
 }

@@ -1,6 +1,6 @@
 package com.kage.savings.domain.entity;
 
-import com.kage.savings.domain.service.BusinessCalendar;
+import com.kage.shared.domain.service.BusinessCalendar;
 import com.kage.savings.domain.service.YieldPolicy;
 import com.kage.savings.domain.valueobject.CdiSchedule;
 import com.kage.savings.infrastructure.cdi.FixedCdiRateProvider;
