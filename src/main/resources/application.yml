@@ -4,7 +4,8 @@ spring:
   devtools:
     add-properties: false
   datasource:
-    url: jdbc:postgresql://localhost:5432/kage_db
+    # 5433: porta do Postgres do docker-compose na máquina (ver comentário lá)
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/kage_db}
     username: kage
     password: "kage123"
     driver-class-name: org.postgresql.Driver
@@ -12,7 +13,7 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    show-sql: ${KAGE_SHOW_SQL:false}
     properties:
       hibernate:
         format_sql: true

@@ -1,5 +1,7 @@
 # 影 KAGE
 
+[![CI](https://github.com/othaviolr/kage/actions/workflows/ci.yml/badge.svg)](https://github.com/othaviolr/kage/actions/workflows/ci.yml)
+
 Sistema bancário digital completo construído com Java e Spring Boot.
 
 ## O que é
@@ -68,13 +70,35 @@ ApprovePixRefund ──outbox──> pix.refund.approved ──> Account devolve
 ```
 
 ## Como rodar
-```bash
-# Sobe PostgreSQL e RabbitMQ
-docker-compose up -d
 
-# Roda a aplicação (IntelliJ ou mvn)
-mvn spring-boot:run
+Tudo em containers (Postgres, RabbitMQ e a aplicação):
+
+```bash
+docker compose up --build
 ```
+
+Ou só a infraestrutura, para rodar a aplicação pela IDE:
+
+```bash
+docker compose up -d postgres rabbitmq
+./mvnw spring-boot:run
+```
+
+O Postgres fica na porta **5433** da máquina (não 5432), para não colidir com um PostgreSQL instalado localmente — que, escutando em IPv4, "rouba" o `localhost:5432` do container e faz a conexão falhar por senha. Para mudar: `KAGE_DB_PORT`.
+
+### Testes
+
+```bash
+./mvnw verify   # unitários + integração (Testcontainers: precisa do Docker rodando)
+```
+
+A coleção do Postman (`docs/postman`) roda inteira pela linha de comando contra a aplicação no ar:
+
+```bash
+npx newman run "docs/postman/Kage Banking.postman_collection.json" -e "docs/postman/Kage - Local.postman_environment.json"
+```
+
+A **CI** (GitHub Actions) faz as duas coisas em todo PR: a suíte completa no JDK 17 e, depois, sobe o `docker compose` e roda a coleção do Postman ponta a ponta.
 
 ### Autenticação
 
