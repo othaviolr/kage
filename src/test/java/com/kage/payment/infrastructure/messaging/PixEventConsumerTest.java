@@ -1,6 +1,9 @@
 package com.kage.payment.infrastructure.messaging;
 
+import com.kage.payment.domain.entity.PixRefund;
 import com.kage.payment.domain.entity.PixTransaction;
+import com.kage.payment.domain.enums.RefundStatus;
+import com.kage.payment.domain.repository.PixRefundRepository;
 import com.kage.payment.domain.enums.TransactionType;
 import com.kage.payment.domain.repository.PixTransactionRepository;
 import com.kage.payment.infrastructure.persistence.idempotency.ProcessedEventRepository;
@@ -28,11 +31,58 @@ class PixEventConsumerTest {
     PixTransactionRepository pixTransactionRepository;
 
     @Mock
+    PixRefundRepository pixRefundRepository;
+
+    @Mock
     ProcessedEventRepository processedEventRepository;
+
+    private PixRefund approvedRefund() {
+        PixRefund refund = PixRefund.create(UUID.randomUUID(), "cobrança em duplicidade", Money.of("50.00"));
+        refund.approve("admin");
+        return refund;
+    }
+
+    @Test
+    void onPixRefundCompleted_deveConcluirEstorno() {
+        PixEventConsumer consumer = new PixEventConsumer(pixTransactionRepository, pixRefundRepository, processedEventRepository);
+        PixRefund refund = approvedRefund();
+        when(processedEventRepository.tryMarkAsProcessed(refund.getRefundId())).thenReturn(true);
+        when(pixRefundRepository.findById(refund.getRefundId())).thenReturn(Optional.of(refund));
+
+        consumer.onPixRefundCompleted(refund.getRefundId());
+
+        assertThat(refund.getRefundStatus()).isEqualTo(RefundStatus.COMPLETED);
+        verify(pixRefundRepository).save(refund);
+    }
+
+    @Test
+    void onPixRefundFailed_deveMarcarEstornoComoFalhaComMotivo() {
+        PixEventConsumer consumer = new PixEventConsumer(pixTransactionRepository, pixRefundRepository, processedEventRepository);
+        PixRefund refund = approvedRefund();
+        when(processedEventRepository.tryMarkAsProcessed(refund.getRefundId())).thenReturn(true);
+        when(pixRefundRepository.findById(refund.getRefundId())).thenReturn(Optional.of(refund));
+
+        consumer.onPixRefundFailed(new PixRefundFailedEvent(refund.getRefundId(), "Saldo disponível insuficiente"));
+
+        assertThat(refund.getRefundStatus()).isEqualTo(RefundStatus.FAILED);
+        assertThat(refund.getFailureReason()).isEqualTo("Saldo disponível insuficiente");
+        verify(pixRefundRepository).save(refund);
+    }
+
+    @Test
+    void onPixRefundCompleted_deveIgnorar_quandoReentrega() {
+        PixEventConsumer consumer = new PixEventConsumer(pixTransactionRepository, pixRefundRepository, processedEventRepository);
+        UUID refundId = UUID.randomUUID();
+        when(processedEventRepository.tryMarkAsProcessed(refundId)).thenReturn(false);
+
+        consumer.onPixRefundCompleted(refundId);
+
+        verifyNoInteractions(pixRefundRepository);
+    }
 
     @Test
     void onPixDebitConfirmed_deveCompletarTransacao_quandoPrimeiraEntrega() {
-        PixEventConsumer consumer = new PixEventConsumer(pixTransactionRepository, processedEventRepository);
+        PixEventConsumer consumer = new PixEventConsumer(pixTransactionRepository, pixRefundRepository, processedEventRepository);
 
         UUID transactionId = UUID.randomUUID();
         PixTransaction transaction = PixTransaction.create(UUID.randomUUID(), "chave-destino", Money.of("50.00"), "teste", TransactionType.IMMEDIATE, null);
@@ -49,7 +99,7 @@ class PixEventConsumerTest {
 
     @Test
     void onPixDebitFailed_deveMarcarTransacaoComoFalha_quandoPrimeiraEntrega() {
-        PixEventConsumer consumer = new PixEventConsumer(pixTransactionRepository, processedEventRepository);
+        PixEventConsumer consumer = new PixEventConsumer(pixTransactionRepository, pixRefundRepository, processedEventRepository);
 
         UUID transactionId = UUID.randomUUID();
         PixTransaction transaction = PixTransaction.create(UUID.randomUUID(), "chave-destino", Money.of("50.00"), "teste", TransactionType.IMMEDIATE, null);
@@ -67,7 +117,7 @@ class PixEventConsumerTest {
 
     @Test
     void onPixDebitFailed_deveIgnorar_quandoEventoJaProcessado() {
-        PixEventConsumer consumer = new PixEventConsumer(pixTransactionRepository, processedEventRepository);
+        PixEventConsumer consumer = new PixEventConsumer(pixTransactionRepository, pixRefundRepository, processedEventRepository);
         UUID transactionId = UUID.randomUUID();
 
         when(processedEventRepository.tryMarkAsProcessed(transactionId)).thenReturn(false);
@@ -79,7 +129,7 @@ class PixEventConsumerTest {
 
     @Test
     void onPixDebitConfirmed_deveIgnorar_quandoEventoJaProcessado() {
-        PixEventConsumer consumer = new PixEventConsumer(pixTransactionRepository, processedEventRepository);
+        PixEventConsumer consumer = new PixEventConsumer(pixTransactionRepository, pixRefundRepository, processedEventRepository);
         UUID transactionId = UUID.randomUUID();
 
         when(processedEventRepository.tryMarkAsProcessed(transactionId)).thenReturn(false);

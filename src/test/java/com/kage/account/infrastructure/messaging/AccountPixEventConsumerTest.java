@@ -111,6 +111,55 @@ class AccountPixEventConsumerTest {
     }
 
     @Test
+    void onPixRefundApproved_deveDevolverDoRecebedorParaOPagador() {
+        // estado depois do PIX original: source pagou 100, target recebeu 100
+        target.credit(Money.of("100.00"));
+        UUID refundId = UUID.randomUUID();
+        when(processedEventRepository.tryMarkAsProcessed(refundId)).thenReturn(true);
+        when(accountRepository.findById(source.getId())).thenReturn(Optional.of(source));
+        when(accountRepository.findById(target.getId())).thenReturn(Optional.of(target));
+        when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        consumer.onPixRefundApproved(new PixRefundApprovedEvent(refundId, transactionId, target.getId(),
+                source.getId(), new BigDecimal("40.00")));
+
+        assertThat(target.getBalance().amount()).isEqualByComparingTo("60.00");
+        assertThat(source.getBalance().amount()).isEqualByComparingTo("540.00");
+        verify(entryRepository).save(argThat(e -> e.accountId().equals(target.getId())
+                && e.type() == EntryType.PIX_REFUND_SENT && e.referenceId().equals(refundId)));
+        verify(entryRepository).save(argThat(e -> e.accountId().equals(source.getId())
+                && e.type() == EntryType.PIX_REFUND_RECEIVED));
+        verify(outbox).publish("pix.exchange", "pix.refund.completed", refundId);
+    }
+
+    @Test
+    void onPixRefundApproved_devePublicarFalha_quandoRecebedorJaGastouODinheiro() {
+        UUID refundId = UUID.randomUUID(); // target com saldo zero
+        when(processedEventRepository.tryMarkAsProcessed(refundId)).thenReturn(true);
+        when(accountRepository.findById(source.getId())).thenReturn(Optional.of(source));
+        when(accountRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+        consumer.onPixRefundApproved(new PixRefundApprovedEvent(refundId, transactionId, target.getId(),
+                source.getId(), new BigDecimal("40.00")));
+
+        verify(accountRepository, never()).save(any());
+        verifyNoInteractions(entryRepository);
+        verify(outbox).publish("pix.exchange", "pix.refund.failed",
+                new PixRefundFailedEvent(refundId, "Saldo disponível insuficiente"));
+    }
+
+    @Test
+    void onPixRefundApproved_deveIgnorar_quandoReentrega() {
+        UUID refundId = UUID.randomUUID();
+        when(processedEventRepository.tryMarkAsProcessed(refundId)).thenReturn(false);
+
+        consumer.onPixRefundApproved(new PixRefundApprovedEvent(refundId, transactionId, target.getId(),
+                source.getId(), new BigDecimal("40.00")));
+
+        verifyNoInteractions(accountRepository, entryRepository, outbox);
+    }
+
+    @Test
     void onPixSent_deveIgnorarENaoDebitar_quandoEventoJaProcessado() {
         when(processedEventRepository.tryMarkAsProcessed(transactionId)).thenReturn(false);
 

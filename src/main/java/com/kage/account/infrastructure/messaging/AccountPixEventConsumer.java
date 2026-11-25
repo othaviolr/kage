@@ -56,6 +56,27 @@ public class AccountPixEventConsumer {
         outbox.publish("pix.exchange", "pix.debit.confirmed", event.transactionId());
     }
 
+    /** Estorno aprovado: o dinheiro volta de quem recebeu o PIX para quem pagou. */
+    @Transactional
+    @RabbitListener(queues = "pix.refund.approved.queue")
+    public void onPixRefundApproved(PixRefundApprovedEvent event) {
+        if (!processedEventRepository.tryMarkAsProcessed(event.refundId())) {
+            logger.warn("Estorno PIX já processado, ignorando reentrega (refundId={})", event.refundId());
+            return;
+        }
+
+        Optional<String> failure = transfer(event.fromAccountId(), event.toAccountId(), new Money(event.amount()),
+                EntryType.PIX_REFUND_SENT, EntryType.PIX_REFUND_RECEIVED, event.refundId());
+
+        if (failure.isPresent()) {
+            logger.warn("Falha ao efetivar estorno PIX (refundId={}): {}", event.refundId(), failure.get());
+            outbox.publish("pix.exchange", "pix.refund.failed", new PixRefundFailedEvent(event.refundId(), failure.get()));
+            return;
+        }
+
+        outbox.publish("pix.exchange", "pix.refund.completed", event.refundId());
+    }
+
     /**
      * Debita uma conta, credita a outra e grava os dois lançamentos — tudo ou nada.
      *

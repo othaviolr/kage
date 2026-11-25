@@ -4,98 +4,54 @@ import org.springframework.amqp.core.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Topologia do PIX. Toda routing key {@code X} ganha o mesmo kit: fila durável {@code X.queue} ligada
+ * ao pix.exchange, com dead-letter para {@code X.dlq} no payment.dlx (mensagem que esgota os retries
+ * não se perde, fica estacionada para análise).
+ */
 @Configuration
 public class PaymentRabbitMQConfig {
 
-    // exchange principal do PIX
+    static final String PIX_EXCHANGE = "pix.exchange";
+    static final String DLX = "payment.dlx";
+
+    static final List<String> ROUTING_KEYS = List.of(
+            "pix.sent",              // Payment -> Account: debitar origem, creditar destino
+            "pix.debit.confirmed",   // Account -> Payment: PIX efetivado
+            "pix.debit.failed",      // Account -> Payment: PIX recusado (saldo, conta bloqueada...)
+            "pix.refund.approved",   // Payment -> Account: devolver o valor do estorno
+            "pix.refund.completed",  // Account -> Payment: estorno efetivado
+            "pix.refund.failed"      // Account -> Payment: estorno recusado
+    );
+
     @Bean
     public TopicExchange pixExchange() {
-        return new TopicExchange("pix.exchange");
-    }
-
-    // fila que o Account vai ouvir para debitar o saldo
-    @Bean
-    public Queue pixSentQueue() {
-        return QueueBuilder.durable("pix.sent.queue")
-                .deadLetterExchange("payment.dlx")
-                .deadLetterRoutingKey("pix.sent.dlq")
-                .build();
-    }
-
-    // fila que o Payment vai ouvir para confirmar a transação
-    @Bean
-    public Queue pixDebitConfirmedQueue() {
-        return QueueBuilder.durable("pix.debit.confirmed.queue")
-                .deadLetterExchange("payment.dlx")
-                .deadLetterRoutingKey("pix.debit.confirmed.dlq")
-                .build();
-    }
-
-    // fila que o Payment vai ouvir para marcar a transação como falha (débito/crédito recusado pelo Account)
-    @Bean
-    public Queue pixDebitFailedQueue() {
-        return QueueBuilder.durable("pix.debit.failed.queue")
-                .deadLetterExchange("payment.dlx")
-                .deadLetterRoutingKey("pix.debit.failed.dlq")
-                .build();
-    }
-
-    // binding: pix.exchange + routing key "pix.sent" → pix.sent.queue
-    @Bean
-    public Binding pixSentBinding() {
-        return BindingBuilder.bind(pixSentQueue()).to(pixExchange()).with("pix.sent");
-    }
-
-    // binding: pix.exchange + routing key "pix.debit.confirmed" → pix.debit.confirmed.queue
-    @Bean
-    public Binding pixDebitConfirmedBinding() {
-        return BindingBuilder.bind(pixDebitConfirmedQueue()).to(pixExchange()).with("pix.debit.confirmed");
-    }
-
-    // binding: pix.exchange + routing key "pix.debit.failed" → pix.debit.failed.queue
-    @Bean
-    public Binding pixDebitFailedBinding() {
-        return BindingBuilder.bind(pixDebitFailedQueue()).to(pixExchange()).with("pix.debit.failed");
+        return new TopicExchange(PIX_EXCHANGE);
     }
 
     @Bean
     public DirectExchange paymentDlx() {
-        return new DirectExchange("payment.dlx");
+        return new DirectExchange(DLX);
     }
 
     @Bean
-    public Queue pixSentDlq() {
-        return QueueBuilder.durable("pix.sent.dlq").build();
-    }
+    public Declarables pixQueues(TopicExchange pixExchange, DirectExchange paymentDlx) {
+        List<Declarable> declarables = new ArrayList<>();
+        for (String routingKey : ROUTING_KEYS) {
+            Queue queue = QueueBuilder.durable(routingKey + ".queue")
+                    .deadLetterExchange(DLX)
+                    .deadLetterRoutingKey(routingKey + ".dlq")
+                    .build();
+            Queue dlq = QueueBuilder.durable(routingKey + ".dlq").build();
 
-    @Bean
-    public Binding pixSentDlqBinding() {
-        return BindingBuilder.bind(pixSentDlq())
-                .to(paymentDlx())
-                .with("pix.sent.dlq");
-    }
-
-    @Bean
-    public Queue pixDebitConfirmedDlq() {
-        return QueueBuilder.durable("pix.debit.confirmed.dlq").build();
-    }
-
-    @Bean
-    public Binding pixDebitConfirmedDlqBinding() {
-        return BindingBuilder.bind(pixDebitConfirmedDlq())
-                .to(paymentDlx())
-                .with("pix.debit.confirmed.dlq");
-    }
-
-    @Bean
-    public Queue pixDebitFailedDlq() {
-        return QueueBuilder.durable("pix.debit.failed.dlq").build();
-    }
-
-    @Bean
-    public Binding pixDebitFailedDlqBinding() {
-        return BindingBuilder.bind(pixDebitFailedDlq())
-                .to(paymentDlx())
-                .with("pix.debit.failed.dlq");
+            declarables.add(queue);
+            declarables.add(BindingBuilder.bind(queue).to(pixExchange).with(routingKey));
+            declarables.add(dlq);
+            declarables.add(BindingBuilder.bind(dlq).to(paymentDlx).with(routingKey + ".dlq"));
+        }
+        return new Declarables(declarables);
     }
 }

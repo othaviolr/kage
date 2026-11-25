@@ -7,7 +7,6 @@ import com.kage.payment.domain.repository.PixKeyRepository;
 import com.kage.payment.domain.repository.PixRefundRepository;
 import com.kage.payment.domain.repository.PixTransactionRepository;
 import com.kage.payment.domain.service.AccountValidationService;
-import com.kage.payment.infrastructure.controller.PaymentController;
 import com.kage.payment.infrastructure.messaging.OutboxPixEventPublisher;
 import com.kage.payment.infrastructure.messaging.PixEventConsumer;
 import com.kage.payment.infrastructure.persistence.*;
@@ -83,8 +82,15 @@ public class PaymentConfig {
     }
 
     @Bean
-    public ApprovePixRefund approvePixRefund(PixRefundRepository pixRefundRepository) {
-        return new ApprovePixRefund(pixRefundRepository);
+    public ApprovePixRefund approvePixRefund(PixRefundRepository pixRefundRepository,
+                                             PixTransactionRepository pixTransactionRepository,
+                                             PixEventPublisher pixEventPublisher) {
+        return new ApprovePixRefund(pixRefundRepository, pixTransactionRepository, pixEventPublisher);
+    }
+
+    @Bean
+    public GetPixRefund getPixRefund(PixRefundRepository pixRefundRepository) {
+        return new GetPixRefund(pixRefundRepository);
     }
 
     @Bean
@@ -94,25 +100,13 @@ public class PaymentConfig {
 
     @Bean
     public PixEventConsumer pixEventConsumer(PixTransactionRepository pixTransactionRepository,
+                                             PixRefundRepository pixRefundRepository,
                                              ProcessedEventRepository paymentProcessedEventRepository) {
-        return new PixEventConsumer(pixTransactionRepository, paymentProcessedEventRepository);
+        return new PixEventConsumer(pixTransactionRepository, pixRefundRepository, paymentProcessedEventRepository);
     }
 
     @Bean
     public ProcessedEventRepository paymentProcessedEventRepository(JdbcTemplate jdbcTemplate) {
         return new ProcessedEventRepository(jdbcTemplate);
-    }
-
-    @Bean
-    public PaymentController paymentController(RegisterPixKey registerPixKey,
-                                               DeletePixKey deletePixKey,
-                                               GetPixKey getPixKey,
-                                               SendPix sendPix,
-                                               GetPixTransaction getPixTransaction,
-                                               RequestPixRefund requestPixRefund,
-                                               ApprovePixRefund approvePixRefund,
-                                               RejectPixRefund rejectPixRefund) {
-        return new PaymentController(registerPixKey, deletePixKey, getPixKey, sendPix,
-                getPixTransaction, requestPixRefund, approvePixRefund, rejectPixRefund);
     }
 }

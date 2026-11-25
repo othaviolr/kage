@@ -2,6 +2,8 @@ package com.kage.payment.infrastructure.messaging;
 
 import com.kage.payment.application.usecase.PixEventPublisher;
 import com.kage.payment.application.usecase.SendPix;
+import com.kage.payment.domain.entity.PixRefund;
+import com.kage.payment.domain.entity.PixTransaction;
 import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
 
 public class OutboxPixEventPublisher implements PixEventPublisher {
@@ -18,5 +20,14 @@ public class OutboxPixEventPublisher implements PixEventPublisher {
                 output.targetPixKey(), output.targetAccountId(), output.amount(), output.status(), output.e2eId(), output.createdAt());
 
         outbox.publish("pix.exchange", "pix.sent", event);
+    }
+
+    @Override
+    public void publishRefundApproved(PixRefund refund, PixTransaction originalTransaction) {
+        PixRefundApprovedEvent event = new PixRefundApprovedEvent(refund.getRefundId(),
+                originalTransaction.getTransactionId(), originalTransaction.getTargetAccountId(),
+                originalTransaction.getSourceAccountId(), refund.getRefundAmount().amount());
+
+        outbox.publish("pix.exchange", "pix.refund.approved", event);
     }
 }

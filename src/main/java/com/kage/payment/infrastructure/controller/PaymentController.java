@@ -22,8 +22,10 @@ public class PaymentController {
     private final RequestPixRefund requestPixRefund;
     private final ApprovePixRefund approvePixRefund;
     private final RejectPixRefund rejectPixRefund;
+    private final GetPixRefund getPixRefund;
 
-    public PaymentController(RegisterPixKey registerPixKey, DeletePixKey deletePixKey, GetPixKey getPixKey, SendPix sendPix, GetPixTransaction getPixTransaction, RequestPixRefund requestPixRefund, ApprovePixRefund approvePixRefund, RejectPixRefund rejectPixRefund) {
+    public PaymentController(RegisterPixKey registerPixKey, DeletePixKey deletePixKey, GetPixKey getPixKey, SendPix sendPix, GetPixTransaction getPixTransaction, RequestPixRefund requestPixRefund, ApprovePixRefund approvePixRefund, RejectPixRefund rejectPixRefund, GetPixRefund getPixRefund) {
+        this.getPixRefund = getPixRefund;
         this.registerPixKey = registerPixKey;
         this.deletePixKey = deletePixKey;
         this.getPixKey = getPixKey;
@@ -68,11 +70,17 @@ public class PaymentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(output);
     }
 
+    @GetMapping("/refunds/{refundId}")
+    public ResponseEntity<GetPixRefund.Output> getRefund(@PathVariable UUID refundId) {
+        return ResponseEntity.ok(getPixRefund.execute(refundId));
+    }
+
+    /** 202: a devolução do dinheiro é assíncrona; acompanhe pelo GET do estorno (COMPLETED ou FAILED). */
     @PostMapping("/refunds/{refundId}/approve")
     public ResponseEntity<Void> approveRefund(@PathVariable UUID refundId,
                                               @RequestParam String processedBy) {
         approvePixRefund.execute(refundId, processedBy);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.accepted().build();
     }
 
     @PostMapping("/refunds/{refundId}/reject")

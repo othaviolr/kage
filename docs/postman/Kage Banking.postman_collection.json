@@ -5302,7 +5302,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                  "pm.test('Status 202 (devolução assíncrona)', () => pm.response.to.have.status(202));"
                 ]
               }
             }
