@@ -21,6 +21,12 @@ public interface CardEventPublisher {
     void publishInvoiceRolledOver(Invoice from, Invoice to, Money carried, Money charges, boolean late);
 
     /**
+     * Fatura parcelada (pelo cliente ou automaticamente, pela regra do Bacen). Chamar dentro da
+     * transação do parcelamento.
+     */
+    void publishInvoiceFinanced(Invoice invoice, int installments, Money installmentAmount, Money total, boolean automatic);
+
+    /**
      * O débito automático no vencimento não passou. Abre transação própria se não houver uma: a do
      * pagamento já sofreu rollback quando a falha aparece.
      */

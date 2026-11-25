@@ -6,6 +6,7 @@ import com.kage.card.domain.enums.InvoiceItemKind;
 import com.kage.card.domain.enums.InvoiceStatus;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
+import com.kage.card.domain.service.InstallmentPolicy;
 import com.kage.card.domain.service.RevolvingCreditPolicy;
 import com.kage.shared.domain.exception.NotFoundException;
 import com.kage.shared.domain.valueobject.Money;
@@ -24,7 +25,8 @@ import java.util.UUID;
  *
  * Antes de fechar, faz a virada do rotativo: o saldo não pago de faturas anteriores entra nesta como
  * "Saldo anterior", com os encargos da RevolvingCreditPolicy (cortados pelo teto legal no Card), e a
- * anterior vira ROLLED_OVER. Tudo na mesma transação do fechamento.
+ * anterior vira ROLLED_OVER. Se o saldo não pago já tinha vindo do rotativo, a regra do Bacen não deixa
+ * girar de novo: ele é parcelado automaticamente (FINANCED). Tudo na mesma transação do fechamento.
  */
 public class CloseInvoice {
 
@@ -37,12 +39,14 @@ public class CloseInvoice {
     private final CardRepository cardRepository;
     private final InvoiceRepository invoiceRepository;
     private final CardEventPublisher eventPublisher;
+    private final FinanceInvoice financeInvoice;
 
     public CloseInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository,
-                        CardEventPublisher eventPublisher) {
+                        CardEventPublisher eventPublisher, FinanceInvoice financeInvoice) {
         this.cardRepository = cardRepository;
         this.invoiceRepository = invoiceRepository;
         this.eventPublisher = eventPublisher;
+        this.financeInvoice = financeInvoice;
     }
 
     @Transactional
@@ -60,7 +64,14 @@ public class CloseInvoice {
             for (Invoice previous : invoiceRepository.findByCardId(card.getId())) {
                 if (previous.getStatus() == InvoiceStatus.CLOSED && previous.getReferenceMonth().isBefore(referenceMonth)
                         && !previous.remaining().isZero()) {
-                    rollInto(previous, invoice, card);
+                    if (previous.hasPreviousBalance()) {
+                        // regra do Bacen: o rotativo só vale por um ciclo. Este saldo já veio do rotativo,
+                        // então não gira de novo — vira parcelamento automático, a juros menores
+                        financeInvoice.finance(card, previous, InstallmentPolicy.AUTO_INSTALLMENTS, referenceMonth, invoice);
+                        invoiceRepository.save(previous);
+                    } else {
+                        rollInto(previous, invoice, card);
+                    }
                     rolled = true;
                 }
             }

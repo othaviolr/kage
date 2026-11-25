@@ -2861,7 +2861,7 @@
                   "  const amounts = j.items.map(i => Number(i.amount)).sort((a, b) => a - b);",
                   "  pm.expect(amounts).to.eql([300, 1200]);",
                   "  pm.expect(j.items.map(i => i.purchaseId)).to.include(pm.collectionVariables.get('purchaseId'));",
-                  "  j.items.forEach(i => pm.expect(i).to.have.all.keys('id', 'purchaseId', 'description', 'amount', 'purchasedAt', 'kind'));",
+                  "  j.items.forEach(i => pm.expect(i).to.have.all.keys('id', 'purchaseId', 'description', 'amount', 'purchasedAt', 'kind', 'installmentNumber', 'installmentCount'));",
                   "});",
                   "pm.test('Fecha dia 10 e vence dia 20', () => {",
                   "  pm.expect(String(j.closingDate).slice(8, 10)).to.eql('10');",
@@ -4037,6 +4037,185 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "pm.test('Desligado', () => pm.expect(pm.response.json().autoDebit).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.13 Compra parcelada em 3x sem juros (300)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{installmentPurchaseId}}\",\n  \"description\": \"Fone\",\n  \"amount\": 300,\n  \"installments\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('installmentPurchaseId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('3 parcelas de 100', () => {",
+                  "  pm.expect(j.installments).to.eql(3);",
+                  "  pm.expect(Number(j.installmentAmount)).to.eql(100);",
+                  "});",
+                  "pm.collectionVariables.set('installmentFirstMonth', j.referenceMonth);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.14 Compra em 13x -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Demais\",\n  \"amount\": 1300,\n  \"installments\": 13\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.15 Parcela 1/3 aparece na fatura",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/{{installmentFirstMonth}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "{{installmentFirstMonth}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const item = pm.response.json().items.find(i => i.purchaseId === pm.collectionVariables.get('installmentPurchaseId'));",
+                  "pm.test('Fone (1/3)', () => {",
+                  "  pm.expect(item.description).to.eql('Fone (1/3)');",
+                  "  pm.expect(item.installmentNumber).to.eql(1);",
+                  "  pm.expect(item.installmentCount).to.eql(3);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.16 Simular parcelamento de fatura já paga -> 422",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/{{referenceMonth}}/installment-plan?installments=6",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "{{referenceMonth}}",
+                "installment-plan"
+              ],
+              "query": [
+                {
+                  "key": "installments",
+                  "value": "6"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Só fatura fechada com saldo', () => pm.expect(pm.response.json().message).to.include('fechadas com saldo'));"
                 ]
               }
             }
@@ -8755,6 +8934,14 @@
     },
     {
       "key": "scheduledPixId",
+      "value": ""
+    },
+    {
+      "key": "installmentPurchaseId",
+      "value": ""
+    },
+    {
+      "key": "installmentFirstMonth",
       "value": ""
     }
   ],

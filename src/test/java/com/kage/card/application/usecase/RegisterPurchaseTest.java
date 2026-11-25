@@ -24,6 +24,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -103,8 +104,6 @@ class RegisterPurchaseTest {
     @Test
     void execute_deveLancarBusinessRuleException_quandoExcedeLimiteDisponivel() {
         when(cardRepository.findById(card.getId())).thenReturn(Optional.of(card));
-        when(invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), YearMonth.of(2026, 9)))
-                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> registerPurchase.execute(new RegisterPurchase.Input(
                 card.getId(), UUID.randomUUID(), "Compra grande", new BigDecimal("5000.00"), purchasedAt)))
@@ -115,16 +114,36 @@ class RegisterPurchaseTest {
     }
 
     @Test
+    void execute_compraParcelada_deveAutorizarOTotal_eLancarUmaParcelaPorFatura() {
+        when(cardRepository.findById(card.getId())).thenReturn(Optional.of(card));
+        when(invoiceRepository.findByCardIdAndPurchaseId(any(), any())).thenReturn(Optional.empty());
+        when(invoiceRepository.findByCardIdAndReferenceMonth(eq(card.getId()), any())).thenReturn(Optional.empty());
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(i -> i.getArgument(0));
+        when(cardRepository.save(any(Card.class))).thenAnswer(i -> i.getArgument(0));
+
+        RegisterPurchase.Output output = registerPurchase.execute(new RegisterPurchase.Input(
+                card.getId(), UUID.randomUUID(), "Celular", new BigDecimal("900.00"), purchasedAt, 3));
+
+        assertThat(output.installments()).isEqualTo(3);
+        assertThat(output.installmentAmount()).isEqualByComparingTo("300.00");
+        assertThat(output.availableLimit()).isEqualByComparingTo("100.00"); // 1000 - 900
+        org.mockito.ArgumentCaptor<Invoice> saved = org.mockito.ArgumentCaptor.forClass(Invoice.class);
+        verify(invoiceRepository, org.mockito.Mockito.times(3)).save(saved.capture());
+        assertThat(saved.getAllValues()).extracting(i -> i.getReferenceMonth().toString())
+                .containsExactly("2026-09", "2026-10", "2026-11");
+    }
+
+    @Test
     void execute_deveLancarBusinessRuleException_quandoCartaoBloqueado() {
         card.block();
         when(cardRepository.findById(card.getId())).thenReturn(Optional.of(card));
-        when(invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), YearMonth.of(2026, 9)))
-                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> registerPurchase.execute(new RegisterPurchase.Input(
                 card.getId(), UUID.randomUUID(), "Compra", new BigDecimal("10.00"), purchasedAt)))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("não está ativo");
+        // autoriza antes de procurar/criar faturas: recusada não deixa fatura futura para trás
+        verify(invoiceRepository, never()).findByCardIdAndReferenceMonth(any(), any());
     }
 
     @Test

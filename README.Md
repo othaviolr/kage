@@ -18,6 +18,7 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 - **PIX agendado**: para até 1 ano à frente; saldo e limites conferidos no dia (job às 06:00, depois da janela noturna), pelo mesmo caminho do PIX imediato; sem saldo no dia vira `FAILED` e o cliente é avisado; dá para listar e cancelar até a execução
 - **Cartão de crédito**: emissão vinculada à conta, limite, compras idempotentes, fatura mensal com fechamento e pagamento pelo saldo da conta (débito, extrato e liberação do limite numa única transação)
 - **Rotativo**: pagamento total ou parcial (um ou vários); o mínimo (15%, piso de R$ 50) aparece na fatura. O que sobra no próximo fechamento vai para a fatura seguinte como "Saldo anterior" com juros do rotativo (14% a.m.); abaixo do mínimo, também multa de 2% e mora de 1% a.m. pro rata. Encargos respeitam o teto da Lei 14.690/2023 (no máximo 100% da dívida original) e consomem limite
+- **Parcelamento**: compra parcelada sem juros em até 12x (consome o limite total na hora; uma parcela por fatura, faturas futuras criadas na compra); parcelamento da fatura em 2–12x a 8,99% a.m. (Tabela Price), com simulação antes de contratar; e a regra do Bacen: rotativo não pago por dois ciclos é parcelado automaticamente em 6x. Juros do parcelamento contam no mesmo teto legal do rotativo
 - **Ciclo de cobrança automático**: job diário (03:00) fecha as faturas no dia de corte e, para quem ligou o débito automático, paga no vencimento; sem saldo, a fatura fica em atraso e é tentada de novo no dia seguinte. O backoffice pode rodar o ciclo para qualquer data (`POST /api/admin/billing/run?date=`)
 
 - **Notificações**: depósito, saque, PIX enviado/recebido/recusado, estornos, fatura fechada/paga e débito automático recusado viram avisos na caixa de entrada do cliente (`GET /api/notifications`) e são entregues por um canal externo (hoje simulado em log; a porta `NotificationChannel` aceita FCM, SES etc.). Consome os eventos que os contextos já publicam pelo outbox; reentrega não duplica aviso
@@ -27,7 +28,7 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 
 - 2FA no login de dispositivo novo, envio real do e-mail de recuperação de senha
 - PIX agendado recorrente (todo mês)
-- Parcelamento de compras e da fatura (hoje o rotativo pode se repetir mês a mês; a regra do Bacen obriga a parcelar depois de um mês)
+- Antecipação de parcelas (com desconto dos juros) e compra parcelada com juros do emissor
 - TED, boletos, empréstimos, investimentos
 - Entrega real das notificações (push via FCM, e-mail, SMS) e preferências de canal por cliente
 

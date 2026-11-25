@@ -13,14 +13,25 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import com.kage.card.domain.service.InstallmentPolicy;
+
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public class RegisterPurchase {
 
-    public record Input(UUID cardId, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt) {}
+    /** @param installments parcelas sem juros (1 = à vista; nulo também) */
+    public record Input(UUID cardId, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
+                        Integer installments) {
+        public Input(UUID cardId, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt) {
+            this(cardId, purchaseId, description, amount, purchasedAt, 1);
+        }
+    }
+
+    /** @param invoiceId fatura da 1ª parcela; {@code installmentAmount} é o valor dela */
     public record Output(UUID cardId, BigDecimal availableLimit, UUID invoiceId, String referenceMonth,
-                         BigDecimal invoiceTotal, boolean duplicate) {}
+                         BigDecimal invoiceTotal, int installments, BigDecimal installmentAmount, boolean duplicate) {}
 
     private final CardRepository cardRepository;
     private final InvoiceRepository invoiceRepository;
@@ -41,27 +52,43 @@ public class RegisterPurchase {
 
         Optional<Invoice> alreadyRegistered = invoiceRepository.findByCardIdAndPurchaseId(card.getId(), input.purchaseId());
         if (alreadyRegistered.isPresent()) {
-            return toOutput(card, alreadyRegistered.get(), true);
+            return toOutput(card, alreadyRegistered.get(), input.purchaseId(), true);
         }
 
-        Invoice invoice = findOpenInvoice(card, input.purchasedAt());
+        int installments = input.installments() == null ? 1 : input.installments();
+        Money total = new Money(input.amount());
+        List<Money> parts = InstallmentPolicy.splitWithoutInterest(total, installments);
 
-        card.authorizePurchase(new Money(input.amount()));
-        invoice.addItem(input.purchaseId(), input.description(), new Money(input.amount()), input.purchasedAt());
+        // o limite é consumido pelo valor TOTAL na hora (como nos cartões de verdade) e volta
+        // conforme cada fatura é paga
+        card.authorizePurchase(total);
+
+        Invoice first = null;
+        YearMonth month = Invoice.referenceMonthFor(input.purchasedAt().toLocalDate(), card.getClosingDay());
+        for (int number = 1; number <= installments; number++) {
+            Invoice invoice = findOpenInvoiceFrom(card, month);
+            String description = installments == 1
+                    ? input.description()
+                    : input.description() + " (" + number + "/" + installments + ")";
+            invoice.addInstallment(input.purchaseId(), description, parts.get(number - 1), input.purchasedAt(),
+                    number, installments);
+            Invoice saved = invoiceRepository.save(invoice);
+            if (first == null) first = saved;
+            month = saved.getReferenceMonth().plusMonths(1); // a próxima parcela vai para o mês seguinte
+        }
 
         Card savedCard = cardRepository.save(card);
-        Invoice savedInvoice = invoiceRepository.save(invoice);
-
-        return toOutput(savedCard, savedInvoice, false);
+        return toOutput(savedCard, first, input.purchaseId(), false);
     }
 
     /**
-     * Fatura que recebe a compra: a do mês de referência pela data da compra e, se ela já foi fechada
-     * (ou paga), a primeira fatura seguinte que ainda esteja aberta, criando-a se não existir. É o
-     * que um banco faz com a compra que chega depois do fechamento.
+     * Fatura que recebe a parcela: a do mês informado e, se ela já foi fechada (ou paga), a primeira
+     * fatura seguinte que ainda esteja aberta, criando-a se não existir. É o que um banco faz com a
+     * compra que chega depois do fechamento — e é assim que as faturas futuras de uma compra
+     * parcelada passam a existir.
      */
-    private Invoice findOpenInvoice(Card card, LocalDateTime purchasedAt) {
-        YearMonth month = Invoice.referenceMonthFor(purchasedAt.toLocalDate(), card.getClosingDay());
+    private Invoice findOpenInvoiceFrom(Card card, YearMonth from) {
+        YearMonth month = from;
         while (true) {
             Optional<Invoice> existing = invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), month);
             if (existing.isEmpty()) {
@@ -74,8 +101,10 @@ public class RegisterPurchase {
         }
     }
 
-    private Output toOutput(Card card, Invoice invoice, boolean duplicate) {
+    private Output toOutput(Card card, Invoice invoice, UUID purchaseId, boolean duplicate) {
+        var item = invoice.getItems().stream().filter(i -> i.purchaseId().equals(purchaseId)).findFirst().orElseThrow();
         return new Output(card.getId(), card.availableLimit().amount(), invoice.getId(),
-                invoice.getReferenceMonth().toString(), invoice.total().amount(), duplicate);
+                invoice.getReferenceMonth().toString(), invoice.total().amount(), item.installmentCount(),
+                item.amount().amount(), duplicate);
     }
 }

@@ -41,6 +41,10 @@ public final class InboundEvents {
                                     BigDecimal charges, boolean late) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record InvoiceFinanced(UUID cardId, UUID invoiceId, String referenceMonth, int installments,
+                                  BigDecimal installmentAmount, BigDecimal total, boolean automatic) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record ScheduledPixFailed(UUID transactionId, UUID sourceAccountId, BigDecimal amount, LocalDate scheduledDate,
                                      String reason) {}
 

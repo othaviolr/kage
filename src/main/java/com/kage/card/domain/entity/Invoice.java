@@ -91,6 +91,27 @@ public class Invoice {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /** Parcela de compra parcelada (a mesma compra tem uma linha em cada fatura do plano). */
+    public void addInstallment(UUID purchaseId, String description, Money amount, LocalDateTime purchasedAt,
+                               int number, int count) {
+        if (this.status != InvoiceStatus.OPEN) throw new BusinessRuleException("Fatura não está aberta para novos lançamentos");
+        if (items.stream().anyMatch(item -> item.purchaseId().equals(purchaseId))) {
+            throw new ConflictException("Compra já lançada nesta fatura");
+        }
+        this.items.add(InvoiceItem.installment(purchaseId, description, amount, purchasedAt, number, count));
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /** Parcela do parcelamento de outra fatura. Idempotente pela fatura de origem. */
+    public void addInvoiceInstallment(UUID sourceInvoiceId, String description, Money amount, LocalDateTime at,
+                                      int number, int count) {
+        if (this.status != InvoiceStatus.OPEN) throw new BusinessRuleException("Fatura não está aberta para novos lançamentos");
+        InvoiceItem installment = InvoiceItem.invoiceInstallment(sourceInvoiceId, description, amount, at, number, count);
+        if (items.stream().anyMatch(item -> item.purchaseId().equals(installment.purchaseId()))) return;
+        this.items.add(installment);
+        this.updatedAt = LocalDateTime.now();
+    }
+
     /** Lança saldo trazido ou encargo do rotativo. Valor zero (ex.: cortado pelo teto) não vira linha. */
     public void addCharge(InvoiceItemKind kind, UUID sourceInvoiceId, String description, Money amount, LocalDateTime at) {
         if (this.status != InvoiceStatus.OPEN) throw new BusinessRuleException("Fatura não está aberta para novos lançamentos");
@@ -176,9 +197,28 @@ public class Invoice {
         return carried;
     }
 
+    /**
+     * Parcelamento: o saldo devedor sai desta fatura e vira parcelas nas seguintes (quem lança é o
+     * use case). Esta não aceita mais pagamento nem vai para o rotativo.
+     *
+     * @return o saldo parcelado
+     */
+    public Money finance(LocalDateTime now) {
+        if (this.status == InvoiceStatus.FINANCED) throw new BusinessRuleException("Fatura já foi parcelada");
+        if (this.status != InvoiceStatus.CLOSED) throw new BusinessRuleException("Somente faturas fechadas com saldo podem ser parceladas");
+        Money financed = remaining();
+        if (financed.isZero()) throw new BusinessRuleException("Fatura sem saldo devedor");
+        this.status = InvoiceStatus.FINANCED;
+        this.updatedAt = now;
+        return financed;
+    }
+
     private void requirePayable() {
         if (this.status == InvoiceStatus.ROLLED_OVER) {
             throw new BusinessRuleException("O saldo desta fatura foi para a fatura seguinte: pague a fatura atual");
+        }
+        if (this.status == InvoiceStatus.FINANCED) {
+            throw new BusinessRuleException("Esta fatura foi parcelada: as parcelas estão nas faturas seguintes");
         }
         if (this.status != InvoiceStatus.CLOSED) throw new BusinessRuleException("Somente faturas fechadas podem ser pagas");
     }

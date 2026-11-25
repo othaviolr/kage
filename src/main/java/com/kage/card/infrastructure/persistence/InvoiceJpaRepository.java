@@ -18,7 +18,7 @@ public interface InvoiceJpaRepository extends JpaRepository<InvoiceJpaEntity, UU
     @Query(value = """
             SELECT i.* FROM invoices i
             JOIN invoice_items it ON it.invoice_id = i.id
-            WHERE i.card_id = :cardId AND it.purchase_id = :purchaseId
+            WHERE i.card_id = :cardId AND it.purchase_id = :purchaseId AND it.installment_number = 1
             """, nativeQuery = true)
     Optional<InvoiceJpaEntity> findByCardIdAndPurchaseId(@Param("cardId") UUID cardId,
                                                           @Param("purchaseId") UUID purchaseId);

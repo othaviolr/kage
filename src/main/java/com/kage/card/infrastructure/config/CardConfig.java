@@ -87,8 +87,14 @@ public class CardConfig {
 
     @Bean
     public CloseInvoice closeInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository,
-                                     CardEventPublisher cardEventPublisher) {
-        return new CloseInvoice(cardRepository, invoiceRepository, cardEventPublisher);
+                                     CardEventPublisher cardEventPublisher, FinanceInvoice financeInvoice) {
+        return new CloseInvoice(cardRepository, invoiceRepository, cardEventPublisher, financeInvoice);
+    }
+
+    @Bean
+    public FinanceInvoice financeInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                                         CardEventPublisher cardEventPublisher) {
+        return new FinanceInvoice(cardRepository, invoiceRepository, cardEventPublisher);
     }
 
     @Bean
