@@ -4,6 +4,7 @@ import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.infrastructure.AccountValidationServiceImpl;
 import com.kage.payment.application.usecase.*;
 import com.kage.payment.domain.repository.PixKeyRepository;
+import com.kage.payment.domain.repository.PixRecurrenceRepository;
 import com.kage.payment.domain.repository.PixRefundRepository;
 import com.kage.payment.domain.repository.PixTransactionRepository;
 import com.kage.payment.domain.service.AccountValidationService;
@@ -79,17 +80,38 @@ public class PaymentConfig {
     }
 
     @Bean
-    public ManageScheduledPix manageScheduledPix(PixTransactionRepository pixTransactionRepository) {
-        return new ManageScheduledPix(pixTransactionRepository);
+    public ManageScheduledPix manageScheduledPix(PixTransactionRepository pixTransactionRepository,
+                                                 PixRecurrenceChain pixRecurrenceChain) {
+        return new ManageScheduledPix(pixTransactionRepository, pixRecurrenceChain);
+    }
+
+    @Bean
+    public PixRecurrenceRepository pixRecurrenceRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcPixRecurrenceRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public PixRecurrenceChain pixRecurrenceChain(PixRecurrenceRepository pixRecurrenceRepository,
+                                                 PixTransactionRepository pixTransactionRepository, Clock clock) {
+        return new PixRecurrenceChain(pixRecurrenceRepository, pixTransactionRepository, clock);
+    }
+
+    @Bean
+    public RecurringPix recurringPix(PixKeyRepository pixKeyRepository, PixRecurrenceRepository pixRecurrenceRepository,
+                                     PixTransactionRepository pixTransactionRepository,
+                                     PixRecurrenceChain pixRecurrenceChain, Clock clock) {
+        return new RecurringPix(pixKeyRepository, pixRecurrenceRepository, pixTransactionRepository, pixRecurrenceChain,
+                clock);
     }
 
     @Bean
     public ScheduledPixExecutor scheduledPixExecutor(PixKeyRepository pixKeyRepository,
                                                      PixTransactionRepository pixTransactionRepository,
                                                      AccountValidationService accountValidationService,
-                                                     PixEventPublisher pixEventPublisher, Clock clock) {
+                                                     PixEventPublisher pixEventPublisher,
+                                                     PixRecurrenceChain pixRecurrenceChain, Clock clock) {
         return new ScheduledPixExecutor(pixKeyRepository, pixTransactionRepository, accountValidationService,
-                pixEventPublisher, clock);
+                pixEventPublisher, pixRecurrenceChain, clock);
     }
 
     @Bean

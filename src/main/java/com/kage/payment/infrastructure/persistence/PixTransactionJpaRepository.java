@@ -47,4 +47,6 @@ public interface PixTransactionJpaRepository extends JpaRepository<PixTransactio
             ORDER BY t.scheduledDate
             """)
     List<PixTransactionJpaEntity> findPendingScheduledByAccount(@Param("accountId") UUID accountId);
+
+    List<PixTransactionJpaEntity> findByRecurrenceIdOrderByOccurrenceNumber(UUID recurrenceId);
 }

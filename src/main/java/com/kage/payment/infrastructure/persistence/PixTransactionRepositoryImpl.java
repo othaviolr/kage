@@ -56,4 +56,10 @@ public class PixTransactionRepositoryImpl implements PixTransactionRepository {
     public List<PixTransaction> findPendingScheduledByAccount(UUID accountId) {
         return jpaRepository.findPendingScheduledByAccount(accountId).stream().map(PixTransactionMapper::toDomain).toList();
     }
+
+    @Override
+    public List<PixTransaction> findByRecurrence(UUID recurrenceId) {
+        return jpaRepository.findByRecurrenceIdOrderByOccurrenceNumber(recurrenceId).stream()
+                .map(PixTransactionMapper::toDomain).toList();
+    }
 }

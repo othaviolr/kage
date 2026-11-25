@@ -60,6 +60,12 @@ public class PixTransactionJpaEntity {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    @Column(name = "recurrence_id")
+    private UUID recurrenceId;
+
+    @Column(name = "occurrence_number")
+    private Integer occurrenceNumber;
+
     public PixTransactionJpaEntity() {}
 
     public PixTransactionJpaEntity(UUID transactionId, UUID idempotencyKey, UUID sourceAccountId,
@@ -67,7 +73,10 @@ public class PixTransactionJpaEntity {
                                    String description, TransactionType transactionType,
                                    LocalDateTime scheduledDate, PixTransactionStatus status,
                                    String failureReason, String e2eId, LocalDateTime createdAt,
-                                   LocalDateTime processedAt, LocalDateTime completedAt) {
+                                   LocalDateTime processedAt, LocalDateTime completedAt,
+                                   UUID recurrenceId, Integer occurrenceNumber) {
+        this.recurrenceId = recurrenceId;
+        this.occurrenceNumber = occurrenceNumber;
         this.transactionId = transactionId;
         this.idempotencyKey = idempotencyKey;
         this.sourceAccountId = sourceAccountId;
@@ -100,4 +109,6 @@ public class PixTransactionJpaEntity {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getProcessedAt() { return processedAt; }
     public LocalDateTime getCompletedAt() { return completedAt; }
+    public UUID getRecurrenceId() { return recurrenceId; }
+    public Integer getOccurrenceNumber() { return occurrenceNumber; }
 }

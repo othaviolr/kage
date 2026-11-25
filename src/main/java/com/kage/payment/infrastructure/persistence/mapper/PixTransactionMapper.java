@@ -22,7 +22,9 @@ public class PixTransactionMapper {
                 transaction.getE2eId(),
                 transaction.getCreatedAt(),
                 transaction.getProcessedAt(),
-                transaction.getCompletedAt()
+                transaction.getCompletedAt(),
+                transaction.getRecurrenceId(),
+                transaction.getOccurrenceNumber()
         );
     }
 
@@ -42,7 +44,9 @@ public class PixTransactionMapper {
                 entity.getE2eId(),
                 entity.getCreatedAt(),
                 entity.getProcessedAt(),
-                entity.getCompletedAt()
+                entity.getCompletedAt(),
+                entity.getRecurrenceId(),
+                entity.getOccurrenceNumber()
         );
     }
 }

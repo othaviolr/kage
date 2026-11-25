@@ -40,6 +40,7 @@ class ScheduledPixTest {
     @Mock PixTransactionRepository pixTransactionRepository;
     @Mock AccountValidationService accountValidationService;
     @Mock PixEventPublisher pixEventPublisher;
+    @Mock PixRecurrenceChain recurrenceChain;
 
     Clock clock;
     UUID source;
@@ -92,7 +93,7 @@ class ScheduledPixTest {
         PixTransaction pending = scheduled(TODAY.plusDays(3));
         when(pixTransactionRepository.findById(pending.getTransactionId())).thenReturn(Optional.of(pending));
         when(pixTransactionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-        ManageScheduledPix manage = new ManageScheduledPix(pixTransactionRepository);
+        ManageScheduledPix manage = new ManageScheduledPix(pixTransactionRepository, recurrenceChain);
 
         assertThat(manage.cancel(pending.getTransactionId()).status()).isEqualTo("CANCELLED");
 
@@ -105,7 +106,8 @@ class ScheduledPixTest {
     // ---------- execução ----------
 
     private ScheduledPixExecutor executor() {
-        return new ScheduledPixExecutor(pixKeyRepository, pixTransactionRepository, accountValidationService, pixEventPublisher, clock);
+        return new ScheduledPixExecutor(pixKeyRepository, pixTransactionRepository, accountValidationService, pixEventPublisher,
+                recurrenceChain, clock);
     }
 
     @Test

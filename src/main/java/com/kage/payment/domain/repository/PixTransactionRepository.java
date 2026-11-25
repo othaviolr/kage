@@ -21,4 +21,7 @@ public interface PixTransactionRepository {
     List<PixTransaction> findScheduledDueUntil(LocalDate date);
 
     List<PixTransaction> findPendingScheduledByAccount(UUID accountId);
+
+    /** Ocorrências já criadas de um PIX recorrente, da primeira à última. */
+    List<PixTransaction> findByRecurrence(UUID recurrenceId);
 }
