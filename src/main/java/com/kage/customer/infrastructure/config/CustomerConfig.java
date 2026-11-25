@@ -8,6 +8,10 @@ import com.kage.customer.application.usecase.rejectkyc.RejectKycUseCase;
 import com.kage.customer.application.usecase.unblockcustomer.UnblockCustomerUseCase;
 import com.kage.customer.application.usecase.updateaddress.UpdateAddressUseCase;
 import com.kage.customer.domain.repository.CustomerRepository;
+import com.kage.customer.application.usecase.CustomerEventPublisher;
+import com.kage.customer.infrastructure.messaging.OutboxCustomerEventPublisher;
+import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -25,8 +29,19 @@ public class CustomerConfig {
     }
 
     @Bean
-    public BlockCustomerUseCase blockCustomerUseCase(CustomerRepository customerRepository) {
-        return new BlockCustomerUseCase(customerRepository);
+    public BlockCustomerUseCase blockCustomerUseCase(CustomerRepository customerRepository,
+                                                     CustomerEventPublisher customerEventPublisher) {
+        return new BlockCustomerUseCase(customerRepository, customerEventPublisher);
+    }
+
+    @Bean
+    public CustomerEventPublisher customerEventPublisher(OutboxEventPublisher outboxEventPublisher) {
+        return new OutboxCustomerEventPublisher(outboxEventPublisher);
+    }
+
+    @Bean
+    public TopicExchange customerExchange() {
+        return new TopicExchange(OutboxCustomerEventPublisher.EXCHANGE);
     }
 
     @Bean

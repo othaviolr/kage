@@ -7,6 +7,7 @@ import com.kage.customer.domain.enums.CustomerStatus;
 import com.kage.customer.domain.repository.CustomerRepository;
 
 import java.util.Optional;
+import java.util.UUID;
 
 /** Lado Customer da porta do auth: cadastro pelo mesmo use case do backoffice e busca por CPF. */
 public class AuthCustomerDirectoryImpl implements CustomerDirectory {
@@ -24,6 +25,11 @@ public class AuthCustomerDirectoryImpl implements CustomerDirectory {
         var output = createCustomer.execute(new CreateCustomerInput(c.fullName(), c.cpf(), c.email(), c.phone(),
                 c.birthDate(), c.street(), c.number(), c.complement(), c.city(), c.state(), c.zipCode()));
         return new RegisteredCustomer(output.id(), output.cpf().replaceAll("\\D", ""), output.status(), output.kycStatus());
+    }
+
+    @Override
+    public Optional<Boolean> isBlocked(UUID customerId) {
+        return customerRepository.findById(customerId).map(customer -> customer.getStatus() == CustomerStatus.BLOCKED);
     }
 
     @Override

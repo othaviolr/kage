@@ -19,11 +19,11 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 - **Ciclo de cobrança automático**: job diário (03:00) fecha as faturas no dia de corte e, para quem ligou o débito automático, paga no vencimento; sem saldo, a fatura fica em atraso e é tentada de novo no dia seguinte. O backoffice pode rodar o ciclo para qualquer data (`POST /api/admin/billing/run?date=`)
 
 - **Notificações**: depósito, saque, PIX enviado/recebido/recusado, estornos, fatura fechada/paga e débito automático recusado viram avisos na caixa de entrada do cliente (`GET /api/notifications`) e são entregues por um canal externo (hoje simulado em log; a porta `NotificationChannel` aceita FCM, SES etc.). Consome os eventos que os contextos já publicam pelo outbox; reentrega não duplica aviso
-- **Segurança**: cadastro pelo app com senha (BCrypt), login por CPF devolvendo JWT de 15 min, travamento após 5 senhas erradas, cliente só acessa o que é dele, backoffice com papel ADMIN
+- **Segurança**: cadastro pelo app com senha (BCrypt), login por CPF devolvendo JWT de 15 min + refresh token rotativo de 30 dias (reuso de token antigo derruba a sessão), logout que vale na hora, lista de sessões e "sair de todos os dispositivos", bloqueio do cliente derruba as sessões dele, travamento após 5 senhas erradas (cliente e admin), cliente só acessa o que é dele, backoffice com papel ADMIN
 
 ### Roadmap
 
-- Refresh token e revogação (logout), 2FA no login de dispositivo novo
+- 2FA no login de dispositivo novo, troca de senha
 - PIX agendado
 - Pagamento parcial/mínimo de fatura (rotativo), juros por atraso e parcelamento no cartão
 - TED, boletos, empréstimos, investimentos
@@ -79,7 +79,10 @@ Todas as rotas exigem `Authorization: Bearer <token>`, menos cadastro e login.
 ```bash
 # cliente: cadastro pelo app e login por CPF
 POST /api/auth/signup   { ...dados do cliente..., "password": "Sombra-2026" }
-POST /api/auth/login    { "cpf": "52998224725", "password": "Sombra-2026" }
+POST /api/auth/login    { "cpf": "52998224725", "password": "Sombra-2026" }   # -> accessToken + refreshToken
+POST /api/auth/refresh  { "refreshToken": "..." }   # par novo; o refresh antigo deixa de valer
+POST /api/auth/logout                               # encerra esta sessão (o token para de valer na hora)
+GET  /api/auth/sessions | DELETE /api/auth/sessions/{id} | POST /api/auth/logout-all
 
 # backoffice (KYC, bloqueios, estornos, emissão de cartão) e simulação de sistemas externos (depósito, compra no cartão)
 POST /api/auth/admin/login  { "username": "admin", "password": "kage-admin-dev-123" }

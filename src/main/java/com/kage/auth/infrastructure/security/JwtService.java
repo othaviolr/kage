@@ -23,6 +23,7 @@ public class JwtService implements TokenIssuer {
 
     static final String ISSUER = "kage";
     static final String ROLE_CLAIM = "role";
+    static final String SESSION_CLAIM = "sid";
 
     private final SecretKey key;
     private final Duration ttl;
@@ -39,16 +40,16 @@ public class JwtService implements TokenIssuer {
     }
 
     @Override
-    public IssuedToken issueForCustomer(UUID customerId) {
-        return issue(customerId.toString(), AuthenticatedUser.Role.CUSTOMER);
+    public IssuedToken issueForCustomer(UUID customerId, UUID sessionId) {
+        return issue(customerId.toString(), AuthenticatedUser.Role.CUSTOMER, sessionId);
     }
 
     @Override
-    public IssuedToken issueForAdmin(String username) {
-        return issue(username, AuthenticatedUser.Role.ADMIN);
+    public IssuedToken issueForAdmin(String username, UUID sessionId) {
+        return issue(username, AuthenticatedUser.Role.ADMIN, sessionId);
     }
 
-    private IssuedToken issue(String subject, AuthenticatedUser.Role role) {
+    private IssuedToken issue(String subject, AuthenticatedUser.Role role, UUID sessionId) {
         Instant now = clock.instant();
         Instant expiresAt = now.plus(ttl);
         String token = Jwts.builder()
@@ -56,6 +57,7 @@ public class JwtService implements TokenIssuer {
                 .subject(subject)
                 .id(UUID.randomUUID().toString())
                 .claim(ROLE_CLAIM, role.name())
+                .claim(SESSION_CLAIM, sessionId.toString())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .signWith(key, Jwts.SIG.HS256)
@@ -76,7 +78,9 @@ public class JwtService implements TokenIssuer {
 
             AuthenticatedUser.Role role = AuthenticatedUser.Role.valueOf(claims.get(ROLE_CLAIM, String.class));
             UUID customerId = role == AuthenticatedUser.Role.CUSTOMER ? UUID.fromString(claims.getSubject()) : null;
-            return Optional.of(new AuthenticatedUser(customerId, claims.getSubject(), role));
+            // token sem sessão (emitido antes das sessões existirem) não vale: não há como revogá-lo
+            UUID sessionId = UUID.fromString(claims.get(SESSION_CLAIM, String.class));
+            return Optional.of(new AuthenticatedUser(customerId, claims.getSubject(), role, sessionId));
         } catch (JwtException | IllegalArgumentException | NullPointerException e) {
             return Optional.empty();
         }

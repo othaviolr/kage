@@ -3,6 +3,11 @@ package com.kage.auth.infrastructure.config;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.auth.application.usecase.AdminLogin;
 import com.kage.auth.application.usecase.Login;
+import com.kage.auth.application.usecase.ManageSessions;
+import com.kage.auth.application.usecase.SessionTokens;
+import com.kage.auth.domain.repository.SessionRepository;
+import com.kage.auth.infrastructure.messaging.AuthCustomerEventConsumer;
+import com.kage.auth.infrastructure.persistence.SessionRepositoryImpl;
 import com.kage.auth.application.usecase.SignUp;
 import com.kage.auth.domain.repository.CredentialRepository;
 import com.kage.auth.domain.service.CustomerDirectory;
@@ -59,17 +64,38 @@ public class AuthConfig {
     }
 
     @Bean
+    public SessionRepository sessionRepository(JdbcTemplate jdbcTemplate) {
+        return new SessionRepositoryImpl(jdbcTemplate);
+    }
+
+    @Bean
+    public SessionTokens sessionTokens(SessionRepository sessionRepository, JwtService jwtService,
+                                       CustomerDirectory customerDirectory, Clock clock) {
+        return new SessionTokens(sessionRepository, jwtService, customerDirectory, clock);
+    }
+
+    @Bean
+    public ManageSessions manageSessions(SessionRepository sessionRepository, Clock clock) {
+        return new ManageSessions(sessionRepository, clock);
+    }
+
+    @Bean
+    public AuthCustomerEventConsumer authCustomerEventConsumer(ManageSessions manageSessions) {
+        return new AuthCustomerEventConsumer(manageSessions);
+    }
+
+    @Bean
     public Login login(CustomerDirectory customerDirectory, CredentialRepository credentialRepository,
-                       PasswordHasher passwordHasher, JwtService jwtService, Clock clock) {
-        return new Login(customerDirectory, credentialRepository, passwordHasher, jwtService, clock);
+                       PasswordHasher passwordHasher, SessionTokens sessionTokens, Clock clock) {
+        return new Login(customerDirectory, credentialRepository, passwordHasher, sessionTokens, clock);
     }
 
     /** A senha do admin vem em texto da configuração (variável de ambiente) e é hasheada na subida. */
     @Bean
     public AdminLogin adminLogin(@Value("${kage.security.admin.username}") String username,
                                  @Value("${kage.security.admin.password}") String password,
-                                 PasswordHasher passwordHasher, JwtService jwtService) {
-        return new AdminLogin(username, passwordHasher.hash(password), passwordHasher, jwtService);
+                                 PasswordHasher passwordHasher, SessionTokens sessionTokens, Clock clock) {
+        return new AdminLogin(username, passwordHasher.hash(password), passwordHasher, sessionTokens, clock);
     }
 
     @Bean
