@@ -4,7 +4,7 @@ import com.kage.auth.domain.entity.Credential;
 import com.kage.auth.domain.repository.CredentialRepository;
 import com.kage.auth.domain.service.CustomerDirectory;
 import com.kage.auth.domain.service.PasswordHasher;
-import com.kage.auth.domain.service.TokenIssuer;
+
 import com.kage.shared.domain.exception.TooManyRequestsException;
 import com.kage.shared.domain.exception.UnauthorizedException;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,7 +39,7 @@ class LoginTest {
     @Mock CustomerDirectory customerDirectory;
     @Mock CredentialRepository credentialRepository;
     @Mock PasswordHasher passwordHasher;
-    @Mock TokenIssuer tokenIssuer;
+    @Mock SessionTokens sessionTokens;
 
     Login login;
     UUID customerId;
@@ -48,7 +48,7 @@ class LoginTest {
     @BeforeEach
     void setUp() {
         when(passwordHasher.hash(anyString())).thenReturn("dummy-hash");
-        login = new Login(customerDirectory, credentialRepository, passwordHasher, tokenIssuer,
+        login = new Login(customerDirectory, credentialRepository, passwordHasher, sessionTokens,
                 Clock.fixed(NOW.atZone(ZONE).toInstant(), ZONE));
         customerId = UUID.randomUUID();
         credential = Credential.create(customerId, "real-hash", NOW.minusDays(1));
@@ -63,12 +63,15 @@ class LoginTest {
     void execute_deveEmitirToken_quandoSenhaCorreta() {
         customerExists(false);
         when(passwordHasher.matches("Senha-forte-1", "real-hash")).thenReturn(true);
-        when(tokenIssuer.issueForCustomer(customerId)).thenReturn(new TokenIssuer.IssuedToken("jwt", Instant.EPOCH));
+        when(sessionTokens.open(any())).thenReturn(new AuthTokens("jwt", "Bearer", Instant.EPOCH, "refresh", NOW.plusDays(30), UUID.randomUUID()));
 
-        Login.Output output = login.execute(new Login.Input(CPF, "Senha-forte-1"));
+        AuthTokens output = login.execute(new Login.Input(CPF, "Senha-forte-1"));
 
         assertThat(output.accessToken()).isEqualTo("jwt");
         assertThat(output.tokenType()).isEqualTo("Bearer");
+        assertThat(output.refreshToken()).isEqualTo("refresh");
+        verify(sessionTokens).open(org.mockito.ArgumentMatchers.argThat(s ->
+                customerId.equals(s.getCustomerId()) && s.getRole() == com.kage.auth.domain.entity.Session.Role.CUSTOMER));
     }
 
     @Test
@@ -113,6 +116,6 @@ class LoginTest {
         assertThatThrownBy(() -> login.execute(new Login.Input(CPF, "Senha-forte-1")))
                 .isInstanceOf(UnauthorizedException.class)
                 .hasMessageContaining("bloqueado");
-        verify(tokenIssuer, never()).issueForCustomer(any());
+        verify(sessionTokens, never()).open(any());
     }
 }

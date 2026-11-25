@@ -18,6 +18,7 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -69,6 +70,19 @@ class SecurityIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(body, "$.accessToken");
+    }
+
+    /** Corpo completo do login (access + refresh), com o User-Agent do "dispositivo". */
+    private String loginBody(String cpf, String device) throws Exception {
+        return mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).header("User-Agent", device)
+                        .content("{\"cpf\":\"%s\",\"password\":\"%s\"}".formatted(cpf, PASSWORD)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    private ResultActions refresh(String refreshToken) throws Exception {
+        return mvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"refreshToken\":\"%s\"}".formatted(refreshToken)));
     }
 
     private String adminToken() throws Exception {
@@ -141,6 +155,100 @@ class SecurityIntegrationTest extends AbstractIntegrationTest {
                          "birthDate":"1990-01-01","street":"Rua A","number":"1","city":"Curitiba","state":"PR",
                          "zipCode":"80000-000","password":"%s"}""".formatted(cpf, UUID.randomUUID(), PASSWORD)))
                 .andExpect(status().isCreated());
+    }
+
+    // ---------- sessões ----------
+
+    @Test
+    void refresh_deveDarUmParNovo_eReusoDoAntigoDerrubaASessao() throws Exception {
+        Customer maria = newCustomerWithAccount();
+        String first = loginBody(maria.cpf(), "iPhone");
+        String oldRefresh = JsonPath.read(first, "$.refreshToken");
+
+        String second = refresh(oldRefresh).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String newAccess = JsonPath.read(second, "$.accessToken");
+        String newRefresh = JsonPath.read(second, "$.refreshToken");
+        getAs(newAccess, "/api/auth/me").andExpect(status().isOk());
+
+        // a cópia antiga reaparece: sinal de roubo, a sessão inteira cai
+        refresh(oldRefresh).andExpect(status().isUnauthorized());
+        refresh(newRefresh).andExpect(status().isUnauthorized());
+        getAs(newAccess, "/api/auth/me").andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void logout_deveDerrubarOAccessTokenNaHora_semEsperarExpirar() throws Exception {
+        Customer maria = newCustomerWithAccount();
+        String body = loginBody(maria.cpf(), "Android");
+        String access = JsonPath.read(body, "$.accessToken");
+
+        mvc.perform(post("/api/auth/logout").header("Authorization", "Bearer " + access)).andExpect(status().isNoContent());
+
+        getAs(access, "/api/accounts/" + maria.accountId()).andExpect(status().isUnauthorized());
+        refresh(JsonPath.read(body, "$.refreshToken")).andExpect(status().isUnauthorized());
+        // a sessão do primeiro login (outro dispositivo) segue de pé
+        getAs(maria.token(), "/api/accounts/" + maria.accountId()).andExpect(status().isOk());
+    }
+
+    @Test
+    void sessoes_deveListarDispositivos_eEncerrarUmEspecifico() throws Exception {
+        Customer maria = newCustomerWithAccount();           // 1ª sessão (sem User-Agent)
+        String lost = loginBody(maria.cpf(), "Celular perdido");
+        String lostAccess = JsonPath.read(lost, "$.accessToken");
+        String lostSession = JsonPath.read(lost, "$.sessionId");
+
+        getAs(maria.token(), "/api/auth/sessions")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[?(@.userAgent == 'Celular perdido')].current").value(false));
+
+        mvc.perform(delete("/api/auth/sessions/" + lostSession).header("Authorization", "Bearer " + maria.token()))
+                .andExpect(status().isNoContent());
+
+        getAs(lostAccess, "/api/auth/me").andExpect(status().isUnauthorized());
+        getAs(maria.token(), "/api/auth/me").andExpect(status().isOk());
+    }
+
+    @Test
+    void sessaoDeOutroCliente_deveResponder404() throws Exception {
+        Customer maria = newCustomerWithAccount();
+        Customer joao = newCustomerWithAccount();
+        String joaoSession = JsonPath.read(loginBody(joao.cpf(), "x"), "$.sessionId");
+
+        mvc.perform(delete("/api/auth/sessions/" + joaoSession).header("Authorization", "Bearer " + maria.token()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void logoutAll_deveDerrubarTodosOsDispositivos() throws Exception {
+        Customer maria = newCustomerWithAccount();
+        String other = JsonPath.read(loginBody(maria.cpf(), "Tablet"), "$.accessToken");
+
+        mvc.perform(post("/api/auth/logout-all").header("Authorization", "Bearer " + maria.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sessionsRevoked").value(2));
+
+        getAs(maria.token(), "/api/auth/me").andExpect(status().isUnauthorized());
+        getAs(other, "/api/auth/me").andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void bloqueioDoCliente_deveDerrubarTodasAsSessoes() throws Exception {
+        Customer maria = newCustomerWithAccount();
+        getAs(maria.token(), "/api/auth/me").andExpect(status().isOk());
+
+        mvc.perform(patch("/api/customers/" + maria.id() + "/block").header("Authorization", "Bearer " + adminToken()))
+                .andExpect(status().isOk());
+
+        // customer.blocked sai pelo outbox e o auth encerra as sessões de forma assíncrona
+        awaitUntil(() -> {
+            try {
+                return mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + maria.token()))
+                        .andReturn().getResponse().getStatus() == 401;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }, java.time.Duration.ofSeconds(15));
     }
 
     // ---------- titularidade ----------

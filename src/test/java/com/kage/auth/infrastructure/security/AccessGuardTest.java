@@ -61,12 +61,12 @@ class AccessGuardTest {
     }
 
     private void loginAs(UUID customerId) {
-        var user = new AuthenticatedUser(customerId, customerId.toString(), AuthenticatedUser.Role.CUSTOMER);
+        var user = new AuthenticatedUser(customerId, customerId.toString(), AuthenticatedUser.Role.CUSTOMER, UUID.randomUUID());
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(user, null, List.of()));
     }
 
     private void loginAsAdmin() {
-        var user = new AuthenticatedUser(null, "admin", AuthenticatedUser.Role.ADMIN);
+        var user = new AuthenticatedUser(null, "admin", AuthenticatedUser.Role.ADMIN, UUID.randomUUID());
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(user, null, List.of()));
     }
 
