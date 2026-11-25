@@ -84,6 +84,16 @@ public final class NotificationTemplates {
                 + " Pagar o total evita novos juros.");
     }
 
+    public static Text invoiceFinanced(String referenceMonth, int installments, BigDecimal installmentAmount,
+                                       BigDecimal total, boolean automatic) {
+        String body = "A fatura de " + month(referenceMonth) + " foi parcelada em " + installments + "x de "
+                + money(installmentAmount) + " (total " + money(total) + "). As parcelas vêm nas próximas faturas.";
+        return automatic
+                ? new Text("Sua fatura foi parcelada", "O saldo do rotativo não foi pago e, pela regra do Banco Central, "
+                        + "não pode continuar no rotativo. " + body)
+                : new Text("Parcelamento contratado", body);
+    }
+
     public static Text autoDebitFailed(String referenceMonth, String reason) {
         return new Text("Não conseguimos pagar sua fatura", "O débito automático da fatura de " + month(referenceMonth)
                 + " não passou (" + reason + "). Vamos tentar de novo amanhã, ou você pode pagar pelo app.");

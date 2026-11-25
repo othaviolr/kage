@@ -36,6 +36,8 @@ public class InvoiceMapper {
             entity.setAmount(item.amount().amount());
             entity.setPurchasedAt(item.purchasedAt());
             entity.setKind(item.kind());
+            entity.setInstallmentNumber(item.installmentNumber());
+            entity.setInstallmentCount(item.installmentCount());
             return entity;
         }).collect(Collectors.toList());
     }
@@ -43,7 +45,8 @@ public class InvoiceMapper {
     public static Invoice toDomain(InvoiceJpaEntity entity, List<InvoiceItemJpaEntity> itemEntities) {
         List<InvoiceItem> items = itemEntities.stream()
                 .map(item -> new InvoiceItem(item.getId(), item.getPurchaseId(), item.getDescription(),
-                        Money.of(item.getAmount()), item.getPurchasedAt(), item.getKind()))
+                        Money.of(item.getAmount()), item.getPurchasedAt(), item.getKind(),
+                        item.getInstallmentNumber(), item.getInstallmentCount()))
                 .collect(Collectors.toList());
 
         return Invoice.reconstitute(

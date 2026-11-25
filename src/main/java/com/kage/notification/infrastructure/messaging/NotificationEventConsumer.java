@@ -102,6 +102,12 @@ public class NotificationEventConsumer {
                 e.fromReferenceMonth(), e.toReferenceMonth(), e.carried(), e.charges(), e.late()), null, messageId);
     }
 
+    @RabbitListener(queues = "notification.card.invoice.financed.queue")
+    public void onInvoiceFinanced(InboundEvents.InvoiceFinanced e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toCardOwner(e.cardId(), NotificationType.INVOICE_FINANCED, NotificationTemplates.invoiceFinanced(
+                e.referenceMonth(), e.installments(), e.installmentAmount(), e.total(), e.automatic()), e.invoiceId(), messageId);
+    }
+
     @RabbitListener(queues = "notification.pix.scheduled.failed.queue")
     public void onScheduledPixFailed(InboundEvents.ScheduledPixFailed e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toAccountOwner(e.sourceAccountId(), NotificationType.PIX_SCHEDULED_FAILED,

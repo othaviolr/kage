@@ -47,6 +47,13 @@ public class OutboxCardEventPublisher implements CardEventPublisher {
     }
 
     @Override
+    public void publishInvoiceFinanced(Invoice invoice, int installments, Money installmentAmount, Money total, boolean automatic) {
+        outbox.publish(CardEvents.EXCHANGE, CardEvents.INVOICE_FINANCED, new CardEvents.InvoiceFinancedEvent(
+                invoice.getCardId(), invoice.getId(), invoice.getReferenceMonth().toString(), installments,
+                installmentAmount.amount(), total.amount(), automatic, Instant.now()));
+    }
+
+    @Override
     @Transactional
     public void publishAutoDebitFailed(UUID cardId, String referenceMonth, String reason) {
         outbox.publish(CardEvents.EXCHANGE, CardEvents.AUTO_DEBIT_FAILED,

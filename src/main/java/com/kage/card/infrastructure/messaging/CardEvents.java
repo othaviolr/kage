@@ -17,6 +17,12 @@ public final class CardEvents {
     public static final String AUTO_DEBIT_FAILED = "card.invoice.auto-debit-failed";
     public static final String INVOICE_PARTIALLY_PAID = "card.invoice.partially-paid";
     public static final String INVOICE_ROLLED_OVER = "card.invoice.rolled-over";
+    public static final String INVOICE_FINANCED = "card.invoice.financed";
+
+    /** @param automatic parcelado pela regra do Bacen (rotativo não pago por dois ciclos), não pelo cliente */
+    public record InvoiceFinancedEvent(UUID cardId, UUID invoiceId, String referenceMonth, int installments,
+                                       BigDecimal installmentAmount, BigDecimal total, boolean automatic,
+                                       Instant occurredAt) {}
 
     public record InvoicePartiallyPaidEvent(UUID cardId, UUID invoiceId, String referenceMonth, BigDecimal amountPaid,
                                             BigDecimal remaining, BigDecimal minimumPayment, BigDecimal totalPaid,

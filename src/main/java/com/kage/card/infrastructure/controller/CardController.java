@@ -2,6 +2,7 @@ package com.kage.card.infrastructure.controller;
 
 import com.kage.card.application.usecase.*;
 import com.kage.auth.infrastructure.security.AccessGuard;
+import com.kage.shared.domain.exception.ValidationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +27,7 @@ public class CardController {
     private final AccessGuard accessGuard;
     private final PayInvoice payInvoice;
     private final SetAutoDebit setAutoDebit;
+    private final FinanceInvoice financeInvoice;
 
     /**
      * Emissão é do ADMIN: o limite de crédito é decisão da análise de crédito do banco, não do cliente.
@@ -36,7 +38,8 @@ public class CardController {
                           UnblockCard unblockCard, RegisterPurchase registerPurchase,
                           GetInvoice getInvoice, ListInvoices listInvoices,
                           CloseInvoice closeInvoice, CancelCard cancelCard, AccessGuard accessGuard,
-                          PayInvoice payInvoice, SetAutoDebit setAutoDebit) {
+                          PayInvoice payInvoice, SetAutoDebit setAutoDebit, FinanceInvoice financeInvoice) {
+        this.financeInvoice = financeInvoice;
         this.accessGuard = accessGuard;
         this.payInvoice = payInvoice;
         this.setAutoDebit = setAutoDebit;
@@ -85,8 +88,29 @@ public class CardController {
                                                                      @RequestBody PurchaseRequest request) {
         LocalDateTime purchasedAt = request.purchasedAt() != null ? request.purchasedAt() : LocalDateTime.now();
         RegisterPurchase.Output output = registerPurchase.execute(new RegisterPurchase.Input(
-                id, request.purchaseId(), request.description(), request.amount(), purchasedAt));
+                id, request.purchaseId(), request.description(), request.amount(), purchasedAt, request.installments()));
         return ResponseEntity.status(HttpStatus.CREATED).body(output);
+    }
+
+    /** Simulação do parcelamento da fatura: não muda nada. */
+    @GetMapping("/{id}/invoices/{referenceMonth}/installment-plan")
+    public ResponseEntity<FinanceInvoice.Output> quoteInstallmentPlan(@PathVariable UUID id, @PathVariable String referenceMonth,
+                                                                      @RequestParam int installments) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(financeInvoice.quote(id, referenceMonth, installments));
+    }
+
+    /** Contrata o parcelamento: a fatura vira FINANCED e as parcelas entram nas faturas seguintes. */
+    @PostMapping("/{id}/invoices/{referenceMonth}/installment-plan")
+    public ResponseEntity<FinanceInvoice.Output> financeInvoice(@PathVariable UUID id, @PathVariable String referenceMonth,
+                                                                @RequestBody InstallmentPlanRequest request) {
+        accessGuard.checkCard(id);
+        if (request.installments() == null) throw new ValidationException("Informe o número de parcelas (installments)");
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(financeInvoice.execute(id, referenceMonth, request.installments()));
+    }
+
+    public record InstallmentPlanRequest(Integer installments) {
     }
 
     @GetMapping("/{id}/invoices")
@@ -129,6 +153,8 @@ public class CardController {
         return ResponseEntity.ok(closeInvoice.execute(new CloseInvoice.Input(id, referenceMonth)));
     }
 
-    public record PurchaseRequest(UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt) {
+    /** @param installments parcelas sem juros (1 a 12); omitido = à vista */
+    public record PurchaseRequest(UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
+                                  Integer installments) {
     }
 }

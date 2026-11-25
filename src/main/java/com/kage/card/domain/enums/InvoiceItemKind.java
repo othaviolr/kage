@@ -10,5 +10,7 @@ public enum InvoiceItemKind {
     /** Multa por atraso (pagou menos que o mínimo). */
     LATE_FINE,
     /** Juros de mora pelos dias de atraso (pagou menos que o mínimo). */
-    LATE_INTEREST
+    LATE_INTEREST,
+    /** Parcela do parcelamento de uma fatura anterior (com juros). */
+    INVOICE_INSTALLMENT
 }

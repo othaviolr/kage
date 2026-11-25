@@ -5,5 +5,7 @@ public enum InvoiceStatus {
     CLOSED,
     PAID,
     /** O saldo não pago foi para a fatura seguinte (rotativo). */
-    ROLLED_OVER
+    ROLLED_OVER,
+    /** O saldo foi parcelado: as parcelas estão nas faturas seguintes. */
+    FINANCED
 }

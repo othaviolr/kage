@@ -47,6 +47,16 @@ public class InvoiceItemJpaEntity {
     public void setAmount(BigDecimal amount) { this.amount = amount; }
     public LocalDateTime getPurchasedAt() { return purchasedAt; }
     public void setPurchasedAt(LocalDateTime purchasedAt) { this.purchasedAt = purchasedAt; }
+    @Column(name = "installment_number", updatable = false)
+    private Integer installmentNumber;
+
+    @Column(name = "installment_count", updatable = false)
+    private Integer installmentCount;
+
+    public Integer getInstallmentNumber() { return installmentNumber; }
+    public void setInstallmentNumber(Integer installmentNumber) { this.installmentNumber = installmentNumber; }
+    public Integer getInstallmentCount() { return installmentCount; }
+    public void setInstallmentCount(Integer installmentCount) { this.installmentCount = installmentCount; }
     public com.kage.card.domain.enums.InvoiceItemKind getKind() { return kind; }
     public void setKind(com.kage.card.domain.enums.InvoiceItemKind kind) { this.kind = kind; }
 }
