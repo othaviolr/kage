@@ -4,6 +4,7 @@ import com.kage.account.domain.repository.AccountRepository;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.payment.domain.entity.PixTransaction;
 import com.kage.payment.domain.repository.PixKeyRepository;
+import com.kage.payment.domain.repository.PixRecurrenceRepository;
 import com.kage.payment.domain.repository.PixRefundRepository;
 import com.kage.payment.domain.repository.PixTransactionRepository;
 import com.kage.boleto.domain.repository.BoletoRepository;
@@ -33,11 +34,13 @@ public class AccessGuard {
     private final PixRefundRepository pixRefundRepository;
     private final SavingsBoxRepository savingsBoxRepository;
     private final BoletoRepository boletoRepository;
+    private final PixRecurrenceRepository pixRecurrenceRepository;
 
     public AccessGuard(AccountRepository accountRepository, CardRepository cardRepository,
                        PixKeyRepository pixKeyRepository, PixTransactionRepository pixTransactionRepository,
                        PixRefundRepository pixRefundRepository, SavingsBoxRepository savingsBoxRepository,
-                       BoletoRepository boletoRepository) {
+                       BoletoRepository boletoRepository, PixRecurrenceRepository pixRecurrenceRepository) {
+        this.pixRecurrenceRepository = pixRecurrenceRepository;
         this.savingsBoxRepository = savingsBoxRepository;
         this.boletoRepository = boletoRepository;
         this.accountRepository = accountRepository;
@@ -118,6 +121,15 @@ public class AccessGuard {
                 .map(t -> !ownsExistingAccount(user, t.getSourceAccountId()))
                 .orElse(false);
         if (denied) throw new NotFoundException("PIX agendado não encontrado");
+    }
+
+    public void checkPixRecurrence(UUID recurrenceId) {
+        AuthenticatedUser user = currentUser();
+        if (user.isAdmin()) return;
+        boolean denied = pixRecurrenceRepository.findById(recurrenceId)
+                .map(r -> !ownsExistingAccount(user, r.getSourceAccountId()))
+                .orElse(false);
+        if (denied) throw new NotFoundException("PIX recorrente não encontrado");
     }
 
     public void checkSavingsBox(UUID boxId) {

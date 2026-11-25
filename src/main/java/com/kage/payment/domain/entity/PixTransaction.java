@@ -25,13 +25,18 @@ public class PixTransaction {
     private final LocalDateTime createdAt;
     private LocalDateTime processedAt;
     private LocalDateTime completedAt;
+    private final UUID recurrenceId;
+    private final Integer occurrenceNumber;
 
     private PixTransaction(UUID transactionId, UUID idempotencyKey, UUID sourceAccountId,
                            String targetPixKey, UUID targetAccountId, Money amount,
                            String description, TransactionType transactionType,
                            LocalDateTime scheduledDate, PixTransactionStatus status,
                            String failureReason, String e2eId, LocalDateTime createdAt,
-                           LocalDateTime processedAt, LocalDateTime completedAt) {
+                           LocalDateTime processedAt, LocalDateTime completedAt,
+                           UUID recurrenceId, Integer occurrenceNumber) {
+        this.recurrenceId = recurrenceId;
+        this.occurrenceNumber = occurrenceNumber;
         this.transactionId = transactionId;
         this.idempotencyKey = idempotencyKey;
         this.sourceAccountId = sourceAccountId;
@@ -53,6 +58,12 @@ public class PixTransaction {
                                         Money amount, String description,
                                         TransactionType transactionType,
                                         LocalDateTime scheduledDate) {
+        return create(sourceAccountId, targetPixKey, amount, description, transactionType, scheduledDate, null, null);
+    }
+
+    private static PixTransaction create(UUID sourceAccountId, String targetPixKey, Money amount, String description,
+                                         TransactionType transactionType, LocalDateTime scheduledDate,
+                                         UUID recurrenceId, Integer occurrenceNumber) {
         return new PixTransaction(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
@@ -68,7 +79,9 @@ public class PixTransaction {
                 generateE2eId(),
                 LocalDateTime.now(),
                 null,
-                null
+                null,
+                recurrenceId,
+                occurrenceNumber
         );
     }
 
@@ -92,8 +105,22 @@ public class PixTransaction {
         return create(sourceAccountId, targetPixKey, amount, description, TransactionType.SCHEDULED, scheduledDate.atStartOfDay());
     }
 
+    /**
+     * Ocorrência {@code n} de um PIX recorrente: um PIX agendado comum, só que sem a checagem de
+     * data futura — se o job ficou parado, a ocorrência atrasada sai na próxima rodada.
+     */
+    public static PixTransaction occurrenceOf(PixRecurrence recurrence, int n) {
+        return create(recurrence.getSourceAccountId(), recurrence.getTargetPixKey(), recurrence.getAmount(),
+                recurrence.getDescription(), TransactionType.SCHEDULED, recurrence.dateOf(n).atStartOfDay(),
+                recurrence.getId(), n);
+    }
+
     public boolean isScheduled() {
         return transactionType == TransactionType.SCHEDULED;
+    }
+
+    public boolean isRecurring() {
+        return recurrenceId != null;
     }
 
     public static PixTransaction reconstitute(UUID transactionId, UUID idempotencyKey,
@@ -103,10 +130,11 @@ public class PixTransaction {
                                               LocalDateTime scheduledDate, PixTransactionStatus status,
                                               String failureReason, String e2eId,
                                               LocalDateTime createdAt, LocalDateTime processedAt,
-                                              LocalDateTime completedAt) {
+                                              LocalDateTime completedAt, UUID recurrenceId,
+                                              Integer occurrenceNumber) {
         return new PixTransaction(transactionId, idempotencyKey, sourceAccountId, targetPixKey,
                 targetAccountId, amount, description, transactionType, scheduledDate,
-                status, failureReason, e2eId, createdAt, processedAt, completedAt);
+                status, failureReason, e2eId, createdAt, processedAt, completedAt, recurrenceId, occurrenceNumber);
     }
 
     public void startProcessing(UUID targetAccountId) {
@@ -164,4 +192,6 @@ public class PixTransaction {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getProcessedAt() { return processedAt; }
     public LocalDateTime getCompletedAt() { return completedAt; }
+    public UUID getRecurrenceId() { return recurrenceId; }
+    public Integer getOccurrenceNumber() { return occurrenceNumber; }
 }

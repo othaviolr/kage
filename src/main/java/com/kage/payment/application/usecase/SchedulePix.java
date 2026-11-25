@@ -23,7 +23,8 @@ public class SchedulePix {
 
     public record Input(UUID sourceAccountId, String targetPixKey, Money amount, String description, LocalDate scheduledDate) {}
     public record Output(UUID transactionId, UUID sourceAccountId, String targetPixKey, BigDecimal amount,
-                         String description, LocalDate scheduledDate, String status) {}
+                         String description, LocalDate scheduledDate, String status,
+                         UUID recurrenceId, Integer occurrenceNumber) {}
 
     private final PixKeyRepository pixKeyRepository;
     private final PixTransactionRepository pixTransactionRepository;
@@ -36,22 +37,28 @@ public class SchedulePix {
     }
 
     public Output execute(Input input) {
-        PixKey targetKey = pixKeyRepository.findByKeyValue(input.targetPixKey())
-                .orElseThrow(() -> new NotFoundException("Chave PIX destino não encontrada"));
-        if (targetKey.getKeyStatus() != PixKeyStatus.ACTIVE) {
-            throw new BusinessRuleException("Chave PIX destino não está ativa");
-        }
-        if (targetKey.getAccountId().equals(input.sourceAccountId())) {
-            throw new BusinessRuleException("Não é possível enviar PIX para a própria conta");
-        }
+        requireValidTarget(pixKeyRepository, input.targetPixKey(), input.sourceAccountId());
 
         PixTransaction scheduled = PixTransaction.schedule(input.sourceAccountId(), input.targetPixKey(), input.amount(),
                 input.description(), input.scheduledDate(), LocalDate.now(clock));
         return toOutput(pixTransactionRepository.save(scheduled));
     }
 
+    /** Chave existe, está ativa e não é da própria conta (vale para agendado e recorrente). */
+    static void requireValidTarget(PixKeyRepository pixKeyRepository, String targetPixKey, UUID sourceAccountId) {
+        PixKey targetKey = pixKeyRepository.findByKeyValue(targetPixKey)
+                .orElseThrow(() -> new NotFoundException("Chave PIX destino não encontrada"));
+        if (targetKey.getKeyStatus() != PixKeyStatus.ACTIVE) {
+            throw new BusinessRuleException("Chave PIX destino não está ativa");
+        }
+        if (targetKey.getAccountId().equals(sourceAccountId)) {
+            throw new BusinessRuleException("Não é possível enviar PIX para a própria conta");
+        }
+    }
+
     static Output toOutput(PixTransaction t) {
         return new Output(t.getTransactionId(), t.getSourceAccountId(), t.getTargetPixKey(), t.getAmount().amount(),
-                t.getDescription(), t.getScheduledDate().toLocalDate(), t.getStatus().name());
+                t.getDescription(), t.getScheduledDate().toLocalDate(), t.getStatus().name(), t.getRecurrenceId(),
+                t.getOccurrenceNumber());
     }
 }

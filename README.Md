@@ -18,6 +18,7 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 - **Extrato**: todo movimento vira um lançamento imutável com o saldo resultante (`GET /api/accounts/{id}/statement`)
 - **PIX**: chaves, envio assíncrono com confirmação ou falha, estorno que devolve o dinheiro (ou falha com motivo, se quem recebeu já gastou)
 - **PIX agendado**: para até 1 ano à frente; saldo e limites conferidos no dia (job às 06:00, depois da janela noturna), pelo mesmo caminho do PIX imediato; sem saldo no dia vira `FAILED` e o cliente é avisado; dá para listar e cancelar até a execução
+- **PIX recorrente** (`POST /api/pix/recurring`): o mesmo PIX toda semana (até 52 vezes) ou todo mês (até 60), como aluguel ou mesada. Só a próxima ocorrência existe como PIX agendado, então saldo e limites são sempre os do dia; sem saldo num mês, só aquele é recusado e a recorrência segue. Datas contadas a partir do início (mensal no dia 31 cai no último dia dos meses curtos e volta ao 31). Cancelar uma ocorrência em `/api/pix/scheduled` pula só aquela vez; `DELETE /api/pix/recurring/{id}` encerra tudo. O detalhe mostra cada ocorrência com o status e o motivo de recusa
 - **Cartão de crédito**: emissão vinculada à conta, limite, compras idempotentes, fatura mensal com fechamento e pagamento pelo saldo da conta (débito, extrato e liberação do limite numa única transação)
 - **Rotativo**: pagamento total ou parcial (um ou vários); o mínimo (15%, piso de R$ 50) aparece na fatura. O que sobra no próximo fechamento vai para a fatura seguinte como "Saldo anterior" com juros do rotativo (14% a.m.); abaixo do mínimo, também multa de 2% e mora de 1% a.m. pro rata. Encargos respeitam o teto da Lei 14.690/2023 (no máximo 100% da dívida original) e consomem limite
 - **Parcelamento**: compra parcelada sem juros em até 12x (consome o limite total na hora; uma parcela por fatura, faturas futuras criadas na compra); parcelamento da fatura em 2–12x a 8,99% a.m. (Tabela Price), com simulação antes de contratar; e a regra do Bacen: rotativo não pago por dois ciclos é parcelado automaticamente em 6x. Juros do parcelamento contam no mesmo teto legal do rotativo
@@ -32,7 +33,7 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 ### Roadmap
 
 - 2FA no login de dispositivo novo, envio real do e-mail de recuperação de senha
-- PIX agendado recorrente (todo mês)
+- PIX Automático do Banco Central (débito autorizado pelo pagador, iniciado por quem recebe)
 - Antecipação de parcelas (com desconto dos juros) e compra parcelada com juros do emissor
 - Boletos: contas de consumo e tributos (código de arrecadação de 48 dígitos), consulta de boletos de outros bancos na CIP (encargos de atraso e beneficiário), DDA, boleto com desconto e pagamento após as 22h agendado para o dia útil seguinte
 - TED, empréstimos, outros investimentos (CDB, Tesouro)

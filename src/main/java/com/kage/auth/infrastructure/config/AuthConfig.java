@@ -35,6 +35,7 @@ import com.kage.customer.application.usecase.createcustomer.CreateCustomerUseCas
 import com.kage.customer.domain.repository.CustomerRepository;
 import com.kage.customer.infrastructure.AuthCustomerDirectoryImpl;
 import com.kage.payment.domain.repository.PixKeyRepository;
+import com.kage.payment.domain.repository.PixRecurrenceRepository;
 import com.kage.payment.domain.repository.PixRefundRepository;
 import com.kage.payment.domain.repository.PixTransactionRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -162,8 +163,9 @@ public class AuthConfig {
                                    PixKeyRepository pixKeyRepository, PixTransactionRepository pixTransactionRepository,
                                    PixRefundRepository pixRefundRepository,
                                    SavingsBoxRepository savingsBoxRepository,
-                                   BoletoRepository boletoRepository) {
+                                   BoletoRepository boletoRepository,
+                                   PixRecurrenceRepository pixRecurrenceRepository) {
         return new AccessGuard(accountRepository, cardRepository, pixKeyRepository, pixTransactionRepository,
-                pixRefundRepository, savingsBoxRepository, boletoRepository);
+                pixRefundRepository, savingsBoxRepository, boletoRepository, pixRecurrenceRepository);
     }
 }

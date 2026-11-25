@@ -30,11 +30,13 @@ public class ScheduledPixExecutor {
     private final PixTransactionRepository pixTransactionRepository;
     private final AccountValidationService accountValidationService;
     private final PixEventPublisher pixEventPublisher;
+    private final PixRecurrenceChain recurrenceChain;
     private final Clock clock;
 
     public ScheduledPixExecutor(PixKeyRepository pixKeyRepository, PixTransactionRepository pixTransactionRepository,
                                 AccountValidationService accountValidationService, PixEventPublisher pixEventPublisher,
-                                Clock clock) {
+                                PixRecurrenceChain recurrenceChain, Clock clock) {
+        this.recurrenceChain = recurrenceChain;
         this.pixKeyRepository = pixKeyRepository;
         this.pixTransactionRepository = pixTransactionRepository;
         this.accountValidationService = accountValidationService;
@@ -67,11 +69,13 @@ public class ScheduledPixExecutor {
             pixEventPublisher.publishPixSent(new SendPix.Output(saved.getTransactionId(), saved.getSourceAccountId(),
                     saved.getTargetPixKey(), saved.getTargetAccountId(), saved.getAmount().amount(), saved.getStatus().name(),
                     saved.getE2eId(), saved.getCreatedAt().toString()));
+            recurrenceChain.onOccurrenceResolved(saved);
             return Result.SENT;
         } catch (DomainException e) {
             transaction.fail(e.getMessage());
             pixTransactionRepository.save(transaction);
             pixEventPublisher.publishScheduledPixFailed(transaction, e.getMessage());
+            recurrenceChain.onOccurrenceResolved(transaction); // sem saldo hoje não cancela as próximas
             return Result.FAILED;
         }
     }
