@@ -11,7 +11,8 @@ public class GetCard {
 
     public record Input(UUID cardId) {}
     public record Output(UUID cardId, UUID customerId, UUID accountId, BigDecimal creditLimit,
-                         BigDecimal usedLimit, BigDecimal availableLimit, int closingDay, int dueDay, String status) {}
+                         BigDecimal usedLimit, BigDecimal availableLimit, int closingDay, int dueDay, String status,
+                         boolean autoDebit) {}
 
     private final CardRepository cardRepository;
 
@@ -25,6 +26,6 @@ public class GetCard {
 
         return new Output(card.getId(), card.getCustomerId(), card.getAccountId(), card.getCreditLimit().amount(),
                 card.getUsedLimit().amount(), card.availableLimit().amount(), card.getClosingDay(),
-                card.getDueDay(), card.getStatus().name());
+                card.getDueDay(), card.getStatus().name(), card.isAutoDebit());
     }
 }

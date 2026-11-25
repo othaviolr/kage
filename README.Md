@@ -16,6 +16,7 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 - **Extrato**: todo movimento vira um lançamento imutável com o saldo resultante (`GET /api/accounts/{id}/statement`)
 - **PIX**: chaves, envio assíncrono com confirmação ou falha, estorno que devolve o dinheiro (ou falha com motivo, se quem recebeu já gastou)
 - **Cartão de crédito**: emissão vinculada à conta, limite, compras idempotentes, fatura mensal com fechamento e pagamento pelo saldo da conta (débito, extrato e liberação do limite numa única transação)
+- **Ciclo de cobrança automático**: job diário (03:00) fecha as faturas no dia de corte e, para quem ligou o débito automático, paga no vencimento; sem saldo, a fatura fica em atraso e é tentada de novo no dia seguinte. O backoffice pode rodar o ciclo para qualquer data (`POST /api/admin/billing/run?date=`)
 
 - **Segurança**: cadastro pelo app com senha (BCrypt), login por CPF devolvendo JWT de 15 min, travamento após 5 senhas erradas, cliente só acessa o que é dele, backoffice com papel ADMIN
 
@@ -86,7 +87,7 @@ POST /api/auth/admin/login  { "username": "admin", "password": "kage-admin-dev-1
 | Quem | Pode |
 |---|---|
 | Cliente | ver e mudar os próprios dados, abrir conta, sacar, extrato, limites, chaves e envio de PIX, pedir estorno do que pagou, ver/bloquear/cancelar os próprios cartões e faturas |
-| ADMIN | tudo, incluindo KYC, bloqueio de cliente/conta, aprovar/rejeitar estorno, emitir cartão (o limite é decisão de crédito), depósito e compra no cartão |
+| ADMIN | tudo, incluindo KYC, bloqueio de cliente/conta, aprovar/rejeitar estorno, emitir cartão (o limite é decisão de crédito), depósito, compra no cartão e rodar o ciclo de cobrança |
 
 Recurso de outro cliente responde **404** (e não 403), para não confirmar que o id existe. Em produção, defina `KAGE_JWT_SECRET` (≥ 32 bytes aleatórios) e `KAGE_ADMIN_PASSWORD`; os valores padrão do `application.yml` são só para desenvolvimento.
 
