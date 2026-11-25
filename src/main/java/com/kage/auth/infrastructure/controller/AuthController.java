@@ -2,6 +2,9 @@ package com.kage.auth.infrastructure.controller;
 
 import com.kage.auth.application.usecase.AdminLogin;
 import com.kage.auth.application.usecase.AuthTokens;
+import com.kage.auth.application.usecase.ChangePassword;
+import com.kage.auth.application.usecase.ForgotPassword;
+import com.kage.auth.application.usecase.ResetPassword;
 import com.kage.auth.application.usecase.Login;
 import com.kage.auth.application.usecase.ManageSessions;
 import com.kage.auth.application.usecase.SessionTokens;
@@ -28,9 +31,16 @@ public class AuthController {
     private final SessionTokens sessionTokens;
     private final ManageSessions manageSessions;
     private final AccessGuard accessGuard;
+    private final ChangePassword changePassword;
+    private final ForgotPassword forgotPassword;
+    private final ResetPassword resetPassword;
 
     public AuthController(SignUp signUp, Login login, AdminLogin adminLogin, SessionTokens sessionTokens,
-                          ManageSessions manageSessions, AccessGuard accessGuard) {
+                          ManageSessions manageSessions, AccessGuard accessGuard, ChangePassword changePassword,
+                          ForgotPassword forgotPassword, ResetPassword resetPassword) {
+        this.changePassword = changePassword;
+        this.forgotPassword = forgotPassword;
+        this.resetPassword = resetPassword;
         this.signUp = signUp;
         this.login = login;
         this.adminLogin = adminLogin;
@@ -89,6 +99,31 @@ public class AuthController {
     public ResponseEntity<Void> revokeSession(@PathVariable UUID sessionId) {
         AuthenticatedUser user = accessGuard.currentUser();
         manageSessions.revokeSession(sessionId, user.isAdmin() ? null : user.customerId());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Troca de senha logado. Derruba as outras sessões e mantém esta. */
+    @PostMapping("/password")
+    public ResponseEntity<Map<String, Integer>> changePassword(@RequestBody ChangePasswordRequest request) {
+        AuthenticatedUser user = requireCustomer();
+        int revoked = changePassword.execute(new ChangePassword.Input(user.customerId(), user.sessionId(),
+                request.currentPassword(), request.newPassword()));
+        return ResponseEntity.ok(Map.of("otherSessionsRevoked", revoked));
+    }
+
+    public record ChangePasswordRequest(String currentPassword, String newPassword) {}
+
+    /** Sempre 202, com a mesma mensagem, exista o CPF ou não. */
+    @PostMapping("/password/forgot")
+    public ResponseEntity<ForgotPassword.Output> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        return ResponseEntity.accepted().body(forgotPassword.execute(request.cpf()));
+    }
+
+    public record ForgotPasswordRequest(String cpf) {}
+
+    @PostMapping("/password/reset")
+    public ResponseEntity<Void> resetPassword(@RequestBody ResetPassword.Input input) {
+        resetPassword.execute(input);
         return ResponseEntity.noContent().build();
     }
 

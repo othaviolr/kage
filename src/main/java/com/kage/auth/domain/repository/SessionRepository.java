@@ -23,6 +23,9 @@ public interface SessionRepository {
     /** @return quantas sessões foram encerradas */
     int revokeAllByCustomer(UUID customerId, String reason, LocalDateTime now);
 
+    /** Todas as sessões do cliente menos a informada (ex.: trocou a senha neste aparelho). */
+    int revokeAllByCustomerExcept(UUID customerId, UUID keepSessionId, String reason, LocalDateTime now);
+
     // --- refresh tokens (só o hash) ---
 
     void insertRefreshToken(String tokenHash, UUID sessionId, LocalDateTime issuedAt, LocalDateTime expiresAt);

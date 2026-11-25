@@ -90,6 +90,12 @@ public class NotificationEventConsumer {
                 NotificationTemplates.autoDebitFailed(e.referenceMonth(), e.reason()), null, messageId);
     }
 
+    @RabbitListener(queues = "notification.auth.password.changed.queue")
+    public void onPasswordChanged(InboundEvents.PasswordChanged e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        deliver(Optional.of(e.customerId()), "cliente " + e.customerId(), NotificationType.PASSWORD_CHANGED,
+                NotificationTemplates.passwordChanged("RESET".equals(e.reason())), null, messageId);
+    }
+
     private void toAccountOwner(UUID accountId, NotificationType type, NotificationTemplates.Text text,
                                 UUID referenceId, String messageId) {
         deliver(recipients.customerOfAccount(accountId), "conta " + accountId, type, text, referenceId, messageId);

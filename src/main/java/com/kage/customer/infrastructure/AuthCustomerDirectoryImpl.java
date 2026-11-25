@@ -33,6 +33,11 @@ public class AuthCustomerDirectoryImpl implements CustomerDirectory {
     }
 
     @Override
+    public Optional<String> cpfDigitsOf(UUID customerId) {
+        return customerRepository.findById(customerId).map(customer -> customer.getPersonalInfo().cpf().value());
+    }
+
+    @Override
     public Optional<CustomerIdentity> findByCpf(String cpf) {
         // CPF malformado não é erro de validação aqui: para o login é só "não encontrado" (401 genérico)
         String digits = cpf == null ? "" : cpf.replaceAll("\\D", "");

@@ -76,6 +76,12 @@ public class SessionRepositoryImpl implements SessionRepository {
     }
 
     @Override
+    public int revokeAllByCustomerExcept(UUID customerId, UUID keepSessionId, String reason, LocalDateTime now) {
+        return jdbcTemplate.update("UPDATE auth_sessions SET revoked_at = ?, revoke_reason = ? "
+                + "WHERE customer_id = ? AND id <> ? AND revoked_at IS NULL", ts(now), reason, customerId, keepSessionId);
+    }
+
+    @Override
     public void insertRefreshToken(String tokenHash, UUID sessionId, LocalDateTime issuedAt, LocalDateTime expiresAt) {
         jdbcTemplate.update("INSERT INTO auth_refresh_tokens (token_hash, session_id, issued_at, expires_at) VALUES (?, ?, ?, ?)",
                 tokenHash, sessionId, ts(issuedAt), ts(expiresAt));

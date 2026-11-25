@@ -19,11 +19,11 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 - **Ciclo de cobrança automático**: job diário (03:00) fecha as faturas no dia de corte e, para quem ligou o débito automático, paga no vencimento; sem saldo, a fatura fica em atraso e é tentada de novo no dia seguinte. O backoffice pode rodar o ciclo para qualquer data (`POST /api/admin/billing/run?date=`)
 
 - **Notificações**: depósito, saque, PIX enviado/recebido/recusado, estornos, fatura fechada/paga e débito automático recusado viram avisos na caixa de entrada do cliente (`GET /api/notifications`) e são entregues por um canal externo (hoje simulado em log; a porta `NotificationChannel` aceita FCM, SES etc.). Consome os eventos que os contextos já publicam pelo outbox; reentrega não duplica aviso
-- **Segurança**: cadastro pelo app com senha (BCrypt), login por CPF devolvendo JWT de 15 min + refresh token rotativo de 30 dias (reuso de token antigo derruba a sessão), logout que vale na hora, lista de sessões e "sair de todos os dispositivos", bloqueio do cliente derruba as sessões dele, travamento após 5 senhas erradas (cliente e admin), cliente só acessa o que é dele, backoffice com papel ADMIN
+- **Segurança**: cadastro pelo app com senha (BCrypt), login por CPF devolvendo JWT de 15 min + refresh token rotativo de 30 dias (reuso de token antigo derruba a sessão), logout que vale na hora, lista de sessões e "sair de todos os dispositivos", bloqueio do cliente derruba as sessões dele, troca de senha (derruba os outros dispositivos) e recuperação por link de uso único (30 min; resposta idêntica exista o CPF ou não; derruba todas as sessões), alerta de senha alterada, travamento após 5 senhas erradas (cliente e admin), cliente só acessa o que é dele, backoffice com papel ADMIN
 
 ### Roadmap
 
-- 2FA no login de dispositivo novo, troca de senha
+- 2FA no login de dispositivo novo, envio real do e-mail de recuperação de senha
 - PIX agendado
 - Pagamento parcial/mínimo de fatura (rotativo), juros por atraso e parcelamento no cartão
 - TED, boletos, empréstimos, investimentos
@@ -83,6 +83,9 @@ POST /api/auth/login    { "cpf": "52998224725", "password": "Sombra-2026" }   # 
 POST /api/auth/refresh  { "refreshToken": "..." }   # par novo; o refresh antigo deixa de valer
 POST /api/auth/logout                               # encerra esta sessão (o token para de valer na hora)
 GET  /api/auth/sessions | DELETE /api/auth/sessions/{id} | POST /api/auth/logout-all
+POST /api/auth/password         { "currentPassword": "...", "newPassword": "..." }
+POST /api/auth/password/forgot  { "cpf": "..." }                  # sempre 202
+POST /api/auth/password/reset   { "token": "...", "newPassword": "..." }
 
 # backoffice (KYC, bloqueios, estornos, emissão de cartão) e simulação de sistemas externos (depósito, compra no cartão)
 POST /api/auth/admin/login  { "username": "admin", "password": "kage-admin-dev-123" }
@@ -94,6 +97,8 @@ POST /api/auth/admin/login  { "username": "admin", "password": "kage-admin-dev-1
 | ADMIN | tudo, incluindo KYC, bloqueio de cliente/conta, aprovar/rejeitar estorno, emitir cartão (o limite é decisão de crédito), depósito, compra no cartão e rodar o ciclo de cobrança |
 
 Recurso de outro cliente responde **404** (e não 403), para não confirmar que o id existe. Em produção, defina `KAGE_JWT_SECRET` (≥ 32 bytes aleatórios) e `KAGE_ADMIN_PASSWORD`; os valores padrão do `application.yml` são só para desenvolvimento.
+
+Não há envio de e-mail real: o link de recuperação de senha é "enviado" por um canal simulado que **não** registra o token. Para testar o fluxo completo localmente, suba com `KAGE_DEV_EXPOSE_RESET_TOKEN=true` — o token volta na resposta do `/password/forgot`. **Nunca ligue isso em produção.**
 
 A coleção do Postman (`docs/postman`) já faz o login: a pasta 0 pega o token de admin, e a pasta 10 testa o acesso do cliente.
 

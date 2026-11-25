@@ -17,6 +17,9 @@ public interface CustomerDirectory {
     /** @return vazio se o cliente não existe */
     Optional<Boolean> isBlocked(java.util.UUID customerId);
 
+    /** CPF só com dígitos, para a política de senha ("não pode conter o CPF"). */
+    Optional<String> cpfDigitsOf(java.util.UUID customerId);
+
     record NewCustomer(String fullName, String cpf, String email, String phone, LocalDate birthDate,
                        String street, String number, String complement, String city, String state, String zipCode) {}
 

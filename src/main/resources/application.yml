@@ -46,6 +46,10 @@ kage:
       username: ${KAGE_ADMIN_USERNAME:admin}
       password: ${KAGE_ADMIN_PASSWORD:kage-admin-dev-123}
     bcrypt-strength: 12
+    password-reset:
+      # SÓ PARA DESENVOLVIMENTO: devolve o token de recuperação na resposta do /password/forgot
+      # (não há envio de e-mail real). Em produção fica false.
+      expose-token: ${KAGE_DEV_EXPOSE_RESET_TOKEN:false}
   billing:
     # fecha faturas no dia de corte e cobra o débito automático no vencimento
     scheduler-enabled: ${KAGE_BILLING_SCHEDULER_ENABLED:true}
