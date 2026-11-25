@@ -24,10 +24,13 @@ public class CloseInvoice {
 
     private final CardRepository cardRepository;
     private final InvoiceRepository invoiceRepository;
+    private final CardEventPublisher eventPublisher;
 
-    public CloseInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
+    public CloseInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                        CardEventPublisher eventPublisher) {
         this.cardRepository = cardRepository;
         this.invoiceRepository = invoiceRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -42,6 +45,7 @@ public class CloseInvoice {
 
         invoice.close();
         Invoice saved = invoiceRepository.save(invoice);
+        eventPublisher.publishInvoiceClosed(saved);
 
         return new Output(saved.getId(), saved.getCardId(), saved.getReferenceMonth().toString(),
                 saved.getStatus().name(), saved.total().amount(), saved.getClosingDate(), saved.getDueDate());

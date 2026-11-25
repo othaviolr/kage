@@ -78,6 +78,11 @@ class AccountPixEventConsumerTest {
         verify(entryRepository).save(argThat(e -> e.accountId().equals(target.getId())
                 && e.type() == EntryType.PIX_RECEIVED && e.balanceAfter().equals(Money.of("100.00"))));
         verify(outbox).publish("pix.exchange", "pix.debit.confirmed", transactionId);
+        // um evento por conta afetada, para quem consome (ex.: notificações) não precisar de lookup
+        verify(outbox).publish(eq("account.exchange"), eq("account.pix.sent"),
+                argThat(e -> e instanceof AccountPixMovementEvent m && m.accountId().equals(source.getId())));
+        verify(outbox).publish(eq("account.exchange"), eq("account.pix.received"),
+                argThat(e -> e instanceof AccountPixMovementEvent m && m.accountId().equals(target.getId())));
     }
 
     @Test
@@ -95,6 +100,8 @@ class AccountPixEventConsumerTest {
         verify(outbox).publish("pix.exchange", "pix.debit.failed",
                 new PixDebitFailedEvent(transactionId, "Saldo disponível insuficiente"));
         verify(outbox, never()).publish("pix.exchange", "pix.debit.confirmed", transactionId);
+        verify(outbox).publish(eq("account.exchange"), eq("account.pix.failed"),
+                argThat(e -> e instanceof AccountPixFailedEvent f && f.accountId().equals(source.getId())));
     }
 
     @Test

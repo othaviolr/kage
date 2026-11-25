@@ -38,6 +38,9 @@ class CloseInvoiceTest {
     @Mock
     InvoiceRepository invoiceRepository;
 
+    @Mock
+    CardEventPublisher eventPublisher;
+
     @InjectMocks
     CloseInvoice closeInvoice;
 
@@ -67,6 +70,7 @@ class CloseInvoiceTest {
         assertThat(output.total()).isEqualByComparingTo("150.00");
         assertThat(output.closingDate()).isEqualTo(LocalDate.of(2026, 9, 10));
         assertThat(output.dueDate()).isEqualTo(LocalDate.of(2026, 9, 20));
+        org.mockito.Mockito.verify(eventPublisher).publishInvoiceClosed(invoice);
         verify(invoiceRepository).save(invoice);
     }
 

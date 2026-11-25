@@ -1,34 +1,19 @@
 package com.kage.account.infrastructure.messaging;
 
-import org.springframework.amqp.core.*;
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * O Account publica seus eventos (account.deposit.made, account.withdrawal.made, account.pix.*) no
+ * account.exchange e não declara filas: cada consumidor declara e liga a própria (ex.: notification).
+ * Antes havia filas de depósito/saque sem consumidor nenhum, acumulando mensagens para sempre.
+ */
 @Configuration
 public class AccountRabbitMQConfig {
 
     @Bean
-    public TopicExchange accountExchange(){
+    public TopicExchange accountExchange() {
         return new TopicExchange("account.exchange");
-    }
-
-    @Bean
-    public Queue accountDepositMadeQueue(){
-        return QueueBuilder.durable("account.deposit.made.queue").build();
-    }
-
-    @Bean
-    public Binding accountDepositMadeBinding(){
-        return BindingBuilder.bind(accountDepositMadeQueue()).to(accountExchange()).with("account.deposit.made");
-    }
-
-    @Bean
-    public Queue accountWithdrawalMadeQueue(){
-        return QueueBuilder.durable("account.withdrawal.made.queue").build();
-    }
-
-    @Bean
-    public Binding accountWithdrawalMadeBinding(){
-        return BindingBuilder.bind(accountWithdrawalMadeQueue()).to(accountExchange()).with("account.withdrawal.made");
     }
 }

@@ -39,6 +39,7 @@ class PayInvoiceTest {
     @Mock CardRepository cardRepository;
     @Mock InvoiceRepository invoiceRepository;
     @Mock CardBillingAccountService billingAccount;
+    @Mock CardEventPublisher eventPublisher;
 
     @InjectMocks PayInvoice payInvoice;
 
@@ -74,6 +75,7 @@ class PayInvoiceTest {
         assertThat(output.availableLimit()).isEqualByComparingTo("5000.00");
         assertThat(output.paidAt()).isNotNull();
         verify(billingAccount).debitInvoicePayment(card.getAccountId(), Money.of("1500.00"), invoice.getId());
+        verify(eventPublisher).publishInvoicePaid(invoice);
     }
 
     @Test
@@ -111,6 +113,7 @@ class PayInvoiceTest {
         assertThat(card.availableLimit()).isEqualTo(Money.of("3500.00"));
         verify(cardRepository, never()).save(any());
         verify(invoiceRepository, never()).save(any());
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test
