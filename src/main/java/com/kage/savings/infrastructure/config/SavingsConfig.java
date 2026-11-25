@@ -4,7 +4,9 @@ import com.kage.account.domain.repository.AccountEntryRepository;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.domain.service.AccountSavingsCheck;
 import com.kage.account.infrastructure.SavingsAccountGatewayImpl;
+import com.kage.savings.application.usecase.GetIncomeReport;
 import com.kage.savings.application.usecase.RunSavingsYield;
+import com.kage.savings.infrastructure.report.JdbcIncomeReportSource;
 import com.kage.savings.application.usecase.SavingsBoxes;
 import com.kage.savings.application.usecase.SavingsEventPublisher;
 import com.kage.savings.application.usecase.SavingsYieldExecutor;
@@ -92,6 +94,11 @@ public class SavingsConfig {
             throw new IllegalStateException("kage.savings.cdi-source deve ser 'bcb' ou 'fixed', não '" + source + "'");
         }
         return new FixedCdiRateProvider(annualCdi);
+    }
+
+    @Bean
+    public GetIncomeReport getIncomeReport(JdbcTemplate jdbcTemplate, Clock clock) {
+        return new GetIncomeReport(new JdbcIncomeReportSource(jdbcTemplate), clock);
     }
 
     @Bean

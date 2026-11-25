@@ -9820,6 +9820,93 @@
               }
             }
           ]
+        },
+        {
+          "name": "11.24 Informe de rendimentos do ano corrente (parcial)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{sbCustomerId}}/income-report?year={{sbYear}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{sbCustomerId}}",
+                "income-report"
+              ],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "{{sbYear}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('sbYear', String(new Date().getFullYear()));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Parcial, do titular', () => { pm.expect(j.partial).to.eql(true); pm.expect(j.holderName).to.eql('Cliente Caixinha'); });",
+                  "pm.test('Caixinha encerrada no informe, zerada', () => { pm.expect(j.savingsBoxes.length).to.eql(1); pm.expect(j.savingsBoxes[0].status).to.eql('CLOSED'); pm.expect(j.savingsBoxes[0].balanceYearEnd).to.eql(0); });",
+                  "pm.test('Rendimento líquido = ganho - IOF - IR', () => pm.expect(j.totals.exclusiveTaxationIncome).to.be.closeTo(j.totals.realizedGain - j.totals.iofWithheld - j.totals.incomeTaxWithheld, 0.001));",
+                  "pm.test('Conta com o saldo de hoje', () => pm.expect(j.accounts[0].balanceYearEnd).to.be.closeTo(600 + Number(pm.collectionVariables.get('sbNetWithdrawn')), 0.001));",
+                  "pm.test('Guia da declaração', () => pm.expect(j.guide.exclusiveTaxation).to.include('item 06'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.25 Informe de ano inválido -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{sbCustomerId}}/income-report?year=1999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{sbCustomerId}}",
+                "income-report"
+              ],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "1999"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
