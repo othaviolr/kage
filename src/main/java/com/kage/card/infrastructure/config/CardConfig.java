@@ -13,8 +13,12 @@ import com.kage.card.domain.service.CardCustomerValidationService;
 import com.kage.card.infrastructure.persistence.*;
 import com.kage.customer.domain.repository.CustomerRepository;
 import com.kage.customer.infrastructure.CustomerValidationServiceImpl;
+import com.kage.card.infrastructure.scheduling.BillingScheduler;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.time.Clock;
 
 @Configuration
 public class CardConfig {
@@ -92,6 +96,23 @@ public class CardConfig {
     public PayInvoice payInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository,
                                  CardBillingAccountService cardBillingAccountService) {
         return new PayInvoice(cardRepository, invoiceRepository, cardBillingAccountService);
+    }
+
+    @Bean
+    public SetAutoDebit setAutoDebit(CardRepository cardRepository) {
+        return new SetAutoDebit(cardRepository);
+    }
+
+    @Bean
+    public RunBillingCycle runBillingCycle(InvoiceRepository invoiceRepository, CloseInvoice closeInvoice,
+                                           PayInvoice payInvoice) {
+        return new RunBillingCycle(invoiceRepository, closeInvoice, payInvoice);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "kage.billing.scheduler-enabled", havingValue = "true", matchIfMissing = true)
+    public BillingScheduler billingScheduler(RunBillingCycle runBillingCycle, Clock clock) {
+        return new BillingScheduler(runBillingCycle, clock);
     }
 
     @Bean

@@ -66,6 +66,9 @@ public abstract class AbstractIntegrationTest {
 
         // custo mínimo do BCrypt nos testes: o custo de produção (12) só deixaria a suíte lenta
         registry.add("kage.security.bcrypt-strength", () -> "4");
+
+        // o job diário de cobrança não pode disparar no meio de um teste; quem testa chama o use case
+        registry.add("kage.billing.scheduler-enabled", () -> "false");
     }
 
     /**

@@ -3,6 +3,7 @@ package com.kage.card.infrastructure.persistence;
 import com.kage.card.domain.entity.Invoice;
 import com.kage.card.domain.repository.InvoiceRepository;
 
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
@@ -56,6 +57,20 @@ public class InvoiceRepositoryImpl implements InvoiceRepository {
         return invoiceJpaRepository.findByCardIdOrderByReferenceMonthDesc(cardId).stream()
                 .map(entity -> InvoiceMapper.toDomain(entity, invoiceItemJpaRepository.findByInvoiceId(entity.getId())))
                 .toList();
+    }
+
+    @Override
+    public List<InvoiceRef> findOpenWithClosingDateBefore(LocalDate date) {
+        return invoiceJpaRepository.findOpenWithClosingDateBefore(date).stream().map(InvoiceRepositoryImpl::toRef).toList();
+    }
+
+    @Override
+    public List<InvoiceRef> findClosedDueUntilWithAutoDebit(LocalDate date) {
+        return invoiceJpaRepository.findClosedDueUntilWithAutoDebit(date).stream().map(InvoiceRepositoryImpl::toRef).toList();
+    }
+
+    private static InvoiceRef toRef(InvoiceJpaEntity entity) {
+        return new InvoiceRef(entity.getCardId(), YearMonth.parse(entity.getReferenceMonth()));
     }
 
     @Override

@@ -46,6 +46,11 @@ kage:
       username: ${KAGE_ADMIN_USERNAME:admin}
       password: ${KAGE_ADMIN_PASSWORD:kage-admin-dev-123}
     bcrypt-strength: 12
+  billing:
+    # fecha faturas no dia de corte e cobra o débito automático no vencimento
+    scheduler-enabled: ${KAGE_BILLING_SCHEDULER_ENABLED:true}
+    cron: "0 0 3 * * *"
+    zone: America/Sao_Paulo
 
 springdoc:
   api-docs:

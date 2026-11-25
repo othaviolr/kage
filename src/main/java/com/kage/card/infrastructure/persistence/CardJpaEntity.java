@@ -37,6 +37,9 @@ public class CardJpaEntity {
     @Column(nullable = false)
     private CardStatus status;
 
+    @Column(name = "auto_debit", nullable = false)
+    private boolean autoDebit;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -65,6 +68,8 @@ public class CardJpaEntity {
     public void setDueDay(int dueDay) { this.dueDay = dueDay; }
     public CardStatus getStatus() { return status; }
     public void setStatus(CardStatus status) { this.status = status; }
+    public boolean isAutoDebit() { return autoDebit; }
+    public void setAutoDebit(boolean autoDebit) { this.autoDebit = autoDebit; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

@@ -21,12 +21,13 @@ public class Card {
     private final int closingDay;
     private final int dueDay;
     private CardStatus status;
+    private boolean autoDebit;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private final Long version;
 
     private Card(UUID id, UUID customerId, UUID accountId, Money creditLimit,
-                 Money usedLimit, int closingDay, int dueDay, CardStatus status,
+                 Money usedLimit, int closingDay, int dueDay, CardStatus status, boolean autoDebit,
                  LocalDateTime createdAt, LocalDateTime updatedAt, Long version) {
         this.id = id;
         this.customerId = customerId;
@@ -36,6 +37,7 @@ public class Card {
         this.closingDay = closingDay;
         this.dueDay = dueDay;
         this.status = status;
+        this.autoDebit = autoDebit;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.version = version;
@@ -49,14 +51,14 @@ public class Card {
         validateDay(dueDay, "Dia de vencimento");
 
         LocalDateTime now = LocalDateTime.now();
-        return new Card(UUID.randomUUID(), customerId, accountId, creditLimit, Money.ZERO, closingDay, dueDay, CardStatus.ACTIVE, now, now, null);
+        return new Card(UUID.randomUUID(), customerId, accountId, creditLimit, Money.ZERO, closingDay, dueDay, CardStatus.ACTIVE, false, now, now, null);
     }
 
     public static Card reconstitute(UUID id, UUID customerId, UUID accountId, Money creditLimit,
-                                    Money usedLimit, int closingDay, int dueDay, CardStatus status,
+                                    Money usedLimit, int closingDay, int dueDay, CardStatus status, boolean autoDebit,
                                     LocalDateTime createdAt, LocalDateTime updatedAt, Long version) {
         return new Card(id, customerId, accountId, creditLimit, usedLimit,
-                closingDay, dueDay, status, createdAt, updatedAt, version);
+                closingDay, dueDay, status, autoDebit, createdAt, updatedAt, version);
     }
 
     public Money availableLimit() {
@@ -97,6 +99,21 @@ public class Card {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * Débito automático: no vencimento, a fatura fechada é paga com o saldo da conta vinculada. Opção
+     * do cliente — sem ela, a fatura espera o pagamento manual.
+     */
+    public void enableAutoDebit() {
+        if (this.status == CardStatus.CANCELLED) throw new BusinessRuleException("Cartão cancelado não pode ter débito automático");
+        this.autoDebit = true;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void disableAutoDebit() {
+        this.autoDebit = false;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     private static void validateDay(int day, String field) {
         if (day < MIN_DAY || day > MAX_DAY) {
             throw new ValidationException(field + " deve estar entre " + MIN_DAY + " e " + MAX_DAY);
@@ -111,6 +128,7 @@ public class Card {
     public int getClosingDay() { return closingDay; }
     public int getDueDay() { return dueDay; }
     public CardStatus getStatus() { return status; }
+    public boolean isAutoDebit() { return autoDebit; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public Long getVersion() { return version; }

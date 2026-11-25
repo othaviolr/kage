@@ -21,6 +21,28 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class CardTest {
 
+    @Test
+    void autoDebit_deveNascerDesligado_eLigarEDesligar() {
+        Card card = Card.create(UUID.randomUUID(), UUID.randomUUID(), Money.of("1000.00"), 10, 20);
+        assertThat(card.isAutoDebit()).isFalse();
+
+        card.enableAutoDebit();
+        assertThat(card.isAutoDebit()).isTrue();
+
+        card.disableAutoDebit();
+        assertThat(card.isAutoDebit()).isFalse();
+    }
+
+    @Test
+    void autoDebit_naoPodeSerLigado_emCartaoCancelado() {
+        Card card = Card.create(UUID.randomUUID(), UUID.randomUUID(), Money.of("1000.00"), 10, 20);
+        card.cancel();
+
+        assertThatThrownBy(card::enableAutoDebit)
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("cancelado");
+    }
+
     private Card card;
 
     @BeforeEach

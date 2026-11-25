@@ -25,6 +25,7 @@ public class CardController {
     private final CancelCard cancelCard;
     private final AccessGuard accessGuard;
     private final PayInvoice payInvoice;
+    private final SetAutoDebit setAutoDebit;
 
     /**
      * Emissão é do ADMIN: o limite de crédito é decisão da análise de crédito do banco, não do cliente.
@@ -35,9 +36,10 @@ public class CardController {
                           UnblockCard unblockCard, RegisterPurchase registerPurchase,
                           GetInvoice getInvoice, ListInvoices listInvoices,
                           CloseInvoice closeInvoice, CancelCard cancelCard, AccessGuard accessGuard,
-                          PayInvoice payInvoice) {
+                          PayInvoice payInvoice, SetAutoDebit setAutoDebit) {
         this.accessGuard = accessGuard;
         this.payInvoice = payInvoice;
+        this.setAutoDebit = setAutoDebit;
         this.issueCard = issueCard;
         this.getCard = getCard;
         this.blockCard = blockCard;
@@ -97,6 +99,16 @@ public class CardController {
     public ResponseEntity<GetInvoice.Output> getInvoice(@PathVariable UUID id, @PathVariable String referenceMonth) {
         accessGuard.checkCard(id);
         return ResponseEntity.ok(getInvoice.execute(new GetInvoice.Input(id, referenceMonth)));
+    }
+
+    /** Liga/desliga o pagamento automático da fatura no vencimento, com o saldo da conta vinculada. */
+    @PatchMapping("/{id}/auto-debit")
+    public ResponseEntity<SetAutoDebit.Output> setAutoDebit(@PathVariable UUID id, @RequestBody AutoDebitRequest request) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(setAutoDebit.execute(new SetAutoDebit.Input(id, request.enabled())));
+    }
+
+    public record AutoDebitRequest(Boolean enabled) {
     }
 
     /** Paga o total da fatura fechada com o saldo da conta vinculada ao cartão. */

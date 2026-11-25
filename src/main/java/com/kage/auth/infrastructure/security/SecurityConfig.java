@@ -49,6 +49,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/accounts/*/block", "/api/accounts/*/unblock").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/pix/refunds/*/approve", "/api/pix/refunds/*/reject").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/cards").hasRole("ADMIN") // limite = análise de crédito
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         // simulação de sistemas externos
                         .requestMatchers(HttpMethod.POST, "/api/accounts/*/deposit").hasRole("ADMIN")

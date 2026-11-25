@@ -3700,6 +3700,245 @@
           ]
         },
         {
+          "name": "3.33.7 Ligar débito automático",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/auto-debit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "auto-debit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Ligado', () => pm.expect(pm.response.json().autoDebit).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.8 Débito automático sem enabled -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/auto-debit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "auto-debit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.9 Cartão mostra débito automático ligado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('autoDebit = true', () => pm.expect(pm.response.json().autoDebit).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.10 Rodar ciclo de cobrança de hoje (backoffice)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/billing/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "billing",
+                "run"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Resumo do ciclo', () => {",
+                  "  pm.expect(j.date).to.be.a('string');",
+                  "  pm.expect(j.invoicesClosed).to.be.a('number');",
+                  "  pm.expect(j.invoicesPaid).to.be.a('number');",
+                  "  pm.expect(j.failures).to.be.an('array');",
+                  "});",
+                  "pm.test('Não falhou para este cartão (fatura fechada já foi paga em 3.33.2)', () =>",
+                  "  pm.expect(j.failures.filter(f => f.cardId === pm.collectionVariables.get('cardId'))).to.be.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.11 Rodar ciclo com data inválida -> 400",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/billing/run?date=ontem",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "billing",
+                "run"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "ontem"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.12 Desligar débito automático",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/auto-debit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "auto-debit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Desligado', () => pm.expect(pm.response.json().autoDebit).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "3.34 Cancelar cartão com limite utilizado -> 422",
           "request": {
             "method": "PATCH",
@@ -6840,6 +7079,46 @@
                 "exec": [
                   "pm.test('Status 401', () => pm.response.to.have.status(401));",
                   "pm.test('Corpo no formato ErrorResponse', () => pm.expect(pm.response.json().status).to.eql(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.14 Cliente roda o ciclo de cobrança -> 403",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/billing/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "billing",
+                "run"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));"
                 ]
               }
             }

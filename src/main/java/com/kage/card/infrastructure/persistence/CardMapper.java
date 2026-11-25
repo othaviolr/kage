@@ -15,6 +15,7 @@ public class CardMapper {
         entity.setClosingDay(card.getClosingDay());
         entity.setDueDay(card.getDueDay());
         entity.setStatus(card.getStatus());
+        entity.setAutoDebit(card.isAutoDebit());
         entity.setCreatedAt(card.getCreatedAt());
         entity.setUpdatedAt(card.getUpdatedAt());
         entity.setVersion(card.getVersion());
@@ -31,6 +32,7 @@ public class CardMapper {
                 entity.getClosingDay(),
                 entity.getDueDay(),
                 entity.getStatus(),
+                entity.isAutoDebit(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
                 entity.getVersion()
