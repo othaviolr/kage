@@ -6105,6 +6105,161 @@
               }
             }
           ]
+        },
+        {
+          "name": "6.97 PIX com Idempotency-Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{pixIdemKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "send"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceAccountId\": \"{{pixSrcAccountId}}\",\n  \"targetPixKey\": \"{{dstKey}}\",\n  \"amount\": 5,\n  \"description\": \"retry\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('pixIdemKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Primeira execução (não é replay)', () => pm.expect(pm.response.headers.has('Idempotent-Replayed')).to.eql(false));",
+                  "pm.collectionVariables.set('idemPixTxId', pm.response.json().transactionId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.98 Retry do mesmo PIX (mesma chave) -> mesma resposta, sem novo PIX",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{pixIdemKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "send"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceAccountId\": \"{{pixSrcAccountId}}\",\n  \"targetPixKey\": \"{{dstKey}}\",\n  \"amount\": 5,\n  \"description\": \"retry\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Replay da resposta guardada', () => pm.expect(pm.response.headers.get('Idempotent-Replayed')).to.eql('true'));",
+                  "pm.test('Mesma transação', () => pm.expect(pm.response.json().transactionId).to.eql(pm.collectionVariables.get('idemPixTxId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.99 Mesma chave com outro valor -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{pixIdemKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "send"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceAccountId\": \"{{pixSrcAccountId}}\",\n  \"targetPixKey\": \"{{dstKey}}\",\n  \"amount\": 7,\n  \"description\": \"retry\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Chave já usada', () => pm.expect(pm.response.json().message).to.include('já usada'));"
+                ]
+              }
+            }
+          ]
         }
       ],
       "description": "Fluxo assíncrono: POST /send devolve PROCESSING; o débito/crédito e a confirmação acontecem via RabbitMQ (pix.sent.queue -> pix.debit.confirmed.queue). Os requests 'Aguardar' fazem retry no Collection Runner."
@@ -8942,6 +9097,14 @@
     },
     {
       "key": "installmentFirstMonth",
+      "value": ""
+    },
+    {
+      "key": "pixIdemKey",
+      "value": ""
+    },
+    {
+      "key": "idemPixTxId",
       "value": ""
     }
   ],
