@@ -35,6 +35,16 @@ jobs:
           path: ~/.m2/wrapper
           key: maven-wrapper-${{ hashFiles('.mvn/wrapper/maven-wrapper.properties') }}
 
+      # o download do mvnw não tem retry, e o Central às vezes responde 429 ao runner
+      - name: Baixar o Maven (com retry)
+        run: |
+          for i in 1 2 3 4 5; do
+            ./mvnw -B -v && exit 0
+            echo "tentativa $i falhou; esperando $((i * 15))s"
+            sleep $((i * 15))
+          done
+          exit 1
+
       # Testcontainers usa o Docker do runner (Postgres e RabbitMQ reais)
       - name: mvn verify
         run: ./mvnw -B -ntp verify
