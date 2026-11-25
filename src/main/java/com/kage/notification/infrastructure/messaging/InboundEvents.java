@@ -49,6 +49,15 @@ public final class InboundEvents {
                                      String reason) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record PixAutomaticRequested(UUID authorizationId, UUID payerAccountId, String receiverName, String description,
+                                        String frequency, BigDecimal fixedAmount, LocalDate startDate) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record PixAutomaticChargeScheduled(UUID chargeId, UUID authorizationId, UUID payerAccountId,
+                                              String receiverName, String description, BigDecimal amount,
+                                              LocalDate dueDate) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record PasswordChanged(UUID customerId, String reason) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

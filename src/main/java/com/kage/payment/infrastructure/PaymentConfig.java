@@ -1,7 +1,11 @@
 package com.kage.payment.infrastructure;
 
 import com.kage.account.domain.repository.AccountRepository;
+import com.kage.account.infrastructure.AccountHolderDirectoryImpl;
 import com.kage.account.infrastructure.AccountValidationServiceImpl;
+import com.kage.customer.domain.repository.CustomerRepository;
+import com.kage.payment.domain.repository.PixAutomaticRepository;
+import com.kage.payment.domain.service.AccountHolderDirectory;
 import com.kage.payment.application.usecase.*;
 import com.kage.payment.domain.repository.PixKeyRepository;
 import com.kage.payment.domain.repository.PixRecurrenceRepository;
@@ -102,6 +106,26 @@ public class PaymentConfig {
                                      PixRecurrenceChain pixRecurrenceChain, Clock clock) {
         return new RecurringPix(pixKeyRepository, pixRecurrenceRepository, pixTransactionRepository, pixRecurrenceChain,
                 clock);
+    }
+
+    @Bean
+    public PixAutomaticRepository pixAutomaticRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcPixAutomaticRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public AccountHolderDirectory accountHolderDirectory(AccountRepository accountRepository,
+                                                         CustomerRepository customerRepository) {
+        return new AccountHolderDirectoryImpl(accountRepository, customerRepository);
+    }
+
+    @Bean
+    public PixAutomatic pixAutomatic(PixAutomaticRepository pixAutomaticRepository, PixKeyRepository pixKeyRepository,
+                                     PixTransactionRepository pixTransactionRepository,
+                                     AccountHolderDirectory accountHolderDirectory, PixEventPublisher pixEventPublisher,
+                                     Clock clock) {
+        return new PixAutomatic(pixAutomaticRepository, pixKeyRepository, pixTransactionRepository, accountHolderDirectory,
+                pixEventPublisher, clock);
     }
 
     @Bean

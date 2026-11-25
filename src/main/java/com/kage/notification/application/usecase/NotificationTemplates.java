@@ -45,6 +45,31 @@ public final class NotificationTemplates {
                 + scheduledDate.format(DATE) + " não foi realizado: " + reason + ". Nenhum valor saiu da sua conta.");
     }
 
+    public static Text pixAutomaticRequested(String receiverName, String description, String frequency,
+                                             BigDecimal fixedAmount, LocalDate startDate) {
+        String value = fixedAmount != null ? "de " + money(fixedAmount) : "de valor variável";
+        return new Text("Pedido de PIX Automático", receiverName + " pediu autorização para cobrar " + description
+                + " " + frequencyLabel(frequency) + ", " + value + ", a partir de " + startDate.format(DATE)
+                + ". Autorize ou recuse no app; sem resposta até lá, o pedido expira.");
+    }
+
+    public static Text pixAutomaticChargeScheduled(String receiverName, String description, BigDecimal amount,
+                                                   LocalDate dueDate) {
+        return new Text("PIX Automático agendado", receiverName + " vai cobrar " + money(amount) + " em "
+                + dueDate.format(DATE) + " (" + description + "). Se quiser, cancele esta cobrança até a véspera.");
+    }
+
+    private static String frequencyLabel(String frequency) {
+        return switch (frequency) {
+            case "WEEKLY" -> "toda semana";
+            case "MONTHLY" -> "todo mês";
+            case "QUARTERLY" -> "a cada 3 meses";
+            case "SEMIANNUAL" -> "a cada 6 meses";
+            case "ANNUAL" -> "todo ano";
+            default -> frequency;
+        };
+    }
+
     public static Text refundSent(BigDecimal amount) {
         return new Text("Estorno de PIX", "Um PIX que você recebeu foi estornado: " + money(amount) + " foram devolvidos.");
     }

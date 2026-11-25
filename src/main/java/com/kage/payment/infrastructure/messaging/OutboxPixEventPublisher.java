@@ -2,6 +2,8 @@ package com.kage.payment.infrastructure.messaging;
 
 import com.kage.payment.application.usecase.PixEventPublisher;
 import com.kage.payment.application.usecase.SendPix;
+import com.kage.payment.domain.entity.PixAutomaticAuthorization;
+import com.kage.payment.domain.entity.PixAutomaticCharge;
 import com.kage.payment.domain.entity.PixRefund;
 import com.kage.payment.domain.entity.PixTransaction;
 import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
@@ -37,6 +39,30 @@ public class OutboxPixEventPublisher implements PixEventPublisher {
                 transaction.getSourceAccountId(), transaction.getAmount().amount(),
                 transaction.getScheduledDate().toLocalDate(), reason, java.time.Instant.now()));
     }
+
+    @Override
+    public void publishPixAutomaticRequested(PixAutomaticAuthorization a) {
+        outbox.publish("pix.exchange", "pix.automatic.requested", new PixAutomaticRequestedEvent(a.getId(),
+                a.getPayerAccountId(), a.getReceiverName(), a.getDescription(), a.getFrequency().name(),
+                a.getFixedAmount() == null ? null : a.getFixedAmount().amount(), a.getStartDate(), java.time.Instant.now()));
+    }
+
+    @Override
+    public void publishPixAutomaticChargeScheduled(PixAutomaticAuthorization a, PixAutomaticCharge c) {
+        outbox.publish("pix.exchange", "pix.automatic.charge.scheduled", new PixAutomaticChargeScheduledEvent(c.id(),
+                a.getId(), a.getPayerAccountId(), a.getReceiverName(), a.getDescription(), c.amount().amount(), c.dueDate(),
+                java.time.Instant.now()));
+    }
+
+    public record PixAutomaticRequestedEvent(java.util.UUID authorizationId, java.util.UUID payerAccountId,
+                                             String receiverName, String description, String frequency,
+                                             java.math.BigDecimal fixedAmount, java.time.LocalDate startDate,
+                                             java.time.Instant occurredAt) {}
+
+    public record PixAutomaticChargeScheduledEvent(java.util.UUID chargeId, java.util.UUID authorizationId,
+                                                   java.util.UUID payerAccountId, String receiverName, String description,
+                                                   java.math.BigDecimal amount, java.time.LocalDate dueDate,
+                                                   java.time.Instant occurredAt) {}
 
     public record ScheduledPixFailedEvent(java.util.UUID transactionId, java.util.UUID sourceAccountId,
                                           java.math.BigDecimal amount, java.time.LocalDate scheduledDate,
