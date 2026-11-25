@@ -37,11 +37,14 @@ public class RunBillingCycle {
     private final InvoiceRepository invoiceRepository;
     private final CloseInvoice closeInvoice;
     private final PayInvoice payInvoice;
+    private final CardEventPublisher eventPublisher;
 
-    public RunBillingCycle(InvoiceRepository invoiceRepository, CloseInvoice closeInvoice, PayInvoice payInvoice) {
+    public RunBillingCycle(InvoiceRepository invoiceRepository, CloseInvoice closeInvoice, PayInvoice payInvoice,
+                           CardEventPublisher eventPublisher) {
         this.invoiceRepository = invoiceRepository;
         this.closeInvoice = closeInvoice;
         this.payInvoice = payInvoice;
+        this.eventPublisher = eventPublisher;
     }
 
     public Output execute(LocalDate today) {
@@ -60,6 +63,10 @@ public class RunBillingCycle {
             if (attempt(ref, "AUTO_DEBIT", failures,
                     () -> payInvoice.execute(new PayInvoice.Input(ref.cardId(), ref.referenceMonth().toString())))) {
                 paid++;
+            } else {
+                // a transação do pagamento já sofreu rollback: o aviso sai numa transação própria
+                Failure failure = failures.get(failures.size() - 1);
+                eventPublisher.publishAutoDebitFailed(ref.cardId(), failure.referenceMonth(), failure.reason());
             }
         }
 

@@ -15,6 +15,8 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,6 +24,7 @@ import java.util.UUID;
 public class AccountPixEventConsumer {
 
     private static final Logger logger = LoggerFactory.getLogger(AccountPixEventConsumer.class);
+    private static final String ACCOUNT_EXCHANGE = "account.exchange";
 
     private final AccountRepository accountRepository;
     private final AccountEntryRepository entryRepository;
@@ -50,10 +53,14 @@ public class AccountPixEventConsumer {
         if (failure.isPresent()) {
             logger.warn("Falha ao efetivar PIX (transactionId={}): {}", event.transactionId(), failure.get());
             outbox.publish("pix.exchange", "pix.debit.failed", new PixDebitFailedEvent(event.transactionId(), failure.get()));
+            outbox.publish(ACCOUNT_EXCHANGE, "account.pix.failed", new AccountPixFailedEvent(event.sourceAccountId(),
+                    event.transactionId(), event.amount(), failure.get(), Instant.now()));
             return;
         }
 
         outbox.publish("pix.exchange", "pix.debit.confirmed", event.transactionId());
+        publishMovements(event.sourceAccountId(), event.targetAccountId(), event.transactionId(), event.amount(),
+                "account.pix.sent", "account.pix.received");
     }
 
     /** Estorno aprovado: o dinheiro volta de quem recebeu o PIX para quem pagou. */
@@ -71,10 +78,23 @@ public class AccountPixEventConsumer {
         if (failure.isPresent()) {
             logger.warn("Falha ao efetivar estorno PIX (refundId={}): {}", event.refundId(), failure.get());
             outbox.publish("pix.exchange", "pix.refund.failed", new PixRefundFailedEvent(event.refundId(), failure.get()));
+            // quem precisa saber é quem pediu o estorno: o pagador original, que receberia o dinheiro de volta
+            outbox.publish(ACCOUNT_EXCHANGE, "account.pix.refund.failed", new AccountPixFailedEvent(event.toAccountId(),
+                    event.refundId(), event.amount(), failure.get(), Instant.now()));
             return;
         }
 
         outbox.publish("pix.exchange", "pix.refund.completed", event.refundId());
+        publishMovements(event.fromAccountId(), event.toAccountId(), event.refundId(), event.amount(),
+                "account.pix.refund.sent", "account.pix.refund.received");
+    }
+
+    /** Um evento por conta afetada, na mesma transação do débito/crédito (outbox). */
+    private void publishMovements(UUID fromAccountId, UUID toAccountId, UUID referenceId, BigDecimal amount,
+                                  String debitRoutingKey, String creditRoutingKey) {
+        Instant now = Instant.now();
+        outbox.publish(ACCOUNT_EXCHANGE, debitRoutingKey, new AccountPixMovementEvent(fromAccountId, referenceId, amount, now));
+        outbox.publish(ACCOUNT_EXCHANGE, creditRoutingKey, new AccountPixMovementEvent(toAccountId, referenceId, amount, now));
     }
 
     /**

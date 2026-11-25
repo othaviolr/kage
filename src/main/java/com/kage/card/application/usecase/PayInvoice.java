@@ -30,12 +30,14 @@ public class PayInvoice {
     private final CardRepository cardRepository;
     private final InvoiceRepository invoiceRepository;
     private final CardBillingAccountService billingAccount;
+    private final CardEventPublisher eventPublisher;
 
     public PayInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository,
-                      CardBillingAccountService billingAccount) {
+                      CardBillingAccountService billingAccount, CardEventPublisher eventPublisher) {
         this.cardRepository = cardRepository;
         this.invoiceRepository = invoiceRepository;
         this.billingAccount = billingAccount;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -58,6 +60,7 @@ public class PayInvoice {
 
         Card savedCard = cardRepository.save(card);
         Invoice savedInvoice = invoiceRepository.save(invoice);
+        eventPublisher.publishInvoicePaid(savedInvoice);
 
         return new Output(savedInvoice.getId(), savedCard.getId(), savedInvoice.getReferenceMonth().toString(),
                 savedInvoice.getStatus().name(), total.amount(), savedInvoice.getPaidAt(),

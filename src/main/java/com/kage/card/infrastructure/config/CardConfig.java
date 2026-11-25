@@ -13,7 +13,11 @@ import com.kage.card.domain.service.CardCustomerValidationService;
 import com.kage.card.infrastructure.persistence.*;
 import com.kage.customer.domain.repository.CustomerRepository;
 import com.kage.customer.infrastructure.CustomerValidationServiceImpl;
+import com.kage.card.infrastructure.messaging.CardEvents;
+import com.kage.card.infrastructure.messaging.OutboxCardEventPublisher;
 import com.kage.card.infrastructure.scheduling.BillingScheduler;
+import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -82,8 +86,19 @@ public class CardConfig {
     }
 
     @Bean
-    public CloseInvoice closeInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
-        return new CloseInvoice(cardRepository, invoiceRepository);
+    public CloseInvoice closeInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                                     CardEventPublisher cardEventPublisher) {
+        return new CloseInvoice(cardRepository, invoiceRepository, cardEventPublisher);
+    }
+
+    @Bean
+    public CardEventPublisher cardEventPublisher(OutboxEventPublisher outboxEventPublisher) {
+        return new OutboxCardEventPublisher(outboxEventPublisher);
+    }
+
+    @Bean
+    public TopicExchange cardExchange() {
+        return new TopicExchange(CardEvents.EXCHANGE);
     }
 
     @Bean
@@ -94,8 +109,9 @@ public class CardConfig {
 
     @Bean
     public PayInvoice payInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository,
-                                 CardBillingAccountService cardBillingAccountService) {
-        return new PayInvoice(cardRepository, invoiceRepository, cardBillingAccountService);
+                                 CardBillingAccountService cardBillingAccountService,
+                                 CardEventPublisher cardEventPublisher) {
+        return new PayInvoice(cardRepository, invoiceRepository, cardBillingAccountService, cardEventPublisher);
     }
 
     @Bean
@@ -105,8 +121,8 @@ public class CardConfig {
 
     @Bean
     public RunBillingCycle runBillingCycle(InvoiceRepository invoiceRepository, CloseInvoice closeInvoice,
-                                           PayInvoice payInvoice) {
-        return new RunBillingCycle(invoiceRepository, closeInvoice, payInvoice);
+                                           PayInvoice payInvoice, CardEventPublisher cardEventPublisher) {
+        return new RunBillingCycle(invoiceRepository, closeInvoice, payInvoice, cardEventPublisher);
     }
 
     @Bean

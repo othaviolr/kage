@@ -18,6 +18,7 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 - **Cartão de crédito**: emissão vinculada à conta, limite, compras idempotentes, fatura mensal com fechamento e pagamento pelo saldo da conta (débito, extrato e liberação do limite numa única transação)
 - **Ciclo de cobrança automático**: job diário (03:00) fecha as faturas no dia de corte e, para quem ligou o débito automático, paga no vencimento; sem saldo, a fatura fica em atraso e é tentada de novo no dia seguinte. O backoffice pode rodar o ciclo para qualquer data (`POST /api/admin/billing/run?date=`)
 
+- **Notificações**: depósito, saque, PIX enviado/recebido/recusado, estornos, fatura fechada/paga e débito automático recusado viram avisos na caixa de entrada do cliente (`GET /api/notifications`) e são entregues por um canal externo (hoje simulado em log; a porta `NotificationChannel` aceita FCM, SES etc.). Consome os eventos que os contextos já publicam pelo outbox; reentrega não duplica aviso
 - **Segurança**: cadastro pelo app com senha (BCrypt), login por CPF devolvendo JWT de 15 min, travamento após 5 senhas erradas, cliente só acessa o que é dele, backoffice com papel ADMIN
 
 ### Roadmap
@@ -26,7 +27,7 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 - PIX agendado
 - Pagamento parcial/mínimo de fatura (rotativo), juros por atraso e parcelamento no cartão
 - TED, boletos, empréstimos, investimentos
-- Notificações (push, e-mail, SMS)
+- Entrega real das notificações (push via FCM, e-mail, SMS) e preferências de canal por cliente
 
 ## Stack
 
@@ -43,7 +44,7 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 
 Clean Architecture + DDD com comunicação event-driven entre bounded contexts. Monolito modular preparado pra evoluir pra microserviços se necessário.
 
-Contextos: `customer`, `account`, `payment` (PIX) e `card`. Cada um tem `domain` (entidades, value objects, portas), `application` (use cases) e `infrastructure` (JPA, RabbitMQ, controllers). Um contexto só conversa com outro por portas (interfaces no domínio de quem pede) ou por eventos.
+Contextos: `customer`, `account`, `payment` (PIX), `card`, `auth` e `notification`. Cada um tem `domain` (entidades, value objects, portas), `application` (use cases) e `infrastructure` (JPA, RabbitMQ, controllers). Um contexto só conversa com outro por portas (interfaces no domínio de quem pede) ou por eventos.
 
 ### Decisões que garantem que o dinheiro fecha
 
