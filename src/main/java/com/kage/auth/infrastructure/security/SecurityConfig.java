@@ -10,6 +10,9 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import com.kage.shared.infrastructure.idempotency.IdempotencyFilter;
+import com.kage.shared.infrastructure.idempotency.IdempotencyRepository;
 
 import java.time.Clock;
 
@@ -30,7 +33,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService,
-                                                   SessionRepository sessionRepository, Clock clock) throws Exception {
+                                                   SessionRepository sessionRepository, Clock clock,
+                                                   IdempotencyRepository idempotencyRepository) throws Exception {
         SecurityErrorHandler errorHandler = new SecurityErrorHandler();
 
         http
@@ -42,6 +46,8 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(errorHandler).accessDeniedHandler(errorHandler))
                 .addFilterBefore(new JwtAuthenticationFilter(jwtService, sessionRepository, clock),
                         UsernamePasswordAuthenticationFilter.class)
+                // idempotência depois da autorização: só requisição autenticada E permitida reserva chave
+                .addFilterAfter(new IdempotencyFilter(idempotencyRepository, clock), AuthorizationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         // público
                         // refresh é público: quem chama tem um refresh token, não um access token válido

@@ -56,6 +56,7 @@ Contextos: `customer`, `account`, `payment` (PIX), `card`, `auth` e `notificatio
 - **Falha é um resultado, não uma exceção**: se o débito de um PIX ou estorno viola regra de negócio, o Account responde `*.failed` com o motivo, em vez de deixar a mensagem cair na DLQ e a operação ficar presa em processamento.
 - **Concorrência**: locking otimista (`@Version`) em conta, cartão e fatura; lock pessimista na conta de origem durante o envio de PIX, para dois envios simultâneos não furarem o limite.
 - **Ledger**: o extrato é append-only e guarda o saldo após cada lançamento.
+- **Idempotency-Key** (modelo Stripe): nas rotas que movem dinheiro (PIX, saque, depósito, compra, pagamento e parcelamento de fatura, estorno), o header `Idempotency-Key` garante que um retry de rede não execute duas vezes — o reenvio devolve a resposta guardada com `Idempotent-Replayed: true`. Chave por usuário, válida por 24h; mesma chave com outro corpo → 422; em andamento → 409 (na dúvida, nunca reexecuta).
 
 ### Fluxo do PIX
 
