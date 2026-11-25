@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+# um push novo no mesmo PR cancela a rodada anterior
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Testes (unitários + integração)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # JDK 17: a versão que o projeto declara (pom: release 17), não a do dev
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Testcontainers usa o Docker do runner (Postgres e RabbitMQ reais)
+      - name: mvn verify
+        run: ./mvnw -B -ntp verify
+
+      - name: Relatórios dos testes
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+          retention-days: 7
+
+  e2e:
+    name: Ponta a ponta (docker compose + coleção do Postman)
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 20
+    env:
+      # só no ambiente efêmero da CI: deixa a coleção testar a recuperação de senha completa
+      KAGE_DEV_EXPOSE_RESET_TOKEN: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Subir Postgres, RabbitMQ e a aplicação
+        run: docker compose up --build -d
+
+      - name: Esperar a aplicação ficar saudável
+        run: |
+          for i in $(seq 1 60); do
+            status=$(docker inspect kage-app --format '{{.State.Health.Status}}')
+            echo "tentativa $i: $status"
+            [ "$status" = "healthy" ] && exit 0
+            [ "$status" = "unhealthy" ] && exit 1
+            sleep 5
+          done
+          exit 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Coleção do Postman (newman)
+        run: >
+          npx --yes newman@6 run "docs/postman/Kage Banking.postman_collection.json"
+          -e "docs/postman/Kage - Local.postman_environment.json"
+          --reporters cli --reporter-cli-no-banner
+
+      - name: Logs da aplicação
+        if: failure()
+        run: docker compose logs app --tail 300
+
+      - name: Derrubar o ambiente
+        if: always()
+        run: docker compose down -v

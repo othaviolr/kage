@@ -1,4 +1,10 @@
-version: '3.8'
+# Ambiente de DESENVOLVIMENTO do Kage (as senhas e o segredo do JWT abaixo são de dev).
+#
+#   docker compose up --build              -> sobe tudo, inclusive a aplicação (http://localhost:8080)
+#   docker compose up -d postgres rabbitmq -> só a infraestrutura, para rodar a app pela IDE / mvnw
+#
+# O Postgres fica exposto na porta 5433 da máquina (e não 5432) para não colidir com um PostgreSQL
+# instalado localmente — que, escutando em IPv4, "rouba" o localhost:5432 do container.
 
 services:
   postgres:
@@ -9,9 +15,14 @@ services:
       POSTGRES_USER: kage
       POSTGRES_PASSWORD: kage123
     ports:
-      - "5432:5432"
+      - "${KAGE_DB_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kage -d kage_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
@@ -24,6 +35,29 @@ services:
       - "15672:15672" # Management UI
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: kage-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/kage_db
+      SPRING_RABBITMQ_HOST: rabbitmq
+      KAGE_JWT_SECRET: ${KAGE_JWT_SECRET:-dev-only-kage-jwt-secret-change-me-0123456789}
+      KAGE_ADMIN_PASSWORD: ${KAGE_ADMIN_PASSWORD:-kage-admin-dev-123}
+      # só para testar a recuperação de senha sem e-mail real; nunca em produção
+      KAGE_DEV_EXPOSE_RESET_TOKEN: ${KAGE_DEV_EXPOSE_RESET_TOKEN:-false}
+    ports:
+      - "8080:8080"
 
 volumes:
   postgres_data:
