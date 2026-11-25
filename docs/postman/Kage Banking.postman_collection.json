@@ -3481,6 +3481,225 @@
           ]
         },
         {
+          "name": "3.33.1 Depositar 1500 na conta do cartão (backoffice)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{accountId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{accountId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('balanceBeforeInvoice', pm.response.json().balance);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.2 Pagar fatura fechada (1500) -> PAID",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/{{referenceMonth}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "{{referenceMonth}}",
+                "pay"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Fatura paga pelo total', () => {",
+                  "  pm.expect(j.status).to.eql('PAID');",
+                  "  pm.expect(Number(j.amountPaid)).to.eql(1500);",
+                  "  pm.expect(j.paidAt).to.be.a('string');",
+                  "});",
+                  "pm.test('Limite liberado (sobra só a compra de 100 da próxima fatura)', () => pm.expect(Number(j.availableLimit)).to.eql(4900));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.3 Extrato mostra o débito da fatura",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{accountId}}/statement",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{accountId}}",
+                "statement"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Lançamento INVOICE_PAYMENT de -1500', () => {",
+                  "  const e = j.entries.find(x => x.type === 'INVOICE_PAYMENT');",
+                  "  pm.expect(e).to.exist;",
+                  "  pm.expect(Number(e.amount)).to.eql(-1500);",
+                  "});",
+                  "pm.test('Saldo voltou ao de antes do depósito', () =>",
+                  "  pm.expect(Number(j.currentBalance)).to.eql(Number(pm.collectionVariables.get('balanceBeforeInvoice')) - 1500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.4 Pagar a mesma fatura de novo -> 422",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/{{referenceMonth}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "{{referenceMonth}}",
+                "pay"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.5 Pagar fatura ainda aberta -> 422",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/{{nextReferenceMonth}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "{{nextReferenceMonth}}",
+                "pay"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Só fatura fechada pode ser paga', () => pm.expect(pm.response.json().message).to.include('fechadas'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.6 Pagar fatura de mês sem compras -> 404",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/2000-01/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "2000-01",
+                "pay"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "3.34 Cancelar cartão com limite utilizado -> 422",
           "request": {
             "method": "PATCH",
@@ -6800,6 +7019,10 @@
     },
     {
       "key": "customerToken",
+      "value": ""
+    },
+    {
+      "key": "balanceBeforeInvoice",
       "value": ""
     }
   ],
