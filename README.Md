@@ -17,9 +17,11 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 - **PIX**: chaves, envio assíncrono com confirmação ou falha, estorno que devolve o dinheiro (ou falha com motivo, se quem recebeu já gastou)
 - **Cartão de crédito**: emissão vinculada à conta, limite, compras idempotentes, fatura mensal com fechamento
 
+- **Segurança**: cadastro pelo app com senha (BCrypt), login por CPF devolvendo JWT de 15 min, travamento após 5 senhas erradas, cliente só acessa o que é dele, backoffice com papel ADMIN
+
 ### Roadmap
 
-- Autenticação (Spring Security + JWT) e autorização por titular da conta
+- Refresh token e revogação (logout), 2FA no login de dispositivo novo
 - PIX agendado
 - Pagamento de fatura e parcelamento no cartão
 - TED, boletos, empréstimos, investimentos
@@ -31,7 +33,7 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 - **Banco**: PostgreSQL 15
 - **Mensageria**: RabbitMQ 3
 - **Migrations**: Flyway
-- **Segurança**: Spring Security (JWT no roadmap; hoje todas as rotas estão abertas)
+- **Segurança**: Spring Security + JWT (jjwt, HS256) + BCrypt
 - **Docs**: SpringDoc OpenAPI (Swagger)
 - **Testes**: JUnit 5, Mockito, Testcontainers
 - **Infra**: Docker Compose
@@ -67,6 +69,28 @@ docker-compose up -d
 # Roda a aplicação (IntelliJ ou mvn)
 mvn spring-boot:run
 ```
+
+### Autenticação
+
+Todas as rotas exigem `Authorization: Bearer <token>`, menos cadastro e login.
+
+```bash
+# cliente: cadastro pelo app e login por CPF
+POST /api/auth/signup   { ...dados do cliente..., "password": "Sombra-2026" }
+POST /api/auth/login    { "cpf": "52998224725", "password": "Sombra-2026" }
+
+# backoffice (KYC, bloqueios, estornos, emissão de cartão) e simulação de sistemas externos (depósito, compra no cartão)
+POST /api/auth/admin/login  { "username": "admin", "password": "kage-admin-dev-123" }
+```
+
+| Quem | Pode |
+|---|---|
+| Cliente | ver e mudar os próprios dados, abrir conta, sacar, extrato, limites, chaves e envio de PIX, pedir estorno do que pagou, ver/bloquear/cancelar os próprios cartões e faturas |
+| ADMIN | tudo, incluindo KYC, bloqueio de cliente/conta, aprovar/rejeitar estorno, emitir cartão (o limite é decisão de crédito), depósito e compra no cartão |
+
+Recurso de outro cliente responde **404** (e não 403), para não confirmar que o id existe. Em produção, defina `KAGE_JWT_SECRET` (≥ 32 bytes aleatórios) e `KAGE_ADMIN_PASSWORD`; os valores padrão do `application.yml` são só para desenvolvimento.
+
+A coleção do Postman (`docs/postman`) já faz o login: a pasta 0 pega o token de admin, e a pasta 10 testa o acesso do cliente.
 
 Acesse:
 - API: http://localhost:8080

@@ -36,6 +36,17 @@ spring:
 server:
   port: 8080
 
+kage:
+  security:
+    jwt:
+      # em produção: obrigatório via KAGE_JWT_SECRET (>= 32 bytes, aleatório). O default é só para dev.
+      secret: ${KAGE_JWT_SECRET:dev-only-kage-jwt-secret-change-me-0123456789}
+      ttl: ${KAGE_JWT_TTL:15m}
+    admin:
+      username: ${KAGE_ADMIN_USERNAME:admin}
+      password: ${KAGE_ADMIN_PASSWORD:kage-admin-dev-123}
+    bcrypt-strength: 12
+
 springdoc:
   api-docs:
     path: /api-docs

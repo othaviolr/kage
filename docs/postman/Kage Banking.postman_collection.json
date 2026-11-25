@@ -1,10 +1,65 @@
 {
   "info": {
     "name": "Kage Banking",
-    "description": "Sistema completo: Customer/KYC -> Account -> Card -> Pix (chaves, envio, estorno). Rode as pastas na ordem no Collection Runner.",
+    "description": "Sistema completo: Auth -> Customer/KYC -> Account -> Card -> Pix (chaves, envio, estorno) -> Segurança. A coleção roda como ADMIN (token da pasta 0); a pasta 10 testa o acesso do cliente. Rode as pastas na ordem no Collection Runner.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
+    {
+      "name": "0. Autenticação",
+      "item": [
+        {
+          "name": "0.1 Login admin (backoffice)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/admin/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "admin",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"kage-admin-dev-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Token Bearer', () => pm.expect(j.tokenType).to.eql('Bearer'));",
+                  "pm.collectionVariables.set('adminToken', j.accessToken);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
     {
       "name": "1. Customer / KYC",
       "item": [
@@ -5277,7 +5332,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/pix/refunds/{{refundId}}/approve?processedBy=admin",
+              "raw": "{{baseUrl}}/api/pix/refunds/{{refundId}}/approve",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -5287,12 +5342,6 @@
                 "refunds",
                 "{{refundId}}",
                 "approve"
-              ],
-              "query": [
-                {
-                  "key": "processedBy",
-                  "value": "admin"
-                }
               ]
             }
           },
@@ -5314,7 +5363,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/pix/refunds/{{refundId}}/approve?processedBy=admin",
+              "raw": "{{baseUrl}}/api/pix/refunds/{{refundId}}/approve",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -5324,12 +5373,6 @@
                 "refunds",
                 "{{refundId}}",
                 "approve"
-              ],
-              "query": [
-                {
-                  "key": "processedBy",
-                  "value": "admin"
-                }
               ]
             }
           },
@@ -5351,7 +5394,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/pix/refunds/{{refundId}}/reject?processedBy=admin",
+              "raw": "{{baseUrl}}/api/pix/refunds/{{refundId}}/reject",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -5361,12 +5404,6 @@
                 "refunds",
                 "{{refundId}}",
                 "reject"
-              ],
-              "query": [
-                {
-                  "key": "processedBy",
-                  "value": "admin"
-                }
               ]
             }
           },
@@ -5388,7 +5425,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/pix/refunds/00000000-0000-0000-0000-000000000000/approve?processedBy=admin",
+              "raw": "{{baseUrl}}/api/pix/refunds/00000000-0000-0000-0000-000000000000/approve",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -5398,12 +5435,6 @@
                 "refunds",
                 "00000000-0000-0000-0000-000000000000",
                 "approve"
-              ],
-              "query": [
-                {
-                  "key": "processedBy",
-                  "value": "admin"
-                }
               ]
             }
           },
@@ -5471,7 +5502,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/pix/refunds/{{refund2Id}}/reject?processedBy=admin",
+              "raw": "{{baseUrl}}/api/pix/refunds/{{refund2Id}}/reject",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -5481,12 +5512,6 @@
                 "refunds",
                 "{{refund2Id}}",
                 "reject"
-              ],
-              "query": [
-                {
-                  "key": "processedBy",
-                  "value": "admin"
-                }
               ]
             }
           },
@@ -5508,7 +5533,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/pix/refunds/{{refund2Id}}/approve?processedBy=admin",
+              "raw": "{{baseUrl}}/api/pix/refunds/{{refund2Id}}/approve",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -5518,12 +5543,6 @@
                 "refunds",
                 "{{refund2Id}}",
                 "approve"
-              ],
-              "query": [
-                {
-                  "key": "processedBy",
-                  "value": "admin"
-                }
               ]
             }
           },
@@ -5719,7 +5738,7 @@
       "name": "9. Robustez HTTP (4xx esperado)",
       "item": [
         {
-          "name": "9.1 Aprovar estorno sem ?processedBy",
+          "name": "9.1 Aprovar estorno inexistente (processedBy agora vem do token) -> 404",
           "request": {
             "method": "POST",
             "header": [],
@@ -5743,15 +5762,12 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
                   "const j = pm.response.json();",
                   "pm.test('Corpo no formato ErrorResponse', () => {",
-                  "  pm.expect(j.status).to.eql(400);",
-                  "  pm.expect(j.error).to.eql('Bad Request');",
+                  "  pm.expect(j.status).to.eql(404);",
+                  "  pm.expect(j.error).to.eql('Not Found');",
                   "  pm.expect(j.path).to.eql('/api/pix/refunds/00000000-0000-0000-0000-000000000000/approve');",
-                  "  pm.expect(j.message).to.eql('Parâmetro obrigatório ausente: processedBy');",
-                  "  pm.expect(j.fieldErrors).to.be.an('array').that.is.empty;",
-                  "  pm.expect(j).to.have.property('timestamp');",
                   "});"
                 ]
               }
@@ -6032,6 +6048,585 @@
         }
       ],
       "description": "Falhas de contrato HTTP (parâmetro ausente, tipo errado, JSON inválido ou ausente, rota inexistente, método não suportado) devem virar 4xx no formato ErrorResponse, nunca 500. Tratadas pelo GlobalExceptionHandler e travadas pelo GlobalExceptionHandlerTest."
+    },
+    {
+      "name": "10. Segurança",
+      "item": [
+        {
+          "name": "10.1 Cadastro pelo app com senha fraca -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente App\",\n  \"cpf\": \"{{secCpf}}\",\n  \"email\": \"{{secEmail}}\",\n  \"phone\": \"(41) 98888-7777\",\n  \"birthDate\": \"1992-03-10\",\n  \"street\": \"Rua do App\",\n  \"number\": \"10\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\",\n  \"password\": \"123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('secCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('secEmail', `kage.sec+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.2 Cadastro pelo app (signup)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente App\",\n  \"cpf\": \"{{secCpf}}\",\n  \"email\": \"{{secEmail}}\",\n  \"phone\": \"(41) 98888-7777\",\n  \"birthDate\": \"1992-03-10\",\n  \"street\": \"Rua do App\",\n  \"number\": \"10\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\",\n  \"password\": \"Sombra-2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Nasce com KYC PENDING', () => pm.expect(j.kycStatus).to.eql('PENDING'));",
+                  "pm.collectionVariables.set('secCustomerId', j.customerId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.3 Login com senha errada -> 401 genérico",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"{{secCpf}}\",\n  \"password\": \"Errada-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Mensagem não revela se o CPF existe', () => pm.expect(pm.response.json().message).to.eql('CPF ou senha inválidos'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.4 Login do cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"{{secCpf}}\",\n  \"password\": \"Sombra-2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('customerToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.5 Quem sou eu (/me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('É o cliente do token', () => pm.expect(pm.response.json().customerId).to.eql(pm.collectionVariables.get('secCustomerId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.6 Cliente aprova o próprio KYC -> 403",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{secCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{secCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.7 Backoffice aprova o KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{secCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{secCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.8 Cliente abre a própria conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{secCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('secAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.9 Cliente se deposita R$ 1 milhão -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{secAccountId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{secAccountId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403 (entrada de dinheiro é do backoffice)', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.10 Cliente vê o próprio extrato",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{secAccountId}}/statement",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{secAccountId}}",
+                "statement"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.11 Cliente espia a conta de outro (pasta 2) -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{accountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{accountId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 (não revela que a conta existe)', () => pm.response.to.have.status(404));",
+                  "pm.test('Mesma mensagem de inexistente', () => pm.expect(pm.response.json().message).to.eql('Conta não encontrada'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.12 Cliente espia outro cliente (pasta 1) -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{customerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{customerId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.13 Sem token -> 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{secAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{secAccountId}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Corpo no formato ErrorResponse', () => pm.expect(pm.response.json().status).to.eql(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
@@ -6182,6 +6777,40 @@
     {
       "key": "refund2Id",
       "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "secCpf",
+      "value": ""
+    },
+    {
+      "key": "secEmail",
+      "value": ""
+    },
+    {
+      "key": "secCustomerId",
+      "value": ""
+    },
+    {
+      "key": "secAccountId",
+      "value": ""
+    },
+    {
+      "key": "customerToken",
+      "value": ""
     }
-  ]
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{adminToken}}",
+        "type": "string"
+      }
+    ]
+  }
 }

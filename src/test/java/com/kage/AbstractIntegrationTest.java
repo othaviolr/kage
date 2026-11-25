@@ -63,6 +63,9 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
         registry.add("spring.rabbitmq.username", rabbitmq::getAdminUsername);
         registry.add("spring.rabbitmq.password", rabbitmq::getAdminPassword);
+
+        // custo mínimo do BCrypt nos testes: o custo de produção (12) só deixaria a suíte lenta
+        registry.add("kage.security.bcrypt-strength", () -> "4");
     }
 
     /**
