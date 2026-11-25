@@ -98,6 +98,11 @@ public class CardConfig {
     }
 
     @Bean
+    public AnticipateInstallments anticipateInstallments(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
+        return new AnticipateInstallments(cardRepository, invoiceRepository);
+    }
+
+    @Bean
     public CardEventPublisher cardEventPublisher(OutboxEventPublisher outboxEventPublisher) {
         return new OutboxCardEventPublisher(outboxEventPublisher);
     }

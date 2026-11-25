@@ -131,6 +131,18 @@ public class Card {
         return applied;
     }
 
+    /**
+     * Desconto dos juros numa antecipação de parcelamento: a dívida diminui, então o limite volta, e
+     * os juros deixam de contar no teto legal.
+     */
+    public void discountFinancedInterest(Money discount) {
+        if (discount.isZero()) return;
+        this.usedLimit = discount.isGreaterThan(this.usedLimit) ? Money.ZERO : this.usedLimit.subtract(discount);
+        this.revolvingCharges = discount.isGreaterThan(this.revolvingCharges)
+                ? Money.ZERO : this.revolvingCharges.subtract(discount);
+        this.updatedAt = LocalDateTime.now();
+    }
+
     /** Dívida do rotativo quitada: o próximo uso do rotativo começa uma conta nova. */
     public void settleRevolving() {
         this.revolvingPrincipal = Money.ZERO;

@@ -11889,6 +11889,867 @@
           ]
         }
       ]
+    },
+    {
+      "name": "14. Antecipação de parcelas",
+      "item": [
+        {
+          "name": "14.1.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Antecipação\",\n  \"cpf\": \"{{apCpf}}\",\n  \"email\": \"{{apEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('apCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('apEmail', `kage.ap+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('apCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.1.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{apCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{apCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.1.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{apCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('apAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.2 Emitir cartão A (fecha dia 10, vence dia 20)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{apCustomerId}}\",\n  \"accountId\": \"{{apAccountId}}\",\n  \"creditLimit\": 5000,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('apCardA', pm.response.json().cardId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.3 Notebook de 1200 em 12x sem juros (março/2036)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardA}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardA}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{apPurchaseId}}\",\n  \"description\": \"Notebook\",\n  \"amount\": 1200,\n  \"purchasedAt\": \"2036-03-05T10:00:00\",\n  \"installments\": 12\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('apPurchaseId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('12x de 100', () => pm.expect(pm.response.json().installmentAmount).to.eql(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.4 Planos com parcelas futuras",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardA}}/installment-plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardA}}",
+                "installment-plans"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json()[0];",
+                  "pm.test('Compra, 11 parcelas futuras, sem desconto', () => { pm.expect(j.kind).to.eql(\"PURCHASE\"); pm.expect(j.description).to.eql(\"Notebook\"); pm.expect(j.currentInvoiceMonth).to.eql(\"2036-03\"); pm.expect(j.futureInstallments.length).to.eql(11); pm.expect(j.anticipateAllAmount).to.eql(1100); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.5 Simular antecipar 3",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardA}}/installment-plans/{{apPurchaseId}}/anticipation?installments=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardA}}",
+                "installment-plans",
+                "{{apPurchaseId}}",
+                "anticipation"
+              ],
+              "query": [
+                {
+                  "key": "installments",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('As últimas três, pelo valor de face', () => { pm.expect(j.status).to.eql(\"SIMULATION\"); pm.expect(j.fromNumber).to.eql(10); pm.expect(j.toNumber).to.eql(12); pm.expect(j.amount).to.eql(300); pm.expect(j.discount).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.6 Antecipar 3 (com Idempotency-Key)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{apIdemKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardA}}/installment-plans/{{apPurchaseId}}/anticipation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardA}}",
+                "installment-plans",
+                "{{apPurchaseId}}",
+                "anticipation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"installments\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('apIdemKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Antecipadas; limite igual (compra sem juros)', () => { pm.expect(j.status).to.eql(\"ANTICIPATED\"); pm.expect(j.amount).to.eql(300); pm.expect(j.invoiceMonth).to.eql(\"2036-03\"); pm.expect(j.availableLimit).to.eql(3800); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.7 Fatura de março: parcela 1 + antecipação",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardA}}/invoices/2036-03",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardA}}",
+                "invoices",
+                "2036-03"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('Total 400', () => pm.expect(j.total).to.eql(400));",
+                  "pm.test('Linha da antecipação', () => pm.expect(j.items.map(i => i.description)).to.include('Antecipação: Notebook (10 a 12/12)'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.8 Fatura de fevereiro/2037 saiu (ficou vazia)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardA}}/invoices/2037-02",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardA}}",
+                "invoices",
+                "2037-02"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.9 Antecipar mais do que sobrou -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardA}}/installment-plans/{{apPurchaseId}}/anticipation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardA}}",
+                "installment-plans",
+                "{{apPurchaseId}}",
+                "anticipation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"installments\": 12\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('De 1 a 8', () => pm.expect(pm.response.json().message).to.include('de 1 a 8'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.10 Emitir cartão B",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{apCustomerId}}\",\n  \"accountId\": \"{{apAccountId}}\",\n  \"creditLimit\": 5000,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('apCardB', pm.response.json().cardId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.11 Viagem de 1000 à vista (junho/2036)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardB}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardB}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Viagem\",\n  \"amount\": 1000,\n  \"purchasedAt\": \"2036-06-05T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.12 Fechar a fatura de junho",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardB}}/invoices/2036-06/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardB}}",
+                "invoices",
+                "2036-06",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.13 Parcelar a fatura em 6x (8,99% a.m.)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardB}}/invoices/2036-06/installment-plan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardB}}",
+                "invoices",
+                "2036-06",
+                "installment-plan"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"installments\": 6\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('6x de 222,85', () => pm.expect(pm.response.json().schedule[5].amount).to.eql(222.85));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.14 O parcelamento aparece nos planos, com valor presente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardB}}/installment-plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardB}}",
+                "installment-plans"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json()[0];",
+                  "pm.test('Taxa do contrato, a partir de julho', () => { pm.expect(j.kind).to.eql(\"INVOICE_INSTALLMENT\"); pm.expect(j.monthlyRate).to.eql(0.0899); pm.expect(j.currentInvoiceMonth).to.eql(\"2036-07\"); });",
+                  "pm.test('Quanto mais longe, maior o desconto', () => pm.expect(j.futureInstallments.map(i => i.presentValue)).to.eql([204.47, 187.6, 172.13, 157.93, 144.9]));",
+                  "pm.collectionVariables.set('apPlanId', j.planId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.15 Simular antecipar as 5",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardB}}/installment-plans/{{apPlanId}}/anticipation?installments=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardB}}",
+                "installment-plans",
+                "{{apPlanId}}",
+                "anticipation"
+              ],
+              "query": [
+                {
+                  "key": "installments",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('1114,25 viram 867,03', () => { pm.expect(j.originalAmount).to.eql(1114.25); pm.expect(j.amount).to.eql(867.03); pm.expect(j.discount).to.eql(247.22); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.16 Antecipar as 5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardB}}/installment-plans/{{apPlanId}}/anticipation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardB}}",
+                "installment-plans",
+                "{{apPlanId}}",
+                "anticipation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"installments\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('O desconto volta para o limite', () => { pm.expect(j.discount).to.eql(247.22); pm.expect(j.availableLimit).to.eql(3910.12); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.17 Fatura de julho: parcela 1 + antecipação",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardB}}/invoices/2036-07",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardB}}",
+                "invoices",
+                "2036-07"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Total 1089,88', () => pm.expect(pm.response.json().total).to.eql(1089.88));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.18 Nenhum plano com parcelas futuras",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardB}}/installment-plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardB}}",
+                "installment-plans"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lista vazia', () => pm.expect(pm.response.json().length).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.19 Plano inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{apCardB}}/installment-plans/00000000-0000-0000-0000-000000000000/anticipation?installments=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{apCardB}}",
+                "installment-plans",
+                "00000000-0000-0000-0000-000000000000",
+                "anticipation"
+              ],
+              "query": [
+                {
+                  "key": "installments",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [

@@ -11,6 +11,9 @@ import java.util.UUID;
 public interface InvoiceRepository {
 
     Invoice save(Invoice invoice);
+
+    /** Remove uma fatura futura que ficou sem lançamentos (todas as parcelas dela foram antecipadas). */
+    void delete(Invoice invoice);
     Optional<Invoice> findById(UUID id);
     Optional<Invoice> findByCardIdAndReferenceMonth(UUID cardId, YearMonth referenceMonth);
     List<Invoice> findByCardId(UUID cardId);

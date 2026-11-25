@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -28,6 +29,7 @@ public class CardController {
     private final PayInvoice payInvoice;
     private final SetAutoDebit setAutoDebit;
     private final FinanceInvoice financeInvoice;
+    private final AnticipateInstallments anticipateInstallments;
 
     /**
      * Emissão é do ADMIN: o limite de crédito é decisão da análise de crédito do banco, não do cliente.
@@ -38,7 +40,9 @@ public class CardController {
                           UnblockCard unblockCard, RegisterPurchase registerPurchase,
                           GetInvoice getInvoice, ListInvoices listInvoices,
                           CloseInvoice closeInvoice, CancelCard cancelCard, AccessGuard accessGuard,
-                          PayInvoice payInvoice, SetAutoDebit setAutoDebit, FinanceInvoice financeInvoice) {
+                          PayInvoice payInvoice, SetAutoDebit setAutoDebit, FinanceInvoice financeInvoice,
+                          AnticipateInstallments anticipateInstallments) {
+        this.anticipateInstallments = anticipateInstallments;
         this.financeInvoice = financeInvoice;
         this.accessGuard = accessGuard;
         this.payInvoice = payInvoice;
@@ -111,6 +115,30 @@ public class CardController {
     }
 
     public record InstallmentPlanRequest(Integer installments) {
+    }
+
+    /** Compras parceladas e parcelamentos de fatura com parcelas em faturas futuras, e quanto custa antecipar. */
+    @GetMapping("/{id}/installment-plans")
+    public ResponseEntity<List<AnticipateInstallments.Plan>> listInstallmentPlans(@PathVariable UUID id) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(anticipateInstallments.listPlans(id));
+    }
+
+    /** Simulação da antecipação das últimas {@code installments} parcelas: não muda nada. */
+    @GetMapping("/{id}/installment-plans/{planId}/anticipation")
+    public ResponseEntity<AnticipateInstallments.Output> quoteAnticipation(@PathVariable UUID id, @PathVariable UUID planId,
+                                                                           @RequestParam int installments) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(anticipateInstallments.quote(id, planId, installments));
+    }
+
+    /** Antecipa: as parcelas saem das faturas futuras e entram na fatura atual, com o desconto dos juros. */
+    @PostMapping("/{id}/installment-plans/{planId}/anticipation")
+    public ResponseEntity<AnticipateInstallments.Output> anticipate(@PathVariable UUID id, @PathVariable UUID planId,
+                                                                    @RequestBody InstallmentPlanRequest request) {
+        accessGuard.checkCard(id);
+        if (request.installments() == null) throw new ValidationException("Informe quantas parcelas antecipar (installments)");
+        return ResponseEntity.status(HttpStatus.CREATED).body(anticipateInstallments.execute(id, planId, request.installments()));
     }
 
     @GetMapping("/{id}/invoices")

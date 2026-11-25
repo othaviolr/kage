@@ -12,5 +12,7 @@ public enum InvoiceItemKind {
     /** Juros de mora pelos dias de atraso (pagou menos que o mínimo). */
     LATE_INTEREST,
     /** Parcela do parcelamento de uma fatura anterior (com juros). */
-    INVOICE_INSTALLMENT
+    INVOICE_INSTALLMENT,
+    /** Parcelas futuras trazidas para esta fatura (antecipação), já com o desconto dos juros. */
+    ANTICIPATION
 }
