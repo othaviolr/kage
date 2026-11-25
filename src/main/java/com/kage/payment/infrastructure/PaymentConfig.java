@@ -17,6 +17,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.Clock;
+
 @Configuration
 public class PaymentConfig {
 
@@ -64,8 +66,9 @@ public class PaymentConfig {
     public SendPix sendPix(PixKeyRepository pixKeyRepository,
                            PixTransactionRepository pixTransactionRepository,
                            AccountValidationService accountValidationService,
-                           PixEventPublisher pixEventPublisher) {
-        return new SendPix(pixKeyRepository, pixTransactionRepository, accountValidationService, pixEventPublisher);
+                           PixEventPublisher pixEventPublisher,
+                           Clock clock) {
+        return new SendPix(pixKeyRepository, pixTransactionRepository, accountValidationService, pixEventPublisher, clock);
     }
 
     @Bean

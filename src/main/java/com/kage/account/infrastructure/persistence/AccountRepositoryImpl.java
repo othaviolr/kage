@@ -27,6 +27,11 @@ public class AccountRepositoryImpl implements AccountRepository {
     }
 
     @Override
+    public Optional<Account> findByIdForUpdate(UUID id) {
+        return accountJpaRepository.findByIdForUpdate(id).map(AccountMapper::toDomain);
+    }
+
+    @Override
     public Optional<Account> findByAccountNumber(String accountNumber) {
         return accountJpaRepository.findByAccountNumber(accountNumber).map(AccountMapper::toDomain);
     }

@@ -2,7 +2,10 @@ package com.kage.account.application.usecase;
 
 import com.kage.account.domain.entity.Account;
 import com.kage.account.domain.enums.AccountType;
+import com.kage.account.domain.enums.EntryType;
+import com.kage.account.domain.repository.AccountEntryRepository;
 import com.kage.account.domain.repository.AccountRepository;
+import com.kage.shared.domain.valueobject.Money;
 import com.kage.shared.domain.exception.NotFoundException;
 import com.kage.shared.domain.exception.ValidationException;
 import org.junit.jupiter.api.Test;
@@ -18,6 +21,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -26,6 +31,9 @@ class DepositAccountTest {
 
     @Mock
     AccountRepository accountRepository;
+
+    @Mock
+    AccountEntryRepository entryRepository;
 
     @Mock
     AccountEventPublisher eventPublisher;
@@ -43,6 +51,9 @@ class DepositAccountTest {
 
         assertThat(output.balance()).isEqualByComparingTo("200.00");
         assertThat(output.availableBalance()).isEqualByComparingTo("200.00");
+        verify(entryRepository).save(argThat(entry -> entry.type() == EntryType.DEPOSIT
+                && entry.balanceAfter().equals(Money.of("200.00"))));
+        verify(eventPublisher).publishDepositMade(account.getId(), new BigDecimal("200.00"), new BigDecimal("200.00"));
     }
 
     @Test

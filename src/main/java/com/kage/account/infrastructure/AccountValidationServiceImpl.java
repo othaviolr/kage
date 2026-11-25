@@ -1,13 +1,14 @@
 package com.kage.account.infrastructure;
 
-import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.domain.entity.Account;
+import com.kage.account.domain.repository.AccountRepository;
 import com.kage.payment.domain.service.AccountValidationService;
-import com.kage.shared.domain.exception.BusinessRuleException;
+import com.kage.payment.domain.service.PixLimitUsage;
 import com.kage.shared.domain.exception.NotFoundException;
 import com.kage.shared.domain.valueobject.Money;
 
 import java.util.UUID;
+import java.util.function.Supplier;
 
 public class AccountValidationServiceImpl implements AccountValidationService {
 
@@ -18,16 +19,12 @@ public class AccountValidationServiceImpl implements AccountValidationService {
     }
 
     @Override
-    public void validateBalanceAndLimits(UUID accountId, Money amount) {
-        Account account = accountRepository.findById(accountId)
+    public void validateBalanceAndLimits(UUID accountId, Money amount, Supplier<PixLimitUsage> usage) {
+        // trava primeiro, soma depois: ver contrato em AccountValidationService
+        Account account = accountRepository.findByIdForUpdate(accountId)
                 .orElseThrow(() -> new NotFoundException("Conta não encontrada"));
 
-        if (account.getAvailableBalance().isLessThan(amount)) {
-            throw new BusinessRuleException("Saldo insuficiente para realizar o PIX");
-        }
-
-        if (amount.isGreaterThan(account.getLimits().pixDailyLimit())) {
-            throw new BusinessRuleException("Valor excede o limite diário de PIX");
-        }
+        PixLimitUsage used = usage.get();
+        account.checkPixLimits(amount, used.sentToday(), used.sentTonight(), used.nightTime());
     }
 }

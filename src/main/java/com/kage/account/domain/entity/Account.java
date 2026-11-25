@@ -6,6 +6,7 @@ import com.kage.account.domain.valueobject.Limits;
 import com.kage.shared.domain.exception.BusinessRuleException;
 import com.kage.shared.domain.valueobject.Money;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -67,22 +68,56 @@ public class Account {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * Débito genérico (PIX, estorno): só garante conta ativa e saldo. Limites dependem do canal e do
+     * que já foi movimentado no período, então são checados antes, por quem conhece o canal
+     * ({@link #checkPixLimits}, {@link #withdraw}).
+     */
     public void debit(Money amount) {
         if (this.status != AccountStatus.ACTIVE) throw new BusinessRuleException("Conta não está ativa");
         if (amount.isGreaterThan(this.availableBalance)) throw new BusinessRuleException("Saldo disponível insuficiente");
-        if (amount.isGreaterThan(this.limits.dailyTransferLimit())) throw new BusinessRuleException("Valor excede o limite diário de transferência");
         this.balance = this.balance.subtract(amount);
         this.availableBalance = this.availableBalance.subtract(amount);
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void withdraw(Money amount){
+    /**
+     * @param withdrawnToday soma dos saques já feitos hoje: o limite diário vale para o dia, não por saque
+     */
+    public void withdraw(Money amount, Money withdrawnToday) {
         if (this.status != AccountStatus.ACTIVE) throw new BusinessRuleException("Conta não está ativa");
         if (amount.isGreaterThan(this.availableBalance)) throw new BusinessRuleException("Saldo disponível insuficiente");
-        if (amount.isGreaterThan(this.limits.dailyWithdrawalLimit())) throw new BusinessRuleException("Valor excede o limite diário de saque");
+        if (withdrawnToday.add(amount).isGreaterThan(this.limits.dailyWithdrawalLimit())) {
+            throw new BusinessRuleException("Valor excede o limite diário de saque (disponível hoje: "
+                    + remaining(this.limits.dailyWithdrawalLimit(), withdrawnToday) + ")");
+        }
         this.balance = this.balance.subtract(amount);
         this.availableBalance = this.availableBalance.subtract(amount);
         this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Regras para ENVIAR um PIX, checadas antes de a transação ser criada.
+     *
+     * @param sentToday   soma dos PIX enviados hoje (inclusive os ainda em processamento)
+     * @param sentTonight soma dos PIX enviados na janela noturna atual
+     * @param nightTime   se o envio acontece na janela noturna (20h–6h)
+     */
+    public void checkPixLimits(Money amount, Money sentToday, Money sentTonight, boolean nightTime) {
+        if (this.status != AccountStatus.ACTIVE) throw new BusinessRuleException("Conta de origem não está ativa");
+        if (amount.isGreaterThan(this.availableBalance)) throw new BusinessRuleException("Saldo insuficiente para realizar o PIX");
+        if (sentToday.add(amount).isGreaterThan(this.limits.pixDailyLimit())) {
+            throw new BusinessRuleException("Valor excede o limite diário de PIX (disponível hoje: "
+                    + remaining(this.limits.pixDailyLimit(), sentToday) + ")");
+        }
+        if (nightTime && sentTonight.add(amount).isGreaterThan(this.limits.pixNightLimit())) {
+            throw new BusinessRuleException("Valor excede o limite noturno de PIX (disponível até as 6h: "
+                    + remaining(this.limits.pixNightLimit(), sentTonight) + ")");
+        }
+    }
+
+    private static BigDecimal remaining(Money limit, Money used) {
+        return used.isGreaterThan(limit) ? BigDecimal.ZERO.setScale(2) : limit.subtract(used).amount();
     }
 
     public void block() {

@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -20,11 +21,14 @@ public class AccountController {
     private final UpdateLimits updateLimits;
     private final DepositAccount depositAccount;
     private final WithdrawAccount withdrawAccount;
+    private final GetStatement getStatement;
 
     public AccountController(CreateAccount createAccount, GetAccount getAccount,
                              BlockAccount blockAccount, UnblockAccount unblockAccount,
                              CloseAccount closeAccount, UpdateLimits updateLimits,
-                             DepositAccount depositAccount, WithdrawAccount withdrawAccount) {
+                             DepositAccount depositAccount, WithdrawAccount withdrawAccount,
+                             GetStatement getStatement) {
+        this.getStatement = getStatement;
         this.createAccount = createAccount;
         this.getAccount = getAccount;
         this.blockAccount = blockAccount;
@@ -43,6 +47,13 @@ public class AccountController {
     @GetMapping("/{id}")
     public ResponseEntity<GetAccount.Output> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(getAccount.execute(new GetAccount.Input(id)));
+    }
+
+    @GetMapping("/{id}/statement")
+    public ResponseEntity<GetStatement.Output> statement(@PathVariable UUID id,
+                                                         @RequestParam(required = false) LocalDate from,
+                                                         @RequestParam(required = false) LocalDate to) {
+        return ResponseEntity.ok(getStatement.execute(new GetStatement.Input(id, from, to)));
     }
 
     @PostMapping("/{id}/deposit")

@@ -2,6 +2,8 @@ package com.kage.account.infrastructure.messaging;
 
 import com.kage.account.domain.entity.Account;
 import com.kage.account.domain.enums.AccountType;
+import com.kage.account.domain.enums.EntryType;
+import com.kage.account.domain.repository.AccountEntryRepository;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.infrastructure.persistence.idempotency.ProcessedEventRepository;
 import com.kage.shared.domain.valueobject.Money;
@@ -29,6 +31,9 @@ class AccountPixEventConsumerTest {
 
     @Mock
     AccountRepository accountRepository;
+
+    @Mock
+    AccountEntryRepository entryRepository;
 
     @Mock
     ProcessedEventRepository processedEventRepository;
@@ -60,6 +65,7 @@ class AccountPixEventConsumerTest {
         when(processedEventRepository.tryMarkAsProcessed(transactionId)).thenReturn(true);
         when(accountRepository.findById(source.getId())).thenReturn(Optional.of(source));
         when(accountRepository.findById(target.getId())).thenReturn(Optional.of(target));
+        when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         consumer.onPixSent(event);
 
@@ -67,6 +73,10 @@ class AccountPixEventConsumerTest {
         assertThat(target.getBalance().amount()).isEqualByComparingTo("100.00");
         verify(accountRepository).save(source);
         verify(accountRepository).save(target);
+        verify(entryRepository).save(argThat(e -> e.accountId().equals(source.getId())
+                && e.type() == EntryType.PIX_SENT && e.referenceId().equals(transactionId)));
+        verify(entryRepository).save(argThat(e -> e.accountId().equals(target.getId())
+                && e.type() == EntryType.PIX_RECEIVED && e.balanceAfter().equals(Money.of("100.00"))));
         verify(outbox).publish("pix.exchange", "pix.debit.confirmed", transactionId);
     }
 
@@ -81,6 +91,7 @@ class AccountPixEventConsumerTest {
         consumer.onPixSent(semSaldo);
 
         verify(accountRepository, never()).save(any());
+        verifyNoInteractions(entryRepository);
         verify(outbox).publish("pix.exchange", "pix.debit.failed",
                 new PixDebitFailedEvent(transactionId, "Saldo disponível insuficiente"));
         verify(outbox, never()).publish("pix.exchange", "pix.debit.confirmed", transactionId);
