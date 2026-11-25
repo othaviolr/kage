@@ -79,6 +79,34 @@ class PayInvoiceTest {
     }
 
     @Test
+    void execute_pagamentoParcial_debitaSoOValor_eManteFaturaFechada() {
+        invoice.close();
+        found();
+        when(cardRepository.save(any(Card.class))).thenAnswer(i -> i.getArgument(0));
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(i -> i.getArgument(0));
+
+        PayInvoice.Output output = payInvoice.execute(new PayInvoice.Input(card.getId(), "2026-11", new java.math.BigDecimal("500.00")));
+
+        assertThat(output.status()).isEqualTo("CLOSED");
+        assertThat(output.amountPaid()).isEqualByComparingTo("500.00");
+        assertThat(output.remaining()).isEqualByComparingTo("1000.00");
+        assertThat(output.availableLimit()).isEqualByComparingTo("4000.00"); // 5000 - 1500 + 500
+        verify(billingAccount).debitInvoicePayment(card.getAccountId(), Money.of("500.00"), invoice.getId());
+        verify(eventPublisher).publishInvoicePartiallyPaid(invoice, Money.of("500.00"));
+        verify(eventPublisher, never()).publishInvoicePaid(any());
+    }
+
+    @Test
+    void execute_naoDeveDebitar_quandoValorMaiorQueOSaldo() {
+        invoice.close();
+        found();
+
+        assertThatThrownBy(() -> payInvoice.execute(new PayInvoice.Input(card.getId(), "2026-11", new java.math.BigDecimal("1500.01"))))
+                .isInstanceOf(BusinessRuleException.class);
+        verifyNoInteractions(billingAccount);
+    }
+
+    @Test
     void execute_naoDeveDebitar_quandoFaturaAindaAberta() {
         found();
 

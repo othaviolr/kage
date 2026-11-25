@@ -90,6 +90,18 @@ public class NotificationEventConsumer {
                 NotificationTemplates.autoDebitFailed(e.referenceMonth(), e.reason()), null, messageId);
     }
 
+    @RabbitListener(queues = "notification.card.invoice.partially-paid.queue")
+    public void onInvoicePartiallyPaid(InboundEvents.InvoicePartiallyPaid e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toCardOwner(e.cardId(), NotificationType.INVOICE_PARTIALLY_PAID, NotificationTemplates.invoicePartiallyPaid(
+                e.referenceMonth(), e.amountPaid(), e.remaining(), e.minimumPayment(), e.totalPaid()), e.invoiceId(), messageId);
+    }
+
+    @RabbitListener(queues = "notification.card.invoice.rolled-over.queue")
+    public void onInvoiceRolledOver(InboundEvents.InvoiceRolledOver e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toCardOwner(e.cardId(), NotificationType.INVOICE_ROLLED_OVER, NotificationTemplates.invoiceRolledOver(
+                e.fromReferenceMonth(), e.toReferenceMonth(), e.carried(), e.charges(), e.late()), null, messageId);
+    }
+
     @RabbitListener(queues = "notification.pix.scheduled.failed.queue")
     public void onScheduledPixFailed(InboundEvents.ScheduledPixFailed e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toAccountOwner(e.sourceAccountId(), NotificationType.PIX_SCHEDULED_FAILED,

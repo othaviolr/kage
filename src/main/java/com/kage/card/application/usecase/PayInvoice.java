@@ -2,6 +2,7 @@ package com.kage.card.application.usecase;
 
 import com.kage.card.domain.entity.Card;
 import com.kage.card.domain.entity.Invoice;
+import com.kage.card.domain.enums.InvoiceStatus;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
 import com.kage.card.domain.service.CardBillingAccountService;
@@ -15,17 +16,26 @@ import java.time.YearMonth;
 import java.util.UUID;
 
 /**
- * Paga a fatura fechada com o saldo da conta vinculada ao cartão, tudo numa transação:
- * fatura CLOSED -> PAID, débito na conta (com lançamento no extrato) e o limite do cartão liberado.
- * Sem saldo, nada muda. Pagamento é sempre do total (sem mínimo/rotativo por enquanto).
+ * Paga a fatura fechada com o saldo da conta vinculada ao cartão, tudo numa transação: débito na
+ * conta (com lançamento no extrato), limite liberado no valor pago e a fatura atualizada.
+ *
+ * Sem valor, paga o saldo devedor inteiro (é o que o débito automático usa). Com valor, é pagamento
+ * parcial: a fatura continua CLOSED até zerar, e o que sobrar no próximo fechamento vai para o
+ * rotativo (com encargos de atraso se não chegou ao mínimo). Sem saldo na conta, nada muda.
  *
  * Cartão bloqueado ou cancelado continua podendo pagar: a dívida não some com o bloqueio.
  */
 public class PayInvoice {
 
-    public record Input(UUID cardId, String referenceMonth) {}
+    /** @param amount nulo = saldo devedor inteiro */
+    public record Input(UUID cardId, String referenceMonth, BigDecimal amount) {
+        public Input(UUID cardId, String referenceMonth) {
+            this(cardId, referenceMonth, null);
+        }
+    }
+
     public record Output(UUID invoiceId, UUID cardId, String referenceMonth, String status, BigDecimal amountPaid,
-                         LocalDateTime paidAt, BigDecimal availableLimit) {}
+                         BigDecimal remaining, LocalDateTime paidAt, BigDecimal availableLimit) {}
 
     private final CardRepository cardRepository;
     private final InvoiceRepository invoiceRepository;
@@ -49,21 +59,35 @@ public class PayInvoice {
         Invoice invoice = invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), referenceMonth)
                 .orElseThrow(() -> new NotFoundException("Fatura não encontrada para o mês " + referenceMonth));
 
-        // primeiro a regra da fatura (só CLOSED paga): pagar duas vezes falha antes de debitar de novo
-        invoice.pay();
-        Money total = invoice.total();
+        // primeiro a regra da fatura (só CLOSED, até o saldo devedor): nada é debitado se ela recusar
+        Money amount;
+        if (input.amount() == null) {
+            amount = invoice.remaining();
+            invoice.pay();
+        } else {
+            amount = Money.of(input.amount());
+            invoice.registerPayment(amount, LocalDateTime.now());
+        }
 
-        if (!total.isZero()) {
-            billingAccount.debitInvoicePayment(card.getAccountId(), total, invoice.getId());
-            card.releaseLimit(total);
+        if (!amount.isZero()) {
+            billingAccount.debitInvoicePayment(card.getAccountId(), amount, invoice.getId());
+            card.releaseLimit(amount);
+        }
+        // quitou a fatura que carregava o rotativo: a dívida acabou, o teto recomeça do zero
+        if (invoice.getStatus() == InvoiceStatus.PAID && invoice.hasPreviousBalance()) {
+            card.settleRevolving();
         }
 
         Card savedCard = cardRepository.save(card);
         Invoice savedInvoice = invoiceRepository.save(invoice);
-        eventPublisher.publishInvoicePaid(savedInvoice);
+        if (savedInvoice.getStatus() == InvoiceStatus.PAID) {
+            eventPublisher.publishInvoicePaid(savedInvoice);
+        } else {
+            eventPublisher.publishInvoicePartiallyPaid(savedInvoice, amount);
+        }
 
         return new Output(savedInvoice.getId(), savedCard.getId(), savedInvoice.getReferenceMonth().toString(),
-                savedInvoice.getStatus().name(), total.amount(), savedInvoice.getPaidAt(),
-                savedCard.availableLimit().amount());
+                savedInvoice.getStatus().name(), amount.amount(), savedInvoice.remaining().amount(),
+                savedInvoice.getPaidAt(), savedCard.availableLimit().amount());
     }
 }

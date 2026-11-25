@@ -36,6 +36,8 @@ public class NotificationRabbitMQConfig {
             Map.entry("card.invoice.closed", CARD_EXCHANGE),
             Map.entry("card.invoice.paid", CARD_EXCHANGE),
             Map.entry("card.invoice.auto-debit-failed", CARD_EXCHANGE),
+            Map.entry("card.invoice.partially-paid", CARD_EXCHANGE),
+            Map.entry("card.invoice.rolled-over", CARD_EXCHANGE),
             Map.entry("auth.password.changed", AUTH_EXCHANGE),
             Map.entry("pix.scheduled.failed", PIX_EXCHANGE)
     );

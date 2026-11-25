@@ -22,5 +22,8 @@ public interface InvoiceRepository {
     /** Faturas fechadas, vencidas até {@code date}, de cartões com débito automático ligado. */
     List<InvoiceRef> findClosedDueUntilWithAutoDebit(LocalDate date);
 
+    /** Faturas fechadas (não quitadas) com fechamento anterior a {@code date}. */
+    List<InvoiceRef> findClosedWithClosingDateBefore(LocalDate date);
+
     record InvoiceRef(UUID cardId, YearMonth referenceMonth) {}
 }

@@ -1,6 +1,7 @@
 package com.kage.card.application.usecase;
 
 import com.kage.card.domain.entity.Invoice;
+import com.kage.shared.domain.valueobject.Money;
 
 import java.util.UUID;
 
@@ -10,8 +11,14 @@ public interface CardEventPublisher {
     /** Chamar dentro da transação do fechamento. */
     void publishInvoiceClosed(Invoice invoice);
 
-    /** Chamar dentro da transação do pagamento. */
+    /** Fatura quitada. Chamar dentro da transação do pagamento. */
     void publishInvoicePaid(Invoice invoice);
+
+    /** Pagamento parcial: ainda sobra saldo devedor. Chamar dentro da transação do pagamento. */
+    void publishInvoicePartiallyPaid(Invoice invoice, Money amountPaid);
+
+    /** O saldo de {@code from} foi para {@code to} com encargos. Chamar dentro da transação do fechamento. */
+    void publishInvoiceRolledOver(Invoice from, Invoice to, Money carried, Money charges, boolean late);
 
     /**
      * O débito automático no vencimento não passou. Abre transação própria se não houver uma: a do

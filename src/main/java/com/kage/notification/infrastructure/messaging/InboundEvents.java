@@ -33,6 +33,14 @@ public final class InboundEvents {
     public record InvoicePaid(UUID cardId, UUID invoiceId, String referenceMonth, BigDecimal amount) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record InvoicePartiallyPaid(UUID cardId, UUID invoiceId, String referenceMonth, BigDecimal amountPaid,
+                                       BigDecimal remaining, BigDecimal minimumPayment, BigDecimal totalPaid) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record InvoiceRolledOver(UUID cardId, String fromReferenceMonth, String toReferenceMonth, BigDecimal carried,
+                                    BigDecimal charges, boolean late) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record ScheduledPixFailed(UUID transactionId, UUID sourceAccountId, BigDecimal amount, LocalDate scheduledDate,
                                      String reason) {}
 

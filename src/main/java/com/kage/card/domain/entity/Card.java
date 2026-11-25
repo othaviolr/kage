@@ -22,13 +22,20 @@ public class Card {
     private final int dueDay;
     private CardStatus status;
     private boolean autoDebit;
+    /** Dívida original que entrou no rotativo (base do teto da Lei 14.690/2023); zero sem rotativo. */
+    private Money revolvingPrincipal;
+    /** Juros e encargos do rotativo já cobrados sobre essa dívida. */
+    private Money revolvingCharges;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private final Long version;
 
     private Card(UUID id, UUID customerId, UUID accountId, Money creditLimit,
                  Money usedLimit, int closingDay, int dueDay, CardStatus status, boolean autoDebit,
+                 Money revolvingPrincipal, Money revolvingCharges,
                  LocalDateTime createdAt, LocalDateTime updatedAt, Long version) {
+        this.revolvingPrincipal = revolvingPrincipal;
+        this.revolvingCharges = revolvingCharges;
         this.id = id;
         this.customerId = customerId;
         this.accountId = accountId;
@@ -51,18 +58,20 @@ public class Card {
         validateDay(dueDay, "Dia de vencimento");
 
         LocalDateTime now = LocalDateTime.now();
-        return new Card(UUID.randomUUID(), customerId, accountId, creditLimit, Money.ZERO, closingDay, dueDay, CardStatus.ACTIVE, false, now, now, null);
+        return new Card(UUID.randomUUID(), customerId, accountId, creditLimit, Money.ZERO, closingDay, dueDay, CardStatus.ACTIVE, false, Money.ZERO, Money.ZERO, now, now, null);
     }
 
     public static Card reconstitute(UUID id, UUID customerId, UUID accountId, Money creditLimit,
                                     Money usedLimit, int closingDay, int dueDay, CardStatus status, boolean autoDebit,
+                                    Money revolvingPrincipal, Money revolvingCharges,
                                     LocalDateTime createdAt, LocalDateTime updatedAt, Long version) {
         return new Card(id, customerId, accountId, creditLimit, usedLimit,
-                closingDay, dueDay, status, autoDebit, createdAt, updatedAt, version);
+                closingDay, dueDay, status, autoDebit, revolvingPrincipal, revolvingCharges, createdAt, updatedAt, version);
     }
 
+    /** Zero quando os encargos do rotativo levaram a dívida além do limite. */
     public Money availableLimit() {
-        return this.creditLimit.subtract(this.usedLimit);
+        return this.usedLimit.isGreaterThan(this.creditLimit) ? Money.ZERO : this.creditLimit.subtract(this.usedLimit);
     }
 
     public void authorizePurchase(Money amount) {
@@ -100,6 +109,40 @@ public class Card {
     }
 
     /**
+     * Aplica os encargos de uma virada do rotativo respeitando o teto da Lei 14.690/2023: o total
+     * cobrado sobre uma dívida nunca passa do valor dela. Na primeira virada, o saldo levado vira o
+     * principal de referência. O que é cobrado aumenta a dívida, então consome limite (pode ultrapassar
+     * o limite de crédito: aí novas compras ficam bloqueadas até pagar).
+     *
+     * @return quanto dos encargos propostos pode de fato ser cobrado
+     */
+    public Money applyRevolvingCharges(Money carriedBalance, Money proposedCharges) {
+        if (this.revolvingPrincipal.isZero()) {
+            this.revolvingPrincipal = carriedBalance;
+        }
+        Money room = this.revolvingCharges.isGreaterThan(this.revolvingPrincipal)
+                ? Money.ZERO
+                : this.revolvingPrincipal.subtract(this.revolvingCharges);
+        Money applied = proposedCharges.isGreaterThan(room) ? room : proposedCharges;
+
+        this.revolvingCharges = this.revolvingCharges.add(applied);
+        this.usedLimit = this.usedLimit.add(applied);
+        this.updatedAt = LocalDateTime.now();
+        return applied;
+    }
+
+    /** Dívida do rotativo quitada: o próximo uso do rotativo começa uma conta nova. */
+    public void settleRevolving() {
+        this.revolvingPrincipal = Money.ZERO;
+        this.revolvingCharges = Money.ZERO;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public boolean hasRevolvingDebt() {
+        return !this.revolvingPrincipal.isZero();
+    }
+
+    /**
      * Débito automático: no vencimento, a fatura fechada é paga com o saldo da conta vinculada. Opção
      * do cliente — sem ela, a fatura espera o pagamento manual.
      */
@@ -129,6 +172,8 @@ public class Card {
     public int getDueDay() { return dueDay; }
     public CardStatus getStatus() { return status; }
     public boolean isAutoDebit() { return autoDebit; }
+    public Money getRevolvingPrincipal() { return revolvingPrincipal; }
+    public Money getRevolvingCharges() { return revolvingCharges; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public Long getVersion() { return version; }

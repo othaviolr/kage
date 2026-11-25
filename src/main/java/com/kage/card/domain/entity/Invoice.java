@@ -1,6 +1,8 @@
 package com.kage.card.domain.entity;
 
+import com.kage.card.domain.enums.InvoiceItemKind;
 import com.kage.card.domain.enums.InvoiceStatus;
+import com.kage.card.domain.service.RevolvingCreditPolicy;
 import com.kage.card.domain.valueobject.InvoiceItem;
 import com.kage.shared.domain.exception.BusinessRuleException;
 import com.kage.shared.domain.exception.ConflictException;
@@ -15,6 +17,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Fatura mensal do cartão.
+ *
+ * Ciclo: OPEN (recebe compras) -> CLOSED (recebe pagamentos, totais ou parciais) -> PAID (quitada)
+ * ou ROLLED_OVER (o que sobrou foi para a fatura seguinte, com os encargos do rotativo).
+ */
 public class Invoice {
 
     private final UUID id;
@@ -24,13 +32,14 @@ public class Invoice {
     private final LocalDate dueDate;
     private InvoiceStatus status;
     private final List<InvoiceItem> items;
+    private Money paidAmount;
     private LocalDateTime paidAt;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private final Long version;
 
     private Invoice(UUID id, UUID cardId, YearMonth referenceMonth, LocalDate closingDate,
-                    LocalDate dueDate, InvoiceStatus status, List<InvoiceItem> items,
+                    LocalDate dueDate, InvoiceStatus status, List<InvoiceItem> items, Money paidAmount,
                     LocalDateTime paidAt, LocalDateTime createdAt, LocalDateTime updatedAt, Long version) {
         this.id = id;
         this.cardId = cardId;
@@ -39,6 +48,7 @@ public class Invoice {
         this.dueDate = dueDate;
         this.status = status;
         this.items = new ArrayList<>(items);
+        this.paidAmount = paidAmount;
         this.paidAt = paidAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -56,15 +66,15 @@ public class Invoice {
 
         LocalDateTime now = LocalDateTime.now();
         return new Invoice(UUID.randomUUID(), cardId, referenceMonth, closingDate, dueDate,
-                InvoiceStatus.OPEN, List.of(), null, now, now, null);
+                InvoiceStatus.OPEN, List.of(), Money.ZERO, null, now, now, null);
     }
 
     public static Invoice reconstitute(UUID id, UUID cardId, YearMonth referenceMonth, LocalDate closingDate,
                                        LocalDate dueDate, InvoiceStatus status, List<InvoiceItem> items,
-                                       LocalDateTime paidAt, LocalDateTime createdAt, LocalDateTime updatedAt,
-                                       Long version) {
+                                       Money paidAmount, LocalDateTime paidAt, LocalDateTime createdAt,
+                                       LocalDateTime updatedAt, Long version) {
         return new Invoice(id, cardId, referenceMonth, closingDate, dueDate, status, items,
-                paidAt, createdAt, updatedAt, version);
+                paidAmount, paidAt, createdAt, updatedAt, version);
     }
 
     public static YearMonth referenceMonthFor(LocalDate purchaseDate, int closingDay) {
@@ -81,10 +91,36 @@ public class Invoice {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /** Lança saldo trazido ou encargo do rotativo. Valor zero (ex.: cortado pelo teto) não vira linha. */
+    public void addCharge(InvoiceItemKind kind, UUID sourceInvoiceId, String description, Money amount, LocalDateTime at) {
+        if (this.status != InvoiceStatus.OPEN) throw new BusinessRuleException("Fatura não está aberta para novos lançamentos");
+        if (kind == InvoiceItemKind.PURCHASE) throw new ValidationException("Compra entra por addItem");
+        if (amount.isZero()) return;
+
+        InvoiceItem charge = InvoiceItem.charge(kind, sourceInvoiceId, description, amount, at);
+        if (items.stream().anyMatch(item -> item.purchaseId().equals(charge.purchaseId()))) return; // já lançado
+        this.items.add(charge);
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public Money total() {
         return items.stream()
                 .map(InvoiceItem::amount)
                 .reduce(Money.ZERO, Money::add);
+    }
+
+    /** Quanto ainda falta pagar. */
+    public Money remaining() {
+        return total().subtract(paidAmount);
+    }
+
+    public Money minimumPayment() {
+        return RevolvingCreditPolicy.minimumPayment(total());
+    }
+
+    /** A fatura carrega saldo de uma anterior: quitá-la encerra a dívida do rotativo. */
+    public boolean hasPreviousBalance() {
+        return items.stream().anyMatch(item -> item.kind() == InvoiceItemKind.PREVIOUS_BALANCE);
     }
 
     public void close() {
@@ -93,11 +129,58 @@ public class Invoice {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * Pagamento total ou parcial. Pode haver vários até o fechamento seguinte; quando o saldo zera, a
+     * fatura vira PAID. Pagar menos que o mínimo é permitido (o banco não recusa dinheiro), mas na
+     * virada conta como atraso.
+     */
+    public void registerPayment(Money amount, LocalDateTime now) {
+        requirePayable();
+        if (amount == null || amount.isZero()) throw new ValidationException("Valor do pagamento deve ser maior que zero");
+        if (amount.isGreaterThan(remaining())) {
+            throw new BusinessRuleException("Valor maior que o saldo devedor da fatura (" + remaining().amount() + ")");
+        }
+        this.paidAmount = this.paidAmount.add(amount);
+        if (remaining().isZero()) {
+            this.status = InvoiceStatus.PAID;
+            this.paidAt = now;
+        }
+        this.updatedAt = now;
+    }
+
+    /** Paga o saldo devedor inteiro (fatura zerada é quitada sem pagamento). */
     public void pay() {
+        requirePayable();
+        LocalDateTime now = LocalDateTime.now();
+        if (remaining().isZero()) {
+            this.status = InvoiceStatus.PAID;
+            this.paidAt = now;
+            this.updatedAt = now;
+            return;
+        }
+        registerPayment(remaining(), now);
+    }
+
+    /**
+     * Virada: o saldo devedor sai desta fatura e vai para a seguinte (quem lança é o fechamento da
+     * seguinte). Esta não aceita mais pagamentos — o cliente paga a nova.
+     *
+     * @return o saldo que foi levado
+     */
+    public Money rollOver(LocalDateTime now) {
+        if (this.status != InvoiceStatus.CLOSED) throw new BusinessRuleException("Somente faturas fechadas com saldo podem ir para o rotativo");
+        Money carried = remaining();
+        if (carried.isZero()) throw new BusinessRuleException("Fatura sem saldo devedor");
+        this.status = InvoiceStatus.ROLLED_OVER;
+        this.updatedAt = now;
+        return carried;
+    }
+
+    private void requirePayable() {
+        if (this.status == InvoiceStatus.ROLLED_OVER) {
+            throw new BusinessRuleException("O saldo desta fatura foi para a fatura seguinte: pague a fatura atual");
+        }
         if (this.status != InvoiceStatus.CLOSED) throw new BusinessRuleException("Somente faturas fechadas podem ser pagas");
-        this.status = InvoiceStatus.PAID;
-        this.paidAt = LocalDateTime.now();
-        this.updatedAt = this.paidAt;
     }
 
     public boolean isOverdue(LocalDate today) {
@@ -111,6 +194,7 @@ public class Invoice {
     public LocalDate getDueDate() { return dueDate; }
     public InvoiceStatus getStatus() { return status; }
     public List<InvoiceItem> getItems() { return Collections.unmodifiableList(items); }
+    public Money getPaidAmount() { return paidAmount; }
     public LocalDateTime getPaidAt() { return paidAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

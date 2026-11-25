@@ -40,6 +40,12 @@ public class CardJpaEntity {
     @Column(name = "auto_debit", nullable = false)
     private boolean autoDebit;
 
+    @Column(name = "revolving_principal", nullable = false, precision = 19, scale = 2)
+    private BigDecimal revolvingPrincipal;
+
+    @Column(name = "revolving_charges", nullable = false, precision = 19, scale = 2)
+    private BigDecimal revolvingCharges;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -70,6 +76,10 @@ public class CardJpaEntity {
     public void setStatus(CardStatus status) { this.status = status; }
     public boolean isAutoDebit() { return autoDebit; }
     public void setAutoDebit(boolean autoDebit) { this.autoDebit = autoDebit; }
+    public BigDecimal getRevolvingPrincipal() { return revolvingPrincipal; }
+    public void setRevolvingPrincipal(BigDecimal revolvingPrincipal) { this.revolvingPrincipal = revolvingPrincipal; }
+    public BigDecimal getRevolvingCharges() { return revolvingCharges; }
+    public void setRevolvingCharges(BigDecimal revolvingCharges) { this.revolvingCharges = revolvingCharges; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

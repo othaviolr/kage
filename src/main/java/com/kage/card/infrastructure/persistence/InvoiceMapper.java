@@ -19,6 +19,7 @@ public class InvoiceMapper {
         entity.setDueDate(invoice.getDueDate());
         entity.setStatus(invoice.getStatus());
         entity.setPaidAt(invoice.getPaidAt());
+        entity.setPaidAmount(invoice.getPaidAmount().amount());
         entity.setCreatedAt(invoice.getCreatedAt());
         entity.setUpdatedAt(invoice.getUpdatedAt());
         entity.setVersion(invoice.getVersion());
@@ -34,6 +35,7 @@ public class InvoiceMapper {
             entity.setDescription(item.description());
             entity.setAmount(item.amount().amount());
             entity.setPurchasedAt(item.purchasedAt());
+            entity.setKind(item.kind());
             return entity;
         }).collect(Collectors.toList());
     }
@@ -41,7 +43,7 @@ public class InvoiceMapper {
     public static Invoice toDomain(InvoiceJpaEntity entity, List<InvoiceItemJpaEntity> itemEntities) {
         List<InvoiceItem> items = itemEntities.stream()
                 .map(item -> new InvoiceItem(item.getId(), item.getPurchaseId(), item.getDescription(),
-                        Money.of(item.getAmount()), item.getPurchasedAt()))
+                        Money.of(item.getAmount()), item.getPurchasedAt(), item.getKind()))
                 .collect(Collectors.toList());
 
         return Invoice.reconstitute(
@@ -52,6 +54,7 @@ public class InvoiceMapper {
                 entity.getDueDate(),
                 entity.getStatus(),
                 items,
+                Money.of(entity.getPaidAmount()),
                 entity.getPaidAt(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
