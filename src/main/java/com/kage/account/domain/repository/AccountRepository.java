@@ -12,5 +12,6 @@ public interface AccountRepository {
     /** Lê a conta com lock pessimista até o fim da transação corrente (exige transação ativa). */
     Optional<Account> findByIdForUpdate(UUID id);
     Optional<Account> findByAccountNumber(String accountNumber);
-    boolean existsByAccountNumber(String accountNumber);
+    /** Próximo número de conta livre (sequence do banco): único mesmo com cadastros simultâneos. */
+    String nextAccountNumber();
 }

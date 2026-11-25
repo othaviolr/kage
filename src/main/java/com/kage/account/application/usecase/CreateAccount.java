@@ -4,6 +4,7 @@ import com.kage.account.domain.entity.Account;
 import com.kage.account.domain.enums.AccountType;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.domain.service.AccountCustomerValidationService;
+import com.kage.account.domain.valueobject.AccountCheckDigit;
 import com.kage.shared.domain.exception.ValidationException;
 
 import java.util.UUID;
@@ -27,33 +28,22 @@ public class CreateAccount {
         }
         AccountType type = parseAccountType(input.accountType());
         customerValidation.validateCanOpenAccount(input.customerId());
-        String accountNumber = generateUniqueAccountNumber();
-        String accountDigit = generateDigit(accountNumber);
+        String accountNumber = accountRepository.nextAccountNumber();
 
-        Account account = Account.create(input.customerId(), type, accountNumber, accountDigit);
+        Account account = Account.create(input.customerId(), type, accountNumber, AccountCheckDigit.of(accountNumber));
         Account saved = accountRepository.save(account);
 
         return new Output(saved.getId(), saved.getAccountNumber(), saved.getAccountDigit(), saved.getBranch(), saved.getType().name(), saved.getStatus().name());
     }
 
     private AccountType parseAccountType(String type) {
+        if (type == null || type.isBlank()) {
+            throw new ValidationException("Tipo de conta é obrigatório");
+        }
         try {
-            return AccountType.valueOf(type.toUpperCase());
+            return AccountType.valueOf(type.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new ValidationException("Tipo de conta inválido: " + type);
         }
-    }
-
-    private String generateUniqueAccountNumber() {
-        String number;
-        do {
-            number = String.format("%05d", (int) (Math.random() * 100000));
-        } while (accountRepository.existsByAccountNumber(number));
-        return number;
-    }
-
-    private String generateDigit(String accountNumber) {
-        int sum = accountNumber.chars().map(Character::getNumericValue).sum();
-        return String.valueOf(sum % 10);
     }
 }

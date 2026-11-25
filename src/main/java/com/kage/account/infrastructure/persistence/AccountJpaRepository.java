@@ -12,7 +12,9 @@ import java.util.UUID;
 public interface AccountJpaRepository extends JpaRepository<AccountJpaEntity, UUID> {
 
     Optional<AccountJpaEntity> findByAccountNumber(String accountNumber);
-    boolean existsByAccountNumber(String accountNumber);
+
+    @Query(value = "SELECT nextval('account_number_seq')", nativeQuery = true)
+    Long nextAccountNumber();
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT a FROM AccountJpaEntity a WHERE a.id = :id")
