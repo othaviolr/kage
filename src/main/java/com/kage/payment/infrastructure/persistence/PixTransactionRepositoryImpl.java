@@ -8,6 +8,7 @@ import com.kage.payment.domain.enums.PixTransactionStatus;
 import com.kage.shared.domain.valueobject.Money;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -38,9 +39,21 @@ public class PixTransactionRepositoryImpl implements PixTransactionRepository {
 
     @Override
     public Money sumAmountSentSince(UUID sourceAccountId, LocalDateTime since) {
-        // PENDING/PROCESSING contam: o dinheiro ainda não saiu, mas o limite já foi consumido
+        // PROCESSING conta: o dinheiro ainda está a caminho, mas o limite já foi consumido.
+        // PENDING (agendado ainda não executado), FAILED e CANCELLED não consomem limite.
         BigDecimal sum = jpaRepository.sumAmountSentSince(sourceAccountId, since,
-                List.of(PixTransactionStatus.FAILED, PixTransactionStatus.CANCELLED));
+                List.of(PixTransactionStatus.PROCESSING, PixTransactionStatus.COMPLETED));
         return sum == null ? Money.ZERO : Money.of(sum); // SUM sem linhas devolve null
+    }
+
+    @Override
+    public List<PixTransaction> findScheduledDueUntil(LocalDate date) {
+        return jpaRepository.findScheduledDueBefore(date.plusDays(1).atStartOfDay()).stream()
+                .map(PixTransactionMapper::toDomain).toList();
+    }
+
+    @Override
+    public List<PixTransaction> findPendingScheduledByAccount(UUID accountId) {
+        return jpaRepository.findPendingScheduledByAccount(accountId).stream().map(PixTransactionMapper::toDomain).toList();
     }
 }

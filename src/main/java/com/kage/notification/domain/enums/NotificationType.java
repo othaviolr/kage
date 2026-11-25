@@ -6,6 +6,7 @@ public enum NotificationType {
     PIX_SENT,
     PIX_RECEIVED,
     PIX_FAILED,
+    PIX_SCHEDULED_FAILED,
     PIX_REFUND_SENT,
     PIX_REFUND_RECEIVED,
     PIX_REFUND_FAILED,

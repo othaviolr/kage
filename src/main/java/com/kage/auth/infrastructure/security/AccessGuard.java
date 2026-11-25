@@ -103,6 +103,16 @@ public class AccessGuard {
         if (denied) throw new NotFoundException("Transação PIX não encontrada");
     }
 
+    /** Só a conta de origem mexe no agendamento; mesma mensagem do "não existe" do ManageScheduledPix. */
+    public void checkScheduledPix(UUID transactionId) {
+        AuthenticatedUser user = currentUser();
+        if (user.isAdmin()) return;
+        boolean denied = pixTransactionRepository.findById(transactionId)
+                .map(t -> !ownsExistingAccount(user, t.getSourceAccountId()))
+                .orElse(false);
+        if (denied) throw new NotFoundException("PIX agendado não encontrado");
+    }
+
     public void checkPixRefund(UUID refundId) {
         AuthenticatedUser user = currentUser();
         if (user.isAdmin()) return;

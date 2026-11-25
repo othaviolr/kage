@@ -12,6 +12,8 @@ import com.kage.payment.infrastructure.messaging.PixEventConsumer;
 import com.kage.payment.infrastructure.persistence.*;
 import com.kage.payment.infrastructure.persistence.idempotency.ProcessedEventRepository;
 import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
+import com.kage.payment.infrastructure.scheduling.ScheduledPixScheduler;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -68,6 +70,38 @@ public class PaymentConfig {
                            PixEventPublisher pixEventPublisher,
                            Clock clock) {
         return new SendPix(pixKeyRepository, pixTransactionRepository, accountValidationService, pixEventPublisher, clock);
+    }
+
+    @Bean
+    public SchedulePix schedulePix(PixKeyRepository pixKeyRepository, PixTransactionRepository pixTransactionRepository,
+                                   Clock clock) {
+        return new SchedulePix(pixKeyRepository, pixTransactionRepository, clock);
+    }
+
+    @Bean
+    public ManageScheduledPix manageScheduledPix(PixTransactionRepository pixTransactionRepository) {
+        return new ManageScheduledPix(pixTransactionRepository);
+    }
+
+    @Bean
+    public ScheduledPixExecutor scheduledPixExecutor(PixKeyRepository pixKeyRepository,
+                                                     PixTransactionRepository pixTransactionRepository,
+                                                     AccountValidationService accountValidationService,
+                                                     PixEventPublisher pixEventPublisher, Clock clock) {
+        return new ScheduledPixExecutor(pixKeyRepository, pixTransactionRepository, accountValidationService,
+                pixEventPublisher, clock);
+    }
+
+    @Bean
+    public RunScheduledPix runScheduledPix(PixTransactionRepository pixTransactionRepository,
+                                           ScheduledPixExecutor scheduledPixExecutor) {
+        return new RunScheduledPix(pixTransactionRepository, scheduledPixExecutor);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "kage.pix.scheduler-enabled", havingValue = "true", matchIfMissing = true)
+    public ScheduledPixScheduler scheduledPixScheduler(RunScheduledPix runScheduledPix, Clock clock) {
+        return new ScheduledPixScheduler(runScheduledPix, clock);
     }
 
     @Bean

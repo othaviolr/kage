@@ -4,6 +4,7 @@ import com.kage.payment.domain.enums.PixTransactionStatus;
 import com.kage.payment.domain.enums.TransactionType;
 import com.kage.shared.domain.exception.DomainException;
 import com.kage.shared.domain.valueobject.Money;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -69,6 +70,30 @@ public class PixTransaction {
                 null,
                 null
         );
+    }
+
+    /** Máximo de antecedência para agendar. */
+    public static final int MAX_SCHEDULE_DAYS = 365;
+
+    /**
+     * PIX agendado: fica PENDING até o dia, sem tocar em saldo nem em limite — ambos são conferidos
+     * na execução, como nos bancos (dá para agendar hoje sem ter o dinheiro ainda).
+     */
+    public static PixTransaction schedule(UUID sourceAccountId, String targetPixKey, Money amount, String description,
+                                          LocalDate scheduledDate, LocalDate today) {
+        if (scheduledDate == null) throw new DomainException("Data do agendamento é obrigatória");
+        if (!scheduledDate.isAfter(today)) {
+            throw new DomainException("Agendamento precisa ser para uma data futura; para hoje, use o PIX imediato");
+        }
+        if (scheduledDate.isAfter(today.plusDays(MAX_SCHEDULE_DAYS))) {
+            throw new DomainException("Agendamento pode ser feito com até " + MAX_SCHEDULE_DAYS + " dias de antecedência");
+        }
+        if (amount == null || amount.isZero()) throw new DomainException("Valor do PIX deve ser maior que zero");
+        return create(sourceAccountId, targetPixKey, amount, description, TransactionType.SCHEDULED, scheduledDate.atStartOfDay());
+    }
+
+    public boolean isScheduled() {
+        return transactionType == TransactionType.SCHEDULED;
     }
 
     public static PixTransaction reconstitute(UUID transactionId, UUID idempotencyKey,

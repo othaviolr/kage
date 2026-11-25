@@ -40,6 +40,11 @@ public final class NotificationTemplates {
                 + ". Nenhum valor saiu da sua conta.");
     }
 
+    public static Text scheduledPixFailed(BigDecimal amount, LocalDate scheduledDate, String reason) {
+        return new Text("Seu PIX agendado não foi realizado", "O PIX de " + money(amount) + " agendado para "
+                + scheduledDate.format(DATE) + " não foi realizado: " + reason + ". Nenhum valor saiu da sua conta.");
+    }
+
     public static Text refundSent(BigDecimal amount) {
         return new Text("Estorno de PIX", "Um PIX que você recebeu foi estornado: " + money(amount) + " foram devolvidos.");
     }

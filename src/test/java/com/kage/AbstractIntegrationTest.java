@@ -69,6 +69,7 @@ public abstract class AbstractIntegrationTest {
 
         // o job diário de cobrança não pode disparar no meio de um teste; quem testa chama o use case
         registry.add("kage.billing.scheduler-enabled", () -> "false");
+        registry.add("kage.pix.scheduler-enabled", () -> "false");
 
         // sem e-mail real, o teste da recuperação de senha precisa receber o token na resposta
         registry.add("kage.security.password-reset.expose-token", () -> "true");

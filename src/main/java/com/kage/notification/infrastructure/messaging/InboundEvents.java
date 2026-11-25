@@ -33,6 +33,10 @@ public final class InboundEvents {
     public record InvoicePaid(UUID cardId, UUID invoiceId, String referenceMonth, BigDecimal amount) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record ScheduledPixFailed(UUID transactionId, UUID sourceAccountId, BigDecimal amount, LocalDate scheduledDate,
+                                     String reason) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record PasswordChanged(UUID customerId, String reason) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
