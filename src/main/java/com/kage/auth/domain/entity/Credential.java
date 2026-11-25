@@ -57,6 +57,14 @@ public class Credential {
         updatedAt = now;
     }
 
+    /** Senha nova (troca ou recuperação): também destrava, porque o dono acabou de provar quem é. */
+    public void changePassword(String newPasswordHash, LocalDateTime now) {
+        this.passwordHash = newPasswordHash;
+        this.failedAttempts = 0;
+        this.lockedUntil = null;
+        this.updatedAt = now;
+    }
+
     public void registerSuccessfulLogin(LocalDateTime now) {
         failedAttempts = 0;
         lockedUntil = null;

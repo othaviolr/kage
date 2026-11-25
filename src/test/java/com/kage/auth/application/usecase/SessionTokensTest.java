@@ -40,6 +40,7 @@ class SessionTokensTest {
             public RegisteredCustomer register(NewCustomer c) { throw new UnsupportedOperationException(); }
             public Optional<CustomerIdentity> findByCpf(String cpf) { return Optional.empty(); }
             public Optional<Boolean> isBlocked(UUID id) { return Optional.ofNullable(blocked.get(id)); }
+            public Optional<String> cpfDigitsOf(UUID id) { return Optional.empty(); }
         };
         tokens = new SessionTokens(sessions, issuer, directory, clock);
         customerId = UUID.randomUUID();
@@ -144,6 +145,11 @@ class SessionTokensTest {
             List<Session> active = findActiveByCustomer(c, now);
             active.forEach(s -> s.revoke(reason, now));
             return active.size();
+        }
+        public int revokeAllByCustomerExcept(UUID c, UUID keep, String reason, LocalDateTime now) {
+            List<Session> others = findActiveByCustomer(c, now).stream().filter(s -> !s.getId().equals(keep)).toList();
+            others.forEach(s -> s.revoke(reason, now));
+            return others.size();
         }
         public void insertRefreshToken(String hash, UUID sessionId, LocalDateTime issuedAt, LocalDateTime expiresAt) {
             refreshTokens.put(hash, new RefreshTokenRecord(hash, sessionId, expiresAt, null));

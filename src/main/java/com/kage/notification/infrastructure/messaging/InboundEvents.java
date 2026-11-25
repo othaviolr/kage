@@ -33,5 +33,8 @@ public final class InboundEvents {
     public record InvoicePaid(UUID cardId, UUID invoiceId, String referenceMonth, BigDecimal amount) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record PasswordChanged(UUID customerId, String reason) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record InvoiceAutoDebitFailed(UUID cardId, String referenceMonth, String reason, Instant occurredAt) {}
 }

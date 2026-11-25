@@ -2,7 +2,19 @@ package com.kage.auth.infrastructure.config;
 
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.auth.application.usecase.AdminLogin;
+import com.kage.auth.application.usecase.ChangePassword;
+import com.kage.auth.application.usecase.ForgotPassword;
 import com.kage.auth.application.usecase.Login;
+import com.kage.auth.application.usecase.ResetPassword;
+import com.kage.auth.domain.repository.PasswordResetRepository;
+import com.kage.auth.domain.service.AuthEventPublisher;
+import com.kage.auth.domain.service.PasswordResetSender;
+import com.kage.auth.infrastructure.messaging.OutboxAuthEventPublisher;
+import com.kage.auth.infrastructure.persistence.PasswordResetRepositoryImpl;
+import com.kage.auth.infrastructure.security.LoggingPasswordResetSender;
+import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
+import org.springframework.amqp.core.TopicExchange;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import com.kage.auth.application.usecase.ManageSessions;
 import com.kage.auth.application.usecase.SessionTokens;
 import com.kage.auth.domain.repository.SessionRepository;
@@ -96,6 +108,51 @@ public class AuthConfig {
                                  @Value("${kage.security.admin.password}") String password,
                                  PasswordHasher passwordHasher, SessionTokens sessionTokens, Clock clock) {
         return new AdminLogin(username, passwordHasher.hash(password), passwordHasher, sessionTokens, clock);
+    }
+
+    @Bean
+    public PasswordResetRepository passwordResetRepository(JdbcTemplate jdbcTemplate) {
+        return new PasswordResetRepositoryImpl(jdbcTemplate);
+    }
+
+    /** Troque por um envio real (SES, SendGrid...) declarando outro bean PasswordResetSender. */
+    @Bean
+    @ConditionalOnMissingBean(PasswordResetSender.class)
+    public PasswordResetSender passwordResetSender() {
+        return new LoggingPasswordResetSender();
+    }
+
+    @Bean
+    public AuthEventPublisher authEventPublisher(OutboxEventPublisher outboxEventPublisher) {
+        return new OutboxAuthEventPublisher(outboxEventPublisher);
+    }
+
+    @Bean
+    public TopicExchange authExchange() {
+        return new TopicExchange(OutboxAuthEventPublisher.EXCHANGE);
+    }
+
+    @Bean
+    public ChangePassword changePassword(CredentialRepository credentialRepository, SessionRepository sessionRepository,
+                                         CustomerDirectory customerDirectory, PasswordHasher passwordHasher,
+                                         AuthEventPublisher authEventPublisher, Clock clock) {
+        return new ChangePassword(credentialRepository, sessionRepository, customerDirectory, passwordHasher,
+                authEventPublisher, clock);
+    }
+
+    @Bean
+    public ForgotPassword forgotPassword(CustomerDirectory customerDirectory, PasswordResetRepository passwordResetRepository,
+                                         PasswordResetSender passwordResetSender, Clock clock,
+                                         @Value("${kage.security.password-reset.expose-token:false}") boolean exposeToken) {
+        return new ForgotPassword(customerDirectory, passwordResetRepository, passwordResetSender, clock, exposeToken);
+    }
+
+    @Bean
+    public ResetPassword resetPassword(PasswordResetRepository passwordResetRepository, CredentialRepository credentialRepository,
+                                       SessionRepository sessionRepository, CustomerDirectory customerDirectory,
+                                       PasswordHasher passwordHasher, AuthEventPublisher authEventPublisher, Clock clock) {
+        return new ResetPassword(passwordResetRepository, credentialRepository, sessionRepository, customerDirectory,
+                passwordHasher, authEventPublisher, clock);
     }
 
     @Bean

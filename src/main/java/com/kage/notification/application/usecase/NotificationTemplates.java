@@ -67,6 +67,14 @@ public final class NotificationTemplates {
                 + " não passou (" + reason + "). Vamos tentar de novo amanhã, ou você pode pagar pelo app.");
     }
 
+    /** Alerta de segurança: o texto tem que dizer o que fazer se não foi o cliente. */
+    public static Text passwordChanged(boolean viaRecovery) {
+        return new Text("Sua senha foi alterada",
+                (viaRecovery ? "Sua senha foi redefinida pelo link de recuperação e todos os dispositivos foram desconectados."
+                        : "Sua senha foi alterada e os outros dispositivos foram desconectados.")
+                        + " Se não foi você, fale com o atendimento agora.");
+    }
+
     static String money(BigDecimal amount) {
         // NumberFormat usa espaço não separável depois do "R$"; troca por espaço comum para push/e-mail
         return NumberFormat.getCurrencyInstance(PT_BR).format(amount).replace(' ', ' ');
