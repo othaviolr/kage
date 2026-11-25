@@ -132,6 +132,14 @@ public final class NotificationTemplates {
                         + " Se não foi você, fale com o atendimento agora.");
     }
 
+    public static Text newDeviceLogin(String userAgent, java.time.Instant at) {
+        String when = at == null ? "" : " em " + java.time.format.DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm")
+                .withZone(java.time.ZoneId.of("America/Sao_Paulo")).format(at);
+        String device = userAgent == null || userAgent.isBlank() ? "um dispositivo novo" : "um dispositivo novo (" + userAgent + ")";
+        return new Text("Novo dispositivo conectado", "Sua conta foi acessada de " + device + when
+                + ", depois da confirmação pelo código enviado por SMS. Se não foi você, troque a senha e fale com o atendimento agora.");
+    }
+
     public static Text boletoReceived(String payerName, BigDecimal paidAmount, boolean viaClearing) {
         return new Text("Boleto pago", payerName + " pagou o boleto de " + money(paidAmount)
                 + (viaClearing ? " em outro banco" : "") + ". O dinheiro já está na sua conta.");

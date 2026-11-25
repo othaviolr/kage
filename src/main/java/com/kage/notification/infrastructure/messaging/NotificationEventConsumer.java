@@ -133,6 +133,12 @@ public class NotificationEventConsumer {
                 NotificationTemplates.passwordChanged("RESET".equals(e.reason())), null, messageId);
     }
 
+    @RabbitListener(queues = "notification.auth.device.trusted.queue")
+    public void onDeviceTrusted(InboundEvents.DeviceTrusted e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        deliver(Optional.of(e.customerId()), "cliente " + e.customerId(), NotificationType.NEW_DEVICE_LOGIN,
+                NotificationTemplates.newDeviceLogin(e.userAgent(), e.occurredAt()), null, messageId);
+    }
+
     @RabbitListener(queues = "notification.savings.goal.reached.queue")
     public void onSavingsGoalReached(InboundEvents.SavingsGoalReached e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         deliver(Optional.of(e.customerId()), "cliente " + e.customerId(), NotificationType.SAVINGS_GOAL_REACHED,

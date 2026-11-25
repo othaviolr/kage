@@ -8,4 +8,7 @@ public interface AuthEventPublisher {
     enum PasswordChangeReason { CHANGED, RESET }
 
     void publishPasswordChanged(UUID customerId, PasswordChangeReason reason);
+
+    /** Um aparelho novo passou pela verificação e virou confiável (alerta "novo dispositivo conectado"). */
+    void publishNewDeviceTrusted(UUID customerId, String userAgent);
 }

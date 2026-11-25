@@ -51,6 +51,10 @@ kage:
       # SÓ PARA DESENVOLVIMENTO: devolve o token de recuperação na resposta do /password/forgot
       # (não há envio de e-mail real). Em produção fica false.
       expose-token: ${KAGE_DEV_EXPOSE_RESET_TOKEN:false}
+    login-code:
+      # SÓ PARA DESENVOLVIMENTO: devolve o código do login em dispositivo novo na resposta do /login
+      # (não há SMS real). Em produção fica false. Sem a variável própria, segue a do reset.
+      expose-code: ${KAGE_DEV_EXPOSE_LOGIN_CODE:${KAGE_DEV_EXPOSE_RESET_TOKEN:false}}
   pix:
     # dispara os PIX agendados do dia logo depois do fim da janela noturna
     scheduler-enabled: ${KAGE_PIX_SCHEDULER_ENABLED:true}

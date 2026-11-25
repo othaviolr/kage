@@ -31,10 +31,11 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 
 - **Notificações**: depósito, saque, PIX enviado/recebido/recusado, estornos, fatura fechada/paga e débito automático recusado viram avisos na caixa de entrada do cliente (`GET /api/notifications`) e são entregues por um canal externo (hoje simulado em log; a porta `NotificationChannel` aceita FCM, SES etc.). Consome os eventos que os contextos já publicam pelo outbox; reentrega não duplica aviso
 - **Segurança**: cadastro pelo app com senha (BCrypt), login por CPF devolvendo JWT de 15 min + refresh token rotativo de 30 dias (reuso de token antigo derruba a sessão), logout que vale na hora, lista de sessões e "sair de todos os dispositivos", bloqueio do cliente derruba as sessões dele, troca de senha (derruba os outros dispositivos) e recuperação por link de uso único (30 min; resposta idêntica exista o CPF ou não; derruba todas as sessões), alerta de senha alterada, travamento após 5 senhas erradas (cliente e admin), cliente só acessa o que é dele, backoffice com papel ADMIN
+- **Verificação em duas etapas no dispositivo novo**: o app manda um identificador do aparelho (`X-Device-Id`, só o SHA-256 é guardado). O aparelho do cadastro nasce confiável; num aparelho novo, a senha certa não abre sessão: o login responde **202** com um desafio e um código de 6 dígitos vai por SMS (simulado). `POST /api/auth/login/verify` com o código abre a sessão, torna o aparelho confiável e avisa o cliente ("novo dispositivo conectado"). Código de uso único, 5 minutos, até 5 tentativas, só para o aparelho que pediu, no máximo 5 por hora; senha errada não dispara SMS. O cliente lista e esquece aparelhos (`/api/auth/devices`), e redefinir a senha esquece todos
 
 ### Roadmap
 
-- 2FA no login de dispositivo novo, envio real do e-mail de recuperação de senha
+- Envio real do e-mail de recuperação de senha e do SMS do código de login; verificação em duas etapas também no backoffice
 - PIX Automático: novas tentativas de cobrança recusada por falta de saldo, limite específico do pagador para o PIX Automático, pedido por QR Code
 - Compra parcelada com juros do emissor
 - Boletos: contas de consumo e tributos (código de arrecadação de 48 dígitos), consulta de boletos de outros bancos na CIP (encargos de atraso e beneficiário), DDA, boleto com desconto e pagamento após as 22h agendado para o dia útil seguinte

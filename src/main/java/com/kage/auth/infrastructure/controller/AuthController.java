@@ -3,6 +3,9 @@ package com.kage.auth.infrastructure.controller;
 import com.kage.auth.application.usecase.AdminLogin;
 import com.kage.auth.application.usecase.AuthTokens;
 import com.kage.auth.application.usecase.ChangePassword;
+import com.kage.auth.application.usecase.DeviceVerification;
+import com.kage.auth.application.usecase.LoginResult;
+import com.kage.auth.domain.valueobject.DeviceId;
 import com.kage.auth.application.usecase.ForgotPassword;
 import com.kage.auth.application.usecase.ResetPassword;
 import com.kage.auth.application.usecase.Login;
@@ -34,10 +37,13 @@ public class AuthController {
     private final ChangePassword changePassword;
     private final ForgotPassword forgotPassword;
     private final ResetPassword resetPassword;
+    private final DeviceVerification deviceVerification;
 
     public AuthController(SignUp signUp, Login login, AdminLogin adminLogin, SessionTokens sessionTokens,
                           ManageSessions manageSessions, AccessGuard accessGuard, ChangePassword changePassword,
-                          ForgotPassword forgotPassword, ResetPassword resetPassword) {
+                          ForgotPassword forgotPassword, ResetPassword resetPassword,
+                          DeviceVerification deviceVerification) {
+        this.deviceVerification = deviceVerification;
         this.changePassword = changePassword;
         this.forgotPassword = forgotPassword;
         this.resetPassword = resetPassword;
@@ -49,15 +55,49 @@ public class AuthController {
         this.accessGuard = accessGuard;
     }
 
+    /** O aparelho do cadastro ({@code X-Device-Id}) já nasce confiável. */
     @PostMapping("/signup")
-    public ResponseEntity<SignUp.Output> signUp(@RequestBody SignUp.Input input) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(signUp.execute(input));
+    public ResponseEntity<SignUp.Output> signUp(@RequestBody SignUp.Input input,
+                                                @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId,
+                                                @RequestHeader(value = HttpHeaders.USER_AGENT, required = false) String userAgent) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(signUp.execute(input, deviceId, userAgent));
     }
 
+    /**
+     * 200 com os tokens (aparelho confiável) ou 202 com o desafio (aparelho novo: o código foi por SMS
+     * e a sessão só abre em /login/verify).
+     */
     @PostMapping("/login")
-    public ResponseEntity<AuthTokens> login(@RequestBody Login.Input input,
-                                            @RequestHeader(value = HttpHeaders.USER_AGENT, required = false) String userAgent) {
-        return ResponseEntity.ok(login.execute(input, userAgent));
+    public ResponseEntity<?> login(@RequestBody Login.Input input,
+                                   @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId,
+                                   @RequestHeader(value = HttpHeaders.USER_AGENT, required = false) String userAgent) {
+        LoginResult result = login.execute(input, userAgent, deviceId);
+        return result.isVerificationRequired()
+                ? ResponseEntity.accepted().body(result.challenge())
+                : ResponseEntity.ok(result.tokens());
+    }
+
+    /** Segunda etapa do login em aparelho novo: o código do SMS. Certo, o aparelho passa a ser confiável. */
+    @PostMapping("/login/verify")
+    public ResponseEntity<AuthTokens> verifyLogin(@RequestBody VerifyLoginRequest request,
+                                                  @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId,
+                                                  @RequestHeader(value = HttpHeaders.USER_AGENT, required = false) String userAgent) {
+        return ResponseEntity.ok(deviceVerification.verify(request.challengeId(), request.code(), deviceId, userAgent));
+    }
+
+    public record VerifyLoginRequest(UUID challengeId, String code) {}
+
+    /** Aparelhos confiáveis (entram sem código). */
+    @GetMapping("/devices")
+    public ResponseEntity<List<DeviceVerification.DeviceView>> devices() {
+        return ResponseEntity.ok(deviceVerification.list(requireCustomer().customerId()));
+    }
+
+    /** Esquece um aparelho (ex.: celular vendido): o próximo login dele pede código. */
+    @DeleteMapping("/devices/{deviceId}")
+    public ResponseEntity<Void> forgetDevice(@PathVariable UUID deviceId) {
+        deviceVerification.forget(deviceId, requireCustomer().customerId());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/admin/login")

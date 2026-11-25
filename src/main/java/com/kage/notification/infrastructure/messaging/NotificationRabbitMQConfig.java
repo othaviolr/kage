@@ -42,6 +42,7 @@ public class NotificationRabbitMQConfig {
             Map.entry("card.invoice.rolled-over", CARD_EXCHANGE),
             Map.entry("card.invoice.financed", CARD_EXCHANGE),
             Map.entry("auth.password.changed", AUTH_EXCHANGE),
+            Map.entry("auth.device.trusted", AUTH_EXCHANGE),
             Map.entry("pix.scheduled.failed", PIX_EXCHANGE),
             Map.entry("pix.automatic.requested", PIX_EXCHANGE),
             Map.entry("pix.automatic.charge.scheduled", PIX_EXCHANGE),

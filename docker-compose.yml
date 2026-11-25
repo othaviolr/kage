@@ -60,6 +60,7 @@ services:
       KAGE_SAVINGS_CDI_SOURCE: ${KAGE_SAVINGS_CDI_SOURCE:-fixed}
       # só para testar a recuperação de senha sem e-mail real; nunca em produção
       KAGE_DEV_EXPOSE_RESET_TOKEN: ${KAGE_DEV_EXPOSE_RESET_TOKEN:-false}
+      KAGE_DEV_EXPOSE_LOGIN_CODE: ${KAGE_DEV_EXPOSE_LOGIN_CODE:-${KAGE_DEV_EXPOSE_RESET_TOKEN:-false}}
     ports:
       - "8080:8080"
 

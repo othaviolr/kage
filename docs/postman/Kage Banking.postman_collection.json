@@ -7259,7 +7259,8 @@
                   "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
                   "const d1 = digit(base), d2 = digit([...base, d1]);",
                   "pm.collectionVariables.set('secCpf', [...base, d1, d2].join(''));",
-                  "pm.collectionVariables.set('secEmail', `kage.sec+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                  "pm.collectionVariables.set('secEmail', `kage.sec+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);",
+                  "pm.collectionVariables.set('secDeviceId', 'postman-celular-' + Date.now());"
                 ]
               }
             },
@@ -7282,6 +7283,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{secDeviceId}}"
               }
             ],
             "url": {
@@ -7331,6 +7336,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{secDeviceId}}"
               }
             ],
             "url": {
@@ -7378,6 +7387,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{secDeviceId}}"
               }
             ],
             "url": {
@@ -8270,6 +8283,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{secDeviceId}}"
               }
             ],
             "url": {
@@ -8395,6 +8412,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{secDeviceId}}"
               }
             ],
             "url": {
@@ -8588,6 +8609,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{secDeviceId}}"
               }
             ],
             "url": {
@@ -13807,6 +13832,729 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "16. Login em dispositivo novo",
+      "item": [
+        {
+          "name": "16.1 Cadastro pelo celular (ele já nasce confiável)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{dvPhone}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Dois Fatores\",\n  \"cpf\": \"{{dvCpf}}\",\n  \"email\": \"{{dvEmail}}\",\n  \"phone\": \"(41) 98888-7777\",\n  \"birthDate\": \"1992-03-10\",\n  \"street\": \"Rua do App\",\n  \"number\": \"10\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\",\n  \"password\": \"Sombra-2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('dvCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('dvEmail', `kage.dv+${Date.now()}@example.com`);",
+                  "pm.collectionVariables.set('dvPhone', 'postman-celular-' + Date.now());",
+                  "pm.collectionVariables.set('dvNotebook', 'postman-notebook-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.2 Login no celular: entra direto",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{dvPhone}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"{{dvCpf}}\",\n  \"password\": \"Sombra-2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Tokens', () => pm.expect(pm.response.json().accessToken).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.3 Login no notebook (novo): senha certa não basta -> 202",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{dvNotebook}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"{{dvCpf}}\",\n  \"password\": \"Sombra-2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 202', () => pm.response.to.have.status(202));",
+                  "const j = pm.response.json();",
+                  "pm.test('Desafio, sem tokens', () => { pm.expect(j.verificationRequired).to.eql(true); pm.expect(j.challengeId).to.be.a('string'); pm.expect(j.accessToken).to.eql(undefined); });",
+                  "pm.collectionVariables.set('dvChallengeId', j.challengeId);",
+                  "pm.collectionVariables.set('dvCode', j.devCode || '');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.4 Código errado -> 401 (restam 4)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{dvNotebook}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                "verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{dvChallengeId}}\",\n  \"code\": \"{{dvWrongCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('dvCode')) { console.log('pulado: sem o código do login (ligue KAGE_DEV_EXPOSE_LOGIN_CODE=true)'); pm.execution.skipRequest(); }",
+                  "pm.collectionVariables.set('dvWrongCode', pm.collectionVariables.get('dvCode') === '000000' ? '111111' : '000000');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Restam 4', () => pm.expect(pm.response.json().message).to.include('Restam 4'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.5 Código certo, mas mandado por outro aparelho -> 401",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{dvPhone}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                "verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{dvChallengeId}}\",\n  \"code\": \"{{dvCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('dvCode')) { console.log('pulado: sem o código do login (ligue KAGE_DEV_EXPOSE_LOGIN_CODE=true)'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.6 Código certo no notebook: entra",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{dvNotebook}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                "verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{dvChallengeId}}\",\n  \"code\": \"{{dvCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('dvCode')) { console.log('pulado: sem o código do login (ligue KAGE_DEV_EXPOSE_LOGIN_CODE=true)'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('dvToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.7 O mesmo código de novo -> 401 (uso único)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{dvNotebook}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                "verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{dvChallengeId}}\",\n  \"code\": \"{{dvCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('dvCode')) { console.log('pulado: sem o código do login (ligue KAGE_DEV_EXPOSE_LOGIN_CODE=true)'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.8 Login no notebook agora entra direto",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{dvNotebook}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"{{dvCpf}}\",\n  \"password\": \"Sombra-2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('dvCode')) { console.log('pulado: sem o código do login (ligue KAGE_DEV_EXPOSE_LOGIN_CODE=true)'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.9 Aparelhos confiáveis: celular e notebook",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{dvToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/devices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "devices"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('dvCode')) { console.log('pulado: sem o código do login (ligue KAGE_DEV_EXPOSE_LOGIN_CODE=true)'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Dois', () => pm.expect(pm.response.json().length).to.eql(2));",
+                  "pm.collectionVariables.set('dvDeviceId', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.10 Aviso de novo dispositivo na caixa de entrada",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{dvToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('dvCode')) { console.log('pulado: sem o código do login (ligue KAGE_DEV_EXPOSE_LOGIN_CODE=true)'); pm.execution.skipRequest(); }",
+                  "setTimeout(() => {}, 2000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('NEW_DEVICE_LOGIN', () => pm.expect(pm.response.json().notifications.map(n => n.type)).to.include('NEW_DEVICE_LOGIN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.11 Esquecer o aparelho usado por último",
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{dvToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/devices/{{dvDeviceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "devices",
+                "{{dvDeviceId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('dvCode')) { console.log('pulado: sem o código do login (ligue KAGE_DEV_EXPOSE_LOGIN_CODE=true)'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.12 Sobrou um aparelho confiável",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{dvToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/devices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "devices"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('dvCode')) { console.log('pulado: sem o código do login (ligue KAGE_DEV_EXPOSE_LOGIN_CODE=true)'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Um', () => pm.expect(pm.response.json().length).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.13 X-Device-Id inválido -> 400",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "curto"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"{{dvCpf}}\",\n  \"password\": \"Sombra-2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
                 ]
               }
             }

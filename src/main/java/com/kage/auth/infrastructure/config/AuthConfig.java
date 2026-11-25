@@ -5,6 +5,11 @@ import com.kage.savings.domain.repository.SavingsBoxRepository;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.auth.application.usecase.AdminLogin;
 import com.kage.auth.application.usecase.ChangePassword;
+import com.kage.auth.application.usecase.DeviceVerification;
+import com.kage.auth.domain.repository.DeviceVerificationRepository;
+import com.kage.auth.domain.service.LoginCodeSender;
+import com.kage.auth.infrastructure.persistence.DeviceVerificationRepositoryImpl;
+import com.kage.auth.infrastructure.security.LoggingLoginCodeSender;
 import com.kage.auth.application.usecase.ForgotPassword;
 import com.kage.auth.application.usecase.Login;
 import com.kage.auth.application.usecase.ResetPassword;
@@ -75,8 +80,31 @@ public class AuthConfig {
 
     @Bean
     public SignUp signUp(CustomerDirectory customerDirectory, CredentialRepository credentialRepository,
-                         PasswordHasher passwordHasher, Clock clock) {
-        return new SignUp(customerDirectory, credentialRepository, passwordHasher, clock);
+                         PasswordHasher passwordHasher, DeviceVerificationRepository deviceVerificationRepository,
+                         Clock clock) {
+        return new SignUp(customerDirectory, credentialRepository, passwordHasher, deviceVerificationRepository, clock);
+    }
+
+    @Bean
+    public DeviceVerificationRepository deviceVerificationRepository(JdbcTemplate jdbcTemplate) {
+        return new DeviceVerificationRepositoryImpl(jdbcTemplate);
+    }
+
+    /** Troque por um envio real (Twilio, SNS...) declarando outro bean LoginCodeSender. */
+    @Bean
+    @ConditionalOnMissingBean(LoginCodeSender.class)
+    public LoginCodeSender loginCodeSender() {
+        return new LoggingLoginCodeSender();
+    }
+
+    @Bean
+    public DeviceVerification deviceVerification(DeviceVerificationRepository deviceVerificationRepository,
+                                                 LoginCodeSender loginCodeSender, SessionTokens sessionTokens,
+                                                 CustomerDirectory customerDirectory,
+                                                 AuthEventPublisher authEventPublisher, Clock clock,
+                                                 @Value("${kage.security.login-code.expose-code:false}") boolean exposeCode) {
+        return new DeviceVerification(deviceVerificationRepository, loginCodeSender, sessionTokens, customerDirectory,
+                authEventPublisher, clock, exposeCode);
     }
 
     @Bean
@@ -102,8 +130,9 @@ public class AuthConfig {
 
     @Bean
     public Login login(CustomerDirectory customerDirectory, CredentialRepository credentialRepository,
-                       PasswordHasher passwordHasher, SessionTokens sessionTokens, Clock clock) {
-        return new Login(customerDirectory, credentialRepository, passwordHasher, sessionTokens, clock);
+                       PasswordHasher passwordHasher, SessionTokens sessionTokens,
+                       DeviceVerification deviceVerification, Clock clock) {
+        return new Login(customerDirectory, credentialRepository, passwordHasher, sessionTokens, deviceVerification, clock);
     }
 
     /** A senha do admin vem em texto da configuração (variável de ambiente) e é hasheada na subida. */
@@ -154,9 +183,10 @@ public class AuthConfig {
     @Bean
     public ResetPassword resetPassword(PasswordResetRepository passwordResetRepository, CredentialRepository credentialRepository,
                                        SessionRepository sessionRepository, CustomerDirectory customerDirectory,
-                                       PasswordHasher passwordHasher, AuthEventPublisher authEventPublisher, Clock clock) {
+                                       PasswordHasher passwordHasher, AuthEventPublisher authEventPublisher,
+                                       DeviceVerificationRepository deviceVerificationRepository, Clock clock) {
         return new ResetPassword(passwordResetRepository, credentialRepository, sessionRepository, customerDirectory,
-                passwordHasher, authEventPublisher, clock);
+                passwordHasher, authEventPublisher, deviceVerificationRepository, clock);
     }
 
     @Bean

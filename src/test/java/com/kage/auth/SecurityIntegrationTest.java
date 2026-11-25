@@ -51,7 +51,7 @@ class SecurityIntegrationTest extends AbstractIntegrationTest {
 
     private Customer newCustomerWithAccount() throws Exception {
         String cpf = randomCpf();
-        String body = mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON).content("""
+        String body = mvc.perform(post("/api/auth/signup").header("X-Device-Id", TEST_DEVICE).contentType(MediaType.APPLICATION_JSON).content("""
                         {"fullName":"Cliente Seguro","cpf":"%s","email":"%s@teste.com","phone":"41999991234",
                          "birthDate":"1990-01-01","street":"Rua A","number":"1","city":"Curitiba","state":"PR",
                          "zipCode":"80000-000","password":"%s"}""".formatted(cpf, UUID.randomUUID(), PASSWORD)))
@@ -65,7 +65,7 @@ class SecurityIntegrationTest extends AbstractIntegrationTest {
     }
 
     private String login(String cpf, String password) throws Exception {
-        String body = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+        String body = mvc.perform(post("/api/auth/login").header("X-Device-Id", TEST_DEVICE).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"cpf\":\"%s\",\"password\":\"%s\"}".formatted(cpf, password)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
@@ -74,7 +74,7 @@ class SecurityIntegrationTest extends AbstractIntegrationTest {
 
     /** Corpo completo do login (access + refresh), com o User-Agent do "dispositivo". */
     private String loginBody(String cpf, String device) throws Exception {
-        return mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).header("User-Agent", device)
+        return mvc.perform(post("/api/auth/login").header("X-Device-Id", TEST_DEVICE).contentType(MediaType.APPLICATION_JSON).header("User-Agent", device)
                         .content("{\"cpf\":\"%s\",\"password\":\"%s\"}".formatted(cpf, PASSWORD)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
@@ -128,13 +128,13 @@ class SecurityIntegrationTest extends AbstractIntegrationTest {
         String wrong = "{\"cpf\":\"%s\",\"password\":\"Errada-123\"}".formatted(maria.cpf());
 
         for (int i = 0; i < 5; i++) {
-            mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(wrong))
+            mvc.perform(post("/api/auth/login").header("X-Device-Id", TEST_DEVICE).contentType(MediaType.APPLICATION_JSON).content(wrong))
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.message").value("CPF ou senha inválidos"));
         }
 
         // travado: nem a senha certa entra
-        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/auth/login").header("X-Device-Id", TEST_DEVICE).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"cpf\":\"%s\",\"password\":\"%s\"}".formatted(maria.cpf(), PASSWORD)))
                 .andExpect(status().isTooManyRequests());
     }
@@ -142,7 +142,7 @@ class SecurityIntegrationTest extends AbstractIntegrationTest {
     @Test
     void signup_deveRecusarSenhaFraca_semCriarCliente() throws Exception {
         String cpf = randomCpf();
-        mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON).content("""
+        mvc.perform(post("/api/auth/signup").header("X-Device-Id", TEST_DEVICE).contentType(MediaType.APPLICATION_JSON).content("""
                         {"fullName":"Fraco","cpf":"%s","email":"%s@teste.com","phone":"41999991234",
                          "birthDate":"1990-01-01","street":"Rua A","number":"1","city":"Curitiba","state":"PR",
                          "zipCode":"80000-000","password":"123"}""".formatted(cpf, UUID.randomUUID())))
@@ -150,7 +150,7 @@ class SecurityIntegrationTest extends AbstractIntegrationTest {
 
         // se o cliente tivesse sido criado, o login daria "senha errada" do mesmo jeito; o que prova o
         // rollback é conseguir se cadastrar de novo com o mesmo CPF
-        mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON).content("""
+        mvc.perform(post("/api/auth/signup").header("X-Device-Id", TEST_DEVICE).contentType(MediaType.APPLICATION_JSON).content("""
                         {"fullName":"Forte","cpf":"%s","email":"%s@teste.com","phone":"41999991234",
                          "birthDate":"1990-01-01","street":"Rua A","number":"1","city":"Curitiba","state":"PR",
                          "zipCode":"80000-000","password":"%s"}""".formatted(cpf, UUID.randomUUID(), PASSWORD)))
