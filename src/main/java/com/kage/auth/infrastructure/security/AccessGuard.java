@@ -2,7 +2,11 @@ package com.kage.auth.infrastructure.security;
 
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.card.domain.repository.CardRepository;
+import com.kage.payment.domain.entity.PixAutomaticAuthorization;
+import com.kage.payment.domain.entity.PixAutomaticCharge;
 import com.kage.payment.domain.entity.PixTransaction;
+import com.kage.payment.domain.repository.PixAutomaticRepository;
+import com.kage.shared.domain.exception.BusinessRuleException;
 import com.kage.payment.domain.repository.PixKeyRepository;
 import com.kage.payment.domain.repository.PixRecurrenceRepository;
 import com.kage.payment.domain.repository.PixRefundRepository;
@@ -35,11 +39,14 @@ public class AccessGuard {
     private final SavingsBoxRepository savingsBoxRepository;
     private final BoletoRepository boletoRepository;
     private final PixRecurrenceRepository pixRecurrenceRepository;
+    private final PixAutomaticRepository pixAutomaticRepository;
 
     public AccessGuard(AccountRepository accountRepository, CardRepository cardRepository,
                        PixKeyRepository pixKeyRepository, PixTransactionRepository pixTransactionRepository,
                        PixRefundRepository pixRefundRepository, SavingsBoxRepository savingsBoxRepository,
-                       BoletoRepository boletoRepository, PixRecurrenceRepository pixRecurrenceRepository) {
+                       BoletoRepository boletoRepository, PixRecurrenceRepository pixRecurrenceRepository,
+                       PixAutomaticRepository pixAutomaticRepository) {
+        this.pixAutomaticRepository = pixAutomaticRepository;
         this.pixRecurrenceRepository = pixRecurrenceRepository;
         this.savingsBoxRepository = savingsBoxRepository;
         this.boletoRepository = boletoRepository;
@@ -121,6 +128,41 @@ public class AccessGuard {
                 .map(t -> !ownsExistingAccount(user, t.getSourceAccountId()))
                 .orElse(false);
         if (denied) throw new NotFoundException("PIX agendado não encontrado");
+    }
+
+    /**
+     * Papel de quem chama numa autorização de PIX Automático: pagador, recebedor ou ADMIN. Quem não é
+     * parte recebe o mesmo 404 de autorização inexistente.
+     */
+    public PixAutomaticAuthorization.Party pixAutomaticRole(UUID authorizationId) {
+        AuthenticatedUser user = currentUser();
+        if (user.isAdmin()) return PixAutomaticAuthorization.Party.ADMIN;
+        return pixAutomaticRepository.findById(authorizationId)
+                .map(a -> ownsExistingAccount(user, a.getPayerAccountId()) ? PixAutomaticAuthorization.Party.PAYER
+                        : ownsExistingAccount(user, a.getReceiverAccountId()) ? PixAutomaticAuthorization.Party.RECEIVER
+                        : null)
+                .orElseThrow(() -> new NotFoundException("Autorização de PIX Automático não encontrada"));
+    }
+
+    /** Só o pagador (ou ADMIN) responde ao pedido e cancela cobrança; só quem recebe manda cobrança. */
+    public void checkPixAutomaticRole(UUID authorizationId, PixAutomaticAuthorization.Party required) {
+        PixAutomaticAuthorization.Party role = pixAutomaticRole(authorizationId);
+        if (role != required && role != PixAutomaticAuthorization.Party.ADMIN) {
+            throw new BusinessRuleException(required == PixAutomaticAuthorization.Party.PAYER
+                    ? "Só o pagador pode fazer isso" : "Só quem recebe pode fazer isso");
+        }
+    }
+
+    /** Cobrança de PIX Automático: só o pagador dela (ou ADMIN). */
+    public void checkPixAutomaticChargePayer(UUID chargeId) {
+        UUID authorizationId = pixAutomaticRepository.findChargeById(chargeId)
+                .map(PixAutomaticCharge::authorizationId)
+                .orElse(null);
+        if (authorizationId == null) {
+            if (currentUser().isAdmin()) return;
+            throw new NotFoundException("Cobrança não encontrada");
+        }
+        checkPixAutomaticRole(authorizationId, PixAutomaticAuthorization.Party.PAYER);
     }
 
     public void checkPixRecurrence(UUID recurrenceId) {

@@ -114,6 +114,19 @@ public class NotificationEventConsumer {
                 NotificationTemplates.scheduledPixFailed(e.amount(), e.scheduledDate(), e.reason()), e.transactionId(), messageId);
     }
 
+    @RabbitListener(queues = "notification.pix.automatic.requested.queue")
+    public void onPixAutomaticRequested(InboundEvents.PixAutomaticRequested e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toAccountOwner(e.payerAccountId(), NotificationType.PIX_AUTOMATIC_REQUESTED, NotificationTemplates.pixAutomaticRequested(
+                e.receiverName(), e.description(), e.frequency(), e.fixedAmount(), e.startDate()), e.authorizationId(), messageId);
+    }
+
+    @RabbitListener(queues = "notification.pix.automatic.charge.scheduled.queue")
+    public void onPixAutomaticChargeScheduled(InboundEvents.PixAutomaticChargeScheduled e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toAccountOwner(e.payerAccountId(), NotificationType.PIX_AUTOMATIC_CHARGE_SCHEDULED,
+                NotificationTemplates.pixAutomaticChargeScheduled(e.receiverName(), e.description(), e.amount(), e.dueDate()),
+                e.chargeId(), messageId);
+    }
+
     @RabbitListener(queues = "notification.auth.password.changed.queue")
     public void onPasswordChanged(InboundEvents.PasswordChanged e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         deliver(Optional.of(e.customerId()), "cliente " + e.customerId(), NotificationType.PASSWORD_CHANGED,
