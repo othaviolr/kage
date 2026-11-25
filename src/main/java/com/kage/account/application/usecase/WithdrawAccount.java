@@ -5,6 +5,7 @@ import com.kage.account.domain.repository.AccountRepository;
 import com.kage.shared.domain.exception.NotFoundException;
 import com.kage.shared.domain.exception.ValidationException;
 import com.kage.shared.domain.valueobject.Money;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -16,11 +17,14 @@ public class WithdrawAccount {
     public record Output(UUID accountId, BigDecimal balance, BigDecimal availableBalance) {}
 
     private final AccountRepository accountRepository;
+    private final AccountEventPublisher eventPublisher;
 
-    public WithdrawAccount(AccountRepository accountRepository) {
+    public WithdrawAccount(AccountRepository accountRepository, AccountEventPublisher eventPublisher) {
         this.accountRepository = accountRepository;
+        this.eventPublisher = eventPublisher;
     }
 
+    @Transactional
     public Output execute(Input input) {
         if (input.amount() == null || input.amount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new ValidationException("Valor do saque deve ser maior que zero");
@@ -31,6 +35,8 @@ public class WithdrawAccount {
 
         account.withdraw(new Money(input.amount()));
         Account saved = accountRepository.save(account);
+
+        eventPublisher.publishWithdrawalMade(saved.getId(), input.amount(), saved.getBalance().amount());
 
         return new Output(saved.getId(), saved.getBalance().amount(), saved.getAvailableBalance().amount());
     }

@@ -29,6 +29,9 @@ class WithdrawAccountTest {
     @Mock
     AccountRepository accountRepository;
 
+    @Mock
+    AccountEventPublisher eventPublisher;
+
     @InjectMocks
     WithdrawAccount withdrawAccount;
 

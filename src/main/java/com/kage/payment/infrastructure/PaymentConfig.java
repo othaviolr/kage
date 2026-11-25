@@ -1,6 +1,5 @@
 package com.kage.payment.infrastructure;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.infrastructure.AccountValidationServiceImpl;
 import com.kage.payment.application.usecase.*;
@@ -11,10 +10,9 @@ import com.kage.payment.domain.service.AccountValidationService;
 import com.kage.payment.infrastructure.controller.PaymentController;
 import com.kage.payment.infrastructure.messaging.OutboxPixEventPublisher;
 import com.kage.payment.infrastructure.messaging.PixEventConsumer;
-import com.kage.payment.infrastructure.messaging.PixOutboxPublisher;
 import com.kage.payment.infrastructure.persistence.*;
 import com.kage.payment.infrastructure.persistence.idempotency.ProcessedEventRepository;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -58,8 +56,8 @@ public class PaymentConfig {
     }
 
     @Bean
-    public PixEventPublisher pixEventPublisher(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
-        return new OutboxPixEventPublisher(jdbcTemplate, objectMapper);
+    public PixEventPublisher pixEventPublisher(OutboxEventPublisher outboxEventPublisher) {
+        return new OutboxPixEventPublisher(outboxEventPublisher);
     }
 
     @Bean
@@ -103,11 +101,6 @@ public class PaymentConfig {
     }
 
     @Bean
-    public PixOutboxPublisher pixOutboxPublisher(JdbcTemplate jdbcTemplate, RabbitTemplate rabbitTemplate, ObjectMapper objectMapper) {
-        return new PixOutboxPublisher(jdbcTemplate, rabbitTemplate, objectMapper);
-    }
-
-    @Bean
     public PaymentController paymentController(RegisterPixKey registerPixKey,
                                                DeletePixKey deletePixKey,
                                                GetPixKey getPixKey,
@@ -118,10 +111,5 @@ public class PaymentConfig {
                                                RejectPixRefund rejectPixRefund) {
         return new PaymentController(registerPixKey, deletePixKey, getPixKey, sendPix,
                 getPixTransaction, requestPixRefund, approvePixRefund, rejectPixRefund);
-    }
-
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper();
     }
 }

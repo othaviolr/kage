@@ -1,7 +1,6 @@
 package com.kage.account.infrastructure.controller;
 
 import com.kage.account.application.usecase.*;
-import com.kage.account.infrastructure.messaging.AccountEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,14 +19,12 @@ public class AccountController {
     private final CloseAccount closeAccount;
     private final UpdateLimits updateLimits;
     private final DepositAccount depositAccount;
-    private final AccountEventPublisher accountEventPublisher;
     private final WithdrawAccount withdrawAccount;
 
     public AccountController(CreateAccount createAccount, GetAccount getAccount,
                              BlockAccount blockAccount, UnblockAccount unblockAccount,
                              CloseAccount closeAccount, UpdateLimits updateLimits,
-                             DepositAccount depositAccount, AccountEventPublisher accountEventPublisher,
-                             WithdrawAccount withdrawAccount) {
+                             DepositAccount depositAccount, WithdrawAccount withdrawAccount) {
         this.createAccount = createAccount;
         this.getAccount = getAccount;
         this.blockAccount = blockAccount;
@@ -36,7 +33,6 @@ public class AccountController {
         this.updateLimits = updateLimits;
         this.depositAccount = depositAccount;
         this.withdrawAccount = withdrawAccount;
-        this.accountEventPublisher = accountEventPublisher;
     }
 
     @PostMapping
@@ -51,9 +47,7 @@ public class AccountController {
 
     @PostMapping("/{id}/deposit")
     public ResponseEntity<DepositAccount.Output> deposit(@PathVariable UUID id, @RequestBody DepositRequest request) {
-        DepositAccount.Output output = depositAccount.execute(new DepositAccount.Input(id, request.amount()));
-        accountEventPublisher.publishDepositMade(output, request.amount());
-        return ResponseEntity.ok(output);
+        return ResponseEntity.ok(depositAccount.execute(new DepositAccount.Input(id, request.amount())));
     }
 
     public record DepositRequest(BigDecimal amount) {
@@ -61,9 +55,7 @@ public class AccountController {
 
     @PostMapping("/{id}/withdraw")
     public ResponseEntity<WithdrawAccount.Output> withdraw(@PathVariable UUID id, @RequestBody WithdrawRequest request) {
-        WithdrawAccount.Output output = withdrawAccount.execute(new WithdrawAccount.Input(id, request.amount()));
-        accountEventPublisher.publishWithdrawalMade(output, request.amount());
-        return ResponseEntity.ok(output);
+        return ResponseEntity.ok(withdrawAccount.execute(new WithdrawAccount.Input(id, request.amount())));
     }
 
     public record WithdrawRequest(BigDecimal amount) {

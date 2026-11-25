@@ -27,6 +27,9 @@ class DepositAccountTest {
     @Mock
     AccountRepository accountRepository;
 
+    @Mock
+    AccountEventPublisher eventPublisher;
+
     @InjectMocks
     DepositAccount depositAccount;
 

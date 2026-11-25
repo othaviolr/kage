@@ -8,7 +8,7 @@ import com.kage.shared.domain.valueobject.Money;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,12 +19,12 @@ public class AccountPixEventConsumer {
 
     private final AccountRepository accountRepository;
     private final ProcessedEventRepository processedEventRepository;
-    private final RabbitTemplate rabbitTemplate;
+    private final OutboxEventPublisher outbox;
 
-    public AccountPixEventConsumer(AccountRepository accountRepository, ProcessedEventRepository processedEventRepository, RabbitTemplate rabbitTemplate) {
+    public AccountPixEventConsumer(AccountRepository accountRepository, ProcessedEventRepository processedEventRepository, OutboxEventPublisher outbox) {
         this.accountRepository = accountRepository;
         this.processedEventRepository = processedEventRepository;
-        this.rabbitTemplate = rabbitTemplate;
+        this.outbox = outbox;
     }
 
     @Transactional
@@ -54,11 +54,11 @@ public class AccountPixEventConsumer {
             // em vez de deixar a mensagem ir pra DLQ e a transação presa em PROCESSING. Nada foi salvo, e o
             // evento continua marcado como processado (a decisão sobre ele já foi tomada).
             logger.warn("Falha ao efetivar PIX (transactionId={}): {}", event.transactionId(), e.getMessage());
-            rabbitTemplate.convertAndSend("pix.exchange", "pix.debit.failed",
+            outbox.publish("pix.exchange", "pix.debit.failed",
                     new PixDebitFailedEvent(event.transactionId(), e.getMessage()));
             return;
         }
 
-        rabbitTemplate.convertAndSend("pix.exchange", "pix.debit.confirmed", event.transactionId());
+        outbox.publish("pix.exchange", "pix.debit.confirmed", event.transactionId());
     }
 }

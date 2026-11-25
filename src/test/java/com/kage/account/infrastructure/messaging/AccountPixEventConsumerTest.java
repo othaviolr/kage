@@ -11,7 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -34,7 +34,7 @@ class AccountPixEventConsumerTest {
     ProcessedEventRepository processedEventRepository;
 
     @Mock
-    RabbitTemplate rabbitTemplate;
+    OutboxEventPublisher outbox;
 
     @InjectMocks
     AccountPixEventConsumer consumer;
@@ -67,7 +67,7 @@ class AccountPixEventConsumerTest {
         assertThat(target.getBalance().amount()).isEqualByComparingTo("100.00");
         verify(accountRepository).save(source);
         verify(accountRepository).save(target);
-        verify(rabbitTemplate).convertAndSend("pix.exchange", "pix.debit.confirmed", transactionId);
+        verify(outbox).publish("pix.exchange", "pix.debit.confirmed", transactionId);
     }
 
     @Test
@@ -81,9 +81,9 @@ class AccountPixEventConsumerTest {
         consumer.onPixSent(semSaldo);
 
         verify(accountRepository, never()).save(any());
-        verify(rabbitTemplate).convertAndSend("pix.exchange", "pix.debit.failed",
+        verify(outbox).publish("pix.exchange", "pix.debit.failed",
                 new PixDebitFailedEvent(transactionId, "Saldo disponível insuficiente"));
-        verify(rabbitTemplate, never()).convertAndSend("pix.exchange", "pix.debit.confirmed", transactionId);
+        verify(outbox, never()).publish("pix.exchange", "pix.debit.confirmed", transactionId);
     }
 
     @Test
@@ -96,7 +96,7 @@ class AccountPixEventConsumerTest {
         consumer.onPixSent(event);
 
         verify(accountRepository, never()).save(any());
-        verify(rabbitTemplate).convertAndSend(eq("pix.exchange"), eq("pix.debit.failed"), any(PixDebitFailedEvent.class));
+        verify(outbox).publish(eq("pix.exchange"), eq("pix.debit.failed"), any(PixDebitFailedEvent.class));
     }
 
     @Test
@@ -106,6 +106,6 @@ class AccountPixEventConsumerTest {
         consumer.onPixSent(event);
 
         verifyNoInteractions(accountRepository);
-        verifyNoInteractions(rabbitTemplate);
+        verifyNoInteractions(outbox);
     }
 }
