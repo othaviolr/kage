@@ -37,17 +37,27 @@ public class AccountPixEventConsumer {
             return;
         }
 
-        Account source = accountRepository.findById(event.sourceAccountId())
-                .orElseThrow(() -> new BusinessRuleException("Conta de origem não encontrada"));
+        try {
+            Account source = accountRepository.findById(event.sourceAccountId())
+                    .orElseThrow(() -> new BusinessRuleException("Conta de origem não encontrada"));
 
-        Account target = accountRepository.findById(event.targetAccountId())
-                .orElseThrow(() -> new BusinessRuleException("Conta de destino não encontrada"));
+            Account target = accountRepository.findById(event.targetAccountId())
+                    .orElseThrow(() -> new BusinessRuleException("Conta de destino não encontrada"));
 
-        source.debit(new Money(event.amount()));
-        target.credit(new Money(event.amount()));
+            source.debit(new Money(event.amount()));
+            target.credit(new Money(event.amount()));
 
-        accountRepository.save(source);
-        accountRepository.save(target);
+            accountRepository.save(source);
+            accountRepository.save(target);
+        } catch (BusinessRuleException e) {
+            // regra de negócio violada não melhora com retry: avisa o Payment para marcar o PIX como FAILED
+            // em vez de deixar a mensagem ir pra DLQ e a transação presa em PROCESSING. Nada foi salvo, e o
+            // evento continua marcado como processado (a decisão sobre ele já foi tomada).
+            logger.warn("Falha ao efetivar PIX (transactionId={}): {}", event.transactionId(), e.getMessage());
+            rabbitTemplate.convertAndSend("pix.exchange", "pix.debit.failed",
+                    new PixDebitFailedEvent(event.transactionId(), e.getMessage()));
+            return;
+        }
 
         rabbitTemplate.convertAndSend("pix.exchange", "pix.debit.confirmed", event.transactionId());
     }

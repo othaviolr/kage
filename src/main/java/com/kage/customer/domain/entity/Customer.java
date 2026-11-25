@@ -56,7 +56,10 @@ public class Customer {
             throw new DomainException("KYC já foi aprovado");
         }
         this.kycStatus = KycStatus.APPROVED;
-        this.status = CustomerStatus.ACTIVE;
+        // aprovar o KYC não pode "desbloquear" o cliente: bloqueado continua bloqueado até o unblock
+        if (this.status != CustomerStatus.BLOCKED) {
+            this.status = CustomerStatus.ACTIVE;
+        }
         this.updatedAt = LocalDateTime.now();
     }
 

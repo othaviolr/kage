@@ -2,7 +2,6 @@ package com.kage.payment.application.usecase;
 
 import com.kage.payment.domain.entity.PixTransaction;
 import com.kage.payment.domain.repository.PixTransactionRepository;
-import com.kage.shared.domain.exception.DomainException;
 import com.kage.shared.domain.exception.NotFoundException;
 
 import java.math.BigDecimal;

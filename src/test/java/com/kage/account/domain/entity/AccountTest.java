@@ -40,7 +40,7 @@ class AccountTest {
 
         assertThatThrownBy(() -> account.credit(Money.of("10.00")))
                 .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("encerrada");
+                .hasMessageContaining("não está ativa");
     }
 
     @Test

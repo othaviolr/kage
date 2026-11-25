@@ -93,8 +93,13 @@ public class CustomerController {
 
     @PatchMapping("/{id}/address")
     public ResponseEntity<UpdateAddressOutput> updateAddress(@PathVariable UUID id,
-                                                             @RequestBody UpdateAddressInput input) {
-        var output = updateAddressUseCase.execute(input);
+                                                             @RequestBody AddressRequest request) {
+        var output = updateAddressUseCase.execute(new UpdateAddressInput(id, request.street(), request.number(),
+                request.complement(), request.city(), request.state(), request.zipCode()));
         return ResponseEntity.ok(output);
+    }
+
+    public record AddressRequest(String street, String number, String complement,
+                                 String city, String state, String zipCode) {
     }
 }

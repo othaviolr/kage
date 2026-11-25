@@ -71,6 +71,35 @@ class AccountPixEventConsumerTest {
     }
 
     @Test
+    void onPixSent_devePublicarFalhaENaoSalvar_quandoSaldoInsuficiente() {
+        PixSentEvent semSaldo = new PixSentEvent(transactionId, source.getId(), "chave-destino", target.getId(),
+                new BigDecimal("900.00"), "PROCESSING", "E2E123", "2026-09-11T10:00:00");
+        when(processedEventRepository.tryMarkAsProcessed(transactionId)).thenReturn(true);
+        when(accountRepository.findById(source.getId())).thenReturn(Optional.of(source));
+        when(accountRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+        consumer.onPixSent(semSaldo);
+
+        verify(accountRepository, never()).save(any());
+        verify(rabbitTemplate).convertAndSend("pix.exchange", "pix.debit.failed",
+                new PixDebitFailedEvent(transactionId, "Saldo disponível insuficiente"));
+        verify(rabbitTemplate, never()).convertAndSend("pix.exchange", "pix.debit.confirmed", transactionId);
+    }
+
+    @Test
+    void onPixSent_devePublicarFalhaENaoDebitarOrigem_quandoContaDestinoBloqueada() {
+        target.block();
+        when(processedEventRepository.tryMarkAsProcessed(transactionId)).thenReturn(true);
+        when(accountRepository.findById(source.getId())).thenReturn(Optional.of(source));
+        when(accountRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+        consumer.onPixSent(event);
+
+        verify(accountRepository, never()).save(any());
+        verify(rabbitTemplate).convertAndSend(eq("pix.exchange"), eq("pix.debit.failed"), any(PixDebitFailedEvent.class));
+    }
+
+    @Test
     void onPixSent_deveIgnorarENaoDebitar_quandoEventoJaProcessado() {
         when(processedEventRepository.tryMarkAsProcessed(transactionId)).thenReturn(false);
 

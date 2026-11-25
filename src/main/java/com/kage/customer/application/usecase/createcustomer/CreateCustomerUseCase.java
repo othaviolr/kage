@@ -8,7 +8,6 @@ import com.kage.customer.domain.valueobject.Email;
 import com.kage.customer.domain.valueobject.PersonalInfo;
 import com.kage.customer.domain.valueobject.Phone;
 import com.kage.shared.domain.exception.ConflictException;
-import com.kage.shared.domain.exception.DomainException;
 
 public class CreateCustomerUseCase {
 
@@ -19,18 +18,22 @@ public class CreateCustomerUseCase {
     }
 
     public CreateCustomerOutput execute(CreateCustomerInput input) {
-        if (customerRepository.existsByCpf(input.cpf())) {
+        // a checagem de duplicidade usa o valor normalizado (só dígitos / minúsculo), que é o que fica no banco
+        var cpf = new Cpf(input.cpf());
+        var email = new Email(input.email());
+
+        if (customerRepository.existsByCpf(cpf.value())) {
             throw new ConflictException("CPF já cadastrado");
         }
 
-        if (customerRepository.existsByEmail(input.email())) {
+        if (customerRepository.existsByEmail(email.value())) {
             throw new ConflictException("Email já cadastrado");
         }
 
         var personalInfo = new PersonalInfo(
                 input.fullName(),
-                new Cpf(input.cpf()),
-                new Email(input.email()),
+                cpf,
+                email,
                 new Phone(input.phone()),
                 input.birthDate()
         );

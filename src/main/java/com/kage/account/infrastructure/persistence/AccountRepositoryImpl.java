@@ -2,7 +2,6 @@ package com.kage.account.infrastructure.persistence;
 
 import com.kage.account.domain.entity.Account;
 import com.kage.account.domain.repository.AccountRepository;
-import com.kage.shared.domain.exception.DomainException;
 
 import java.util.Optional;
 import java.util.UUID;

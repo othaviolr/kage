@@ -1,7 +1,6 @@
 package com.kage.customer.application.usecase.getcustomer;
 
 import com.kage.customer.domain.repository.CustomerRepository;
-import com.kage.shared.domain.exception.DomainException;
 import com.kage.shared.domain.exception.NotFoundException;
 
 public class GetCustomerUseCase {

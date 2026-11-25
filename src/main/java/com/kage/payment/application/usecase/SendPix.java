@@ -2,6 +2,7 @@ package com.kage.payment.application.usecase;
 
 import com.kage.payment.domain.entity.PixKey;
 import com.kage.payment.domain.entity.PixTransaction;
+import com.kage.payment.domain.enums.PixKeyStatus;
 import com.kage.payment.domain.enums.TransactionType;
 import com.kage.payment.domain.repository.PixKeyRepository;
 import com.kage.payment.domain.repository.PixTransactionRepository;
@@ -32,7 +33,7 @@ public class SendPix {
     public Output execute(Input input) {
         PixKey targetKey = pixKeyRepository.findByKeyValue(input.targetPixKey()).orElseThrow(() -> new NotFoundException("Chave PIX destino não encontrada"));
 
-        if (!targetKey.getKeyStatus().name().equals("ACTIVE")) {
+        if (targetKey.getKeyStatus() != PixKeyStatus.ACTIVE) {
             throw new BusinessRuleException("Chave PIX destino não está ativa");
         }
 

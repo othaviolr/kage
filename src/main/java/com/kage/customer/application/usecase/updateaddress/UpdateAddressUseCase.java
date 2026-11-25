@@ -2,7 +2,6 @@ package com.kage.customer.application.usecase.updateaddress;
 
 import com.kage.customer.domain.repository.CustomerRepository;
 import com.kage.customer.domain.valueobject.Address;
-import com.kage.shared.domain.exception.DomainException;
 import com.kage.shared.domain.exception.NotFoundException;
 
 public class UpdateAddressUseCase {

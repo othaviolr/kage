@@ -38,4 +38,23 @@ public class PixEventConsumer {
         transaction.complete();
         pixTransactionRepository.save(transaction);
     }
+
+    /**
+     * Uma transação tem um único desfecho (confirmada ou falha), então as duas filas compartilham a
+     * mesma chave de idempotência: o transactionId.
+     */
+    @RabbitListener(queues = "pix.debit.failed.queue")
+    @Transactional
+    public void onPixDebitFailed(PixDebitFailedEvent event) {
+        if (!processedEventRepository.tryMarkAsProcessed(event.transactionId())) {
+            logger.warn("Evento de falha PIX {} já processado, ignorando reentrega", event.transactionId());
+            return;
+        }
+
+        PixTransaction transaction = pixTransactionRepository.findById(event.transactionId())
+                .orElseThrow(() -> new DomainException("Transação PIX não encontrada"));
+
+        transaction.fail(event.reason());
+        pixTransactionRepository.save(transaction);
+    }
 }

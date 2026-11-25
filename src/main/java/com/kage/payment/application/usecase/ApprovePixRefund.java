@@ -2,7 +2,6 @@ package com.kage.payment.application.usecase;
 
 import com.kage.payment.domain.entity.PixRefund;
 import com.kage.payment.domain.repository.PixRefundRepository;
-import com.kage.shared.domain.exception.DomainException;
 import com.kage.shared.domain.exception.NotFoundException;
 
 import java.util.UUID;

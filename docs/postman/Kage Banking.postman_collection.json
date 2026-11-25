@@ -468,7 +468,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{customerId}}\",\n  \"street\": \"Av. Sete de Setembro\",\n  \"number\": \"500\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80230-010\"\n}",
+              "raw": "{\n  \"street\": \"Av. Sete de Setembro\",\n  \"number\": \"500\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80230-010\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -512,7 +512,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{customerId}}\",\n  \"street\": \"Rua X\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"abc\"\n}",
+              "raw": "{\n  \"street\": \"Rua X\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"abc\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -556,7 +556,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"00000000-0000-0000-0000-000000000000\",\n  \"street\": \"Rua X\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80230-010\"\n}",
+              "raw": "{\n  \"street\": \"Rua X\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80230-010\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

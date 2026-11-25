@@ -48,6 +48,36 @@ class PixEventConsumerTest {
     }
 
     @Test
+    void onPixDebitFailed_deveMarcarTransacaoComoFalha_quandoPrimeiraEntrega() {
+        PixEventConsumer consumer = new PixEventConsumer(pixTransactionRepository, processedEventRepository);
+
+        UUID transactionId = UUID.randomUUID();
+        PixTransaction transaction = PixTransaction.create(UUID.randomUUID(), "chave-destino", Money.of("50.00"), "teste", TransactionType.IMMEDIATE, null);
+        transaction.startProcessing(UUID.randomUUID());
+
+        when(processedEventRepository.tryMarkAsProcessed(transactionId)).thenReturn(true);
+        when(pixTransactionRepository.findById(transactionId)).thenReturn(Optional.of(transaction));
+
+        consumer.onPixDebitFailed(new PixDebitFailedEvent(transactionId, "Saldo disponível insuficiente"));
+
+        assertThat(transaction.getStatus().name()).isEqualTo("FAILED");
+        assertThat(transaction.getFailureReason()).isEqualTo("Saldo disponível insuficiente");
+        verify(pixTransactionRepository).save(transaction);
+    }
+
+    @Test
+    void onPixDebitFailed_deveIgnorar_quandoEventoJaProcessado() {
+        PixEventConsumer consumer = new PixEventConsumer(pixTransactionRepository, processedEventRepository);
+        UUID transactionId = UUID.randomUUID();
+
+        when(processedEventRepository.tryMarkAsProcessed(transactionId)).thenReturn(false);
+
+        consumer.onPixDebitFailed(new PixDebitFailedEvent(transactionId, "qualquer"));
+
+        verifyNoInteractions(pixTransactionRepository);
+    }
+
+    @Test
     void onPixDebitConfirmed_deveIgnorar_quandoEventoJaProcessado() {
         PixEventConsumer consumer = new PixEventConsumer(pixTransactionRepository, processedEventRepository);
         UUID transactionId = UUID.randomUUID();

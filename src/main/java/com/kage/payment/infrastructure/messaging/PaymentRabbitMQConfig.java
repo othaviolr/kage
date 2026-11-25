@@ -35,6 +35,15 @@ public class PaymentRabbitMQConfig {
                 .build();
     }
 
+    // fila que o Payment vai ouvir para marcar a transação como falha (débito/crédito recusado pelo Account)
+    @Bean
+    public Queue pixDebitFailedQueue() {
+        return QueueBuilder.durable("pix.debit.failed.queue")
+                .deadLetterExchange("payment.dlx")
+                .deadLetterRoutingKey("pix.debit.failed.dlq")
+                .build();
+    }
+
     // binding: pix.exchange + routing key "pix.sent" → pix.sent.queue
     @Bean
     public Binding pixSentBinding() {
@@ -45,6 +54,12 @@ public class PaymentRabbitMQConfig {
     @Bean
     public Binding pixDebitConfirmedBinding() {
         return BindingBuilder.bind(pixDebitConfirmedQueue()).to(pixExchange()).with("pix.debit.confirmed");
+    }
+
+    // binding: pix.exchange + routing key "pix.debit.failed" → pix.debit.failed.queue
+    @Bean
+    public Binding pixDebitFailedBinding() {
+        return BindingBuilder.bind(pixDebitFailedQueue()).to(pixExchange()).with("pix.debit.failed");
     }
 
     @Bean
@@ -86,5 +101,17 @@ public class PaymentRabbitMQConfig {
         return BindingBuilder.bind(pixDebitConfirmedDlq())
                 .to(paymentDlx())
                 .with("pix.debit.confirmed.dlq");
+    }
+
+    @Bean
+    public Queue pixDebitFailedDlq() {
+        return QueueBuilder.durable("pix.debit.failed.dlq").build();
+    }
+
+    @Bean
+    public Binding pixDebitFailedDlqBinding() {
+        return BindingBuilder.bind(pixDebitFailedDlq())
+                .to(paymentDlx())
+                .with("pix.debit.failed.dlq");
     }
 }

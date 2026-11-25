@@ -4,7 +4,6 @@ import com.kage.account.domain.enums.AccountStatus;
 import com.kage.account.domain.enums.AccountType;
 import com.kage.account.domain.valueobject.Limits;
 import com.kage.shared.domain.exception.BusinessRuleException;
-import com.kage.shared.domain.exception.DomainException;
 import com.kage.shared.domain.valueobject.Money;
 
 import java.time.LocalDateTime;
@@ -62,7 +61,7 @@ public class Account {
     }
 
     public void credit(Money amount) {
-        if (this.status != AccountStatus.ACTIVE) throw new BusinessRuleException("Não é possível creditar em uma conta encerrada");
+        if (this.status != AccountStatus.ACTIVE) throw new BusinessRuleException("Não é possível creditar em uma conta que não está ativa");
         this.balance = this.balance.add(amount);
         this.availableBalance = this.availableBalance.add(amount);
         this.updatedAt = LocalDateTime.now();
