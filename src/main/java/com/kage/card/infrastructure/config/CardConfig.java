@@ -1,7 +1,10 @@
 package com.kage.card.infrastructure.config;
 
+import com.kage.account.domain.repository.AccountEntryRepository;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.infrastructure.CardAccountValidationServiceImpl;
+import com.kage.account.infrastructure.CardBillingAccountServiceImpl;
+import com.kage.card.domain.service.CardBillingAccountService;
 import com.kage.card.application.usecase.*;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
@@ -77,6 +80,18 @@ public class CardConfig {
     @Bean
     public CloseInvoice closeInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
         return new CloseInvoice(cardRepository, invoiceRepository);
+    }
+
+    @Bean
+    public CardBillingAccountService cardBillingAccountService(AccountRepository accountRepository,
+                                                               AccountEntryRepository accountEntryRepository) {
+        return new CardBillingAccountServiceImpl(accountRepository, accountEntryRepository);
+    }
+
+    @Bean
+    public PayInvoice payInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                                 CardBillingAccountService cardBillingAccountService) {
+        return new PayInvoice(cardRepository, invoiceRepository, cardBillingAccountService);
     }
 
     @Bean

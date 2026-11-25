@@ -6,7 +6,8 @@ public enum EntryType {
     PIX_RECEIVED(true),
     PIX_SENT(false),
     PIX_REFUND_RECEIVED(true),
-    PIX_REFUND_SENT(false);
+    PIX_REFUND_SENT(false),
+    INVOICE_PAYMENT(false);
 
     private final boolean credit;
 

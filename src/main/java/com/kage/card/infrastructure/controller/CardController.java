@@ -24,6 +24,7 @@ public class CardController {
     private final CloseInvoice closeInvoice;
     private final CancelCard cancelCard;
     private final AccessGuard accessGuard;
+    private final PayInvoice payInvoice;
 
     /**
      * Emissão é do ADMIN: o limite de crédito é decisão da análise de crédito do banco, não do cliente.
@@ -33,8 +34,10 @@ public class CardController {
     public CardController(IssueCard issueCard, GetCard getCard, BlockCard blockCard,
                           UnblockCard unblockCard, RegisterPurchase registerPurchase,
                           GetInvoice getInvoice, ListInvoices listInvoices,
-                          CloseInvoice closeInvoice, CancelCard cancelCard, AccessGuard accessGuard) {
+                          CloseInvoice closeInvoice, CancelCard cancelCard, AccessGuard accessGuard,
+                          PayInvoice payInvoice) {
         this.accessGuard = accessGuard;
+        this.payInvoice = payInvoice;
         this.issueCard = issueCard;
         this.getCard = getCard;
         this.blockCard = blockCard;
@@ -94,6 +97,13 @@ public class CardController {
     public ResponseEntity<GetInvoice.Output> getInvoice(@PathVariable UUID id, @PathVariable String referenceMonth) {
         accessGuard.checkCard(id);
         return ResponseEntity.ok(getInvoice.execute(new GetInvoice.Input(id, referenceMonth)));
+    }
+
+    /** Paga o total da fatura fechada com o saldo da conta vinculada ao cartão. */
+    @PostMapping("/{id}/invoices/{referenceMonth}/pay")
+    public ResponseEntity<PayInvoice.Output> payInvoice(@PathVariable UUID id, @PathVariable String referenceMonth) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(payInvoice.execute(new PayInvoice.Input(id, referenceMonth)));
     }
 
     @PatchMapping("/{id}/invoices/{referenceMonth}/close")
