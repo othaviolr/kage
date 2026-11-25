@@ -40,12 +40,15 @@ class CreateAccountTest {
     @Test
     void execute_deveValidarClienteEAbrirContaAtiva() {
         UUID customerId = UUID.randomUUID();
+        when(accountRepository.nextAccountNumber()).thenReturn("10000000");
         when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         CreateAccount.Output output = createAccount.execute(new CreateAccount.Input(customerId, "checking"));
 
         assertThat(output.type()).isEqualTo("CHECKING");
         assertThat(output.status()).isEqualTo("ACTIVE");
+        assertThat(output.accountNumber()).isEqualTo("10000000");
+        assertThat(output.accountDigit()).isEqualTo("2");
         InOrder order = inOrder(customerValidation, accountRepository);
         order.verify(customerValidation).validateCanOpenAccount(customerId);
         order.verify(accountRepository).save(any(Account.class));
@@ -68,6 +71,15 @@ class CreateAccountTest {
 
         verifyNoInteractions(customerValidation);
         verify(accountRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_deveLancarValidationException_quandoTipoNaoInformado() {
+        assertThatThrownBy(() -> createAccount.execute(new CreateAccount.Input(UUID.randomUUID(), null)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Tipo de conta é obrigatório");
+
+        verifyNoInteractions(customerValidation, accountRepository);
     }
 
     @Test

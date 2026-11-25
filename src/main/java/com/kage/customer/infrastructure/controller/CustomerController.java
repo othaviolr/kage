@@ -21,6 +21,7 @@ import com.kage.customer.application.usecase.unblockcustomer.UnblockCustomerUseC
 import com.kage.customer.application.usecase.updateaddress.UpdateAddressInput;
 import com.kage.customer.application.usecase.updateaddress.UpdateAddressOutput;
 import com.kage.customer.application.usecase.updateaddress.UpdateAddressUseCase;
+import com.kage.auth.infrastructure.security.AccessGuard;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,14 +39,21 @@ public class CustomerController {
     private final ApproveKycUseCase approveKycUseCase;
     private final RejectKycUseCase rejectKycUseCase;
     private final UpdateAddressUseCase updateAddressUseCase;
+    private final AccessGuard accessGuard;
 
+    /**
+     * Criar (sem senha), KYC e bloqueio são backoffice (ADMIN, no SecurityConfig). O cadastro pelo app,
+     * com senha, é o POST /api/auth/signup. Consultar e mudar endereço: só o próprio cliente.
+     */
     public CustomerController(CreateCustomerUseCase createCustomerUseCase,
                               GetCustomerUseCase getCustomerUseCase,
                               BlockCustomerUseCase blockCustomerUseCase,
                               UnblockCustomerUseCase unblockCustomerUseCase,
                               ApproveKycUseCase approveKycUseCase,
                               RejectKycUseCase rejectKycUseCase,
-                              UpdateAddressUseCase updateAddressUseCase) {
+                              UpdateAddressUseCase updateAddressUseCase,
+                              AccessGuard accessGuard) {
+        this.accessGuard = accessGuard;
         this.createCustomerUseCase = createCustomerUseCase;
         this.getCustomerUseCase = getCustomerUseCase;
         this.blockCustomerUseCase = blockCustomerUseCase;
@@ -63,6 +71,7 @@ public class CustomerController {
 
     @GetMapping("/{id}")
     public ResponseEntity<GetCustomerOutput> getById(@PathVariable UUID id) {
+        accessGuard.checkCustomer(id);
         var output = getCustomerUseCase.execute(new GetCustomerInput(id));
         return ResponseEntity.ok(output);
     }
@@ -93,8 +102,14 @@ public class CustomerController {
 
     @PatchMapping("/{id}/address")
     public ResponseEntity<UpdateAddressOutput> updateAddress(@PathVariable UUID id,
-                                                             @RequestBody UpdateAddressInput input) {
-        var output = updateAddressUseCase.execute(input);
+                                                             @RequestBody AddressRequest request) {
+        accessGuard.checkCustomer(id);
+        var output = updateAddressUseCase.execute(new UpdateAddressInput(id, request.street(), request.number(),
+                request.complement(), request.city(), request.state(), request.zipCode()));
         return ResponseEntity.ok(output);
+    }
+
+    public record AddressRequest(String street, String number, String complement,
+                                 String city, String state, String zipCode) {
     }
 }

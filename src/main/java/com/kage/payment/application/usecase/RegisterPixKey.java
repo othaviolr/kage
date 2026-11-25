@@ -4,7 +4,6 @@ import com.kage.payment.domain.entity.PixKey;
 import com.kage.payment.domain.enums.PixKeyType;
 import com.kage.payment.domain.repository.PixKeyRepository;
 import com.kage.shared.domain.exception.ConflictException;
-import com.kage.shared.domain.exception.DomainException;
 
 import java.util.UUID;
 

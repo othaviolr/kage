@@ -2,7 +2,6 @@ package com.kage.account.infrastructure.persistence;
 
 import com.kage.account.domain.entity.Account;
 import com.kage.account.domain.repository.AccountRepository;
-import com.kage.shared.domain.exception.DomainException;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -28,12 +27,17 @@ public class AccountRepositoryImpl implements AccountRepository {
     }
 
     @Override
+    public Optional<Account> findByIdForUpdate(UUID id) {
+        return accountJpaRepository.findByIdForUpdate(id).map(AccountMapper::toDomain);
+    }
+
+    @Override
     public Optional<Account> findByAccountNumber(String accountNumber) {
         return accountJpaRepository.findByAccountNumber(accountNumber).map(AccountMapper::toDomain);
     }
 
     @Override
-    public boolean existsByAccountNumber(String accountNumber) {
-        return accountJpaRepository.existsByAccountNumber(accountNumber);
+    public String nextAccountNumber() {
+        return String.valueOf(accountJpaRepository.nextAccountNumber());
     }
 }

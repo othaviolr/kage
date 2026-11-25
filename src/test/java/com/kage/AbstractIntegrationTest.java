@@ -12,8 +12,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.math.BigDecimal;
@@ -35,17 +33,25 @@ import java.util.function.Supplier;
  * PixMessageIdempotencyIntegrationTest) — regra dos três.
  */
 @SpringBootTest
-@Testcontainers
 public abstract class AbstractIntegrationTest {
 
-    @Container
+    /*
+     * Singleton containers: sobem uma vez por JVM e só morrem no fim da suíte (o Ryuk do Testcontainers
+     * limpa). Antes eram @Container static, que o JUnit derruba no fim de CADA classe de teste — mas o
+     * Spring reaproveita o contexto em cache entre classes, ainda apontando para a porta do container
+     * morto. Resultado: só a primeira classe de integração passava; as outras esperavam 30s por conexão.
+     */
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:15-alpine"))
             .withDatabaseName("kage_db")
             .withUsername("kage")
             .withPassword("kage123");
 
-    @Container
     static final RabbitMQContainer rabbitmq = new RabbitMQContainer(DockerImageName.parse("rabbitmq:3.13-management-alpine"));
+
+    static {
+        postgres.start();
+        rabbitmq.start();
+    }
 
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
@@ -57,6 +63,9 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
         registry.add("spring.rabbitmq.username", rabbitmq::getAdminUsername);
         registry.add("spring.rabbitmq.password", rabbitmq::getAdminPassword);
+
+        // custo mínimo do BCrypt nos testes: o custo de produção (12) só deixaria a suíte lenta
+        registry.add("kage.security.bcrypt-strength", () -> "4");
     }
 
     /**

@@ -15,7 +15,8 @@ public class PixRefundMapper {
                 refund.getRefundStatus(),
                 refund.getRequestedAt(),
                 refund.getProcessedAt(),
-                refund.getProcessedBy()
+                refund.getProcessedBy(),
+                refund.getFailureReason()
         );
     }
 
@@ -28,7 +29,8 @@ public class PixRefundMapper {
                 entity.getRefundStatus(),
                 entity.getRequestedAt(),
                 entity.getProcessedAt(),
-                entity.getProcessedBy()
+                entity.getProcessedBy(),
+                entity.getFailureReason()
         );
     }
 }

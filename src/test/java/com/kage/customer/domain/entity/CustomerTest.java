@@ -47,6 +47,20 @@ class CustomerTest {
     }
 
     @Test
+    void approveKyc_deveManterBloqueado_quandoClienteEstaBloqueado() {
+        customer.block();
+
+        customer.approveKyc();
+
+        assertThat(customer.getKycStatus()).isEqualTo(KycStatus.APPROVED);
+        assertThat(customer.getStatus()).isEqualTo(CustomerStatus.BLOCKED);
+
+        customer.unblock();
+
+        assertThat(customer.getStatus()).isEqualTo(CustomerStatus.ACTIVE);
+    }
+
+    @Test
     void approveKyc_deveLancarDomainException_quandoJaAprovado() {
         customer.approveKyc();
 

@@ -37,12 +37,15 @@ public class PixRefundJpaEntity {
     @Column(name = "processed_by")
     private String processedBy;
 
+    @Column(name = "failure_reason")
+    private String failureReason;
+
     public PixRefundJpaEntity() {}
 
     public PixRefundJpaEntity(UUID refundId, UUID originalTransactionId, String reason,
                               BigDecimal refundAmount, RefundStatus refundStatus,
                               LocalDateTime requestedAt, LocalDateTime processedAt,
-                              String processedBy) {
+                              String processedBy, String failureReason) {
         this.refundId = refundId;
         this.originalTransactionId = originalTransactionId;
         this.reason = reason;
@@ -51,6 +54,7 @@ public class PixRefundJpaEntity {
         this.requestedAt = requestedAt;
         this.processedAt = processedAt;
         this.processedBy = processedBy;
+        this.failureReason = failureReason;
     }
 
     public UUID getRefundId() { return refundId; }
@@ -61,4 +65,5 @@ public class PixRefundJpaEntity {
     public LocalDateTime getRequestedAt() { return requestedAt; }
     public LocalDateTime getProcessedAt() { return processedAt; }
     public String getProcessedBy() { return processedBy; }
+    public String getFailureReason() { return failureReason; }
 }

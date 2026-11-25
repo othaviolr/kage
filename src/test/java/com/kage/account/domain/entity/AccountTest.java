@@ -15,7 +15,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Testes do núcleo de regra de negócio da conta: credit/debit/withdraw e as transições
  * de status. Limites usados nas asserções vêm de Limits.defaultLimits() (conta nova sempre
- * nasce com os limites padrão): dailyTransferLimit = 5000.00, dailyWithdrawalLimit = 1000.00.
+ * nasce com os limites padrão): dailyWithdrawalLimit = 1000.00, pixDailyLimit = 2000.00,
+ * pixNightLimit = 1000.00.
  */
 class AccountTest {
 
@@ -40,7 +41,7 @@ class AccountTest {
 
         assertThatThrownBy(() -> account.credit(Money.of("10.00")))
                 .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("encerrada");
+                .hasMessageContaining("não está ativa");
     }
 
     @Test
@@ -63,26 +64,37 @@ class AccountTest {
     }
 
     @Test
-    void debit_deveLancarBusinessRuleException_quandoExcedeLimiteDiarioDeTransferencia() {
+    void debit_naoAplicaLimiteDeCanal_soSaldo() {
+        // limites dependem do canal (PIX, saque) e são checados antes, com o acumulado do período
         account.credit(Money.of("10000.00"));
 
-        assertThatThrownBy(() -> account.debit(Money.of("6000.00")))
+        account.debit(Money.of("6000.00"));
+
+        assertThat(account.getBalance().amount()).isEqualByComparingTo("4000.00");
+    }
+
+    @Test
+    void debit_deveLancarBusinessRuleException_quandoContaBloqueada() {
+        account.credit(Money.of("100.00"));
+        account.block();
+
+        assertThatThrownBy(() -> account.debit(Money.of("10.00")))
                 .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("limite diário de transferência");
+                .hasMessageContaining("não está ativa");
     }
 
     @Test
     void withdraw_deveDiminuirSaldo_quandoDentroDoLimite() {
         account.credit(Money.of("500.00"));
 
-        account.withdraw(Money.of("200.00"));
+        account.withdraw(Money.of("200.00"), Money.ZERO);
 
         assertThat(account.getBalance().amount()).isEqualByComparingTo("300.00");
     }
 
     @Test
     void withdraw_deveLancarBusinessRuleException_quandoSaldoInsuficiente() {
-        assertThatThrownBy(() -> account.withdraw(Money.of("10.00")))
+        assertThatThrownBy(() -> account.withdraw(Money.of("10.00"), Money.ZERO))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("Saldo disponível insuficiente");
     }
@@ -91,9 +103,86 @@ class AccountTest {
     void withdraw_deveLancarBusinessRuleException_quandoExcedeLimiteDiarioDeSaque() {
         account.credit(Money.of("5000.00")); // limite padrão de saque é 1000.00
 
-        assertThatThrownBy(() -> account.withdraw(Money.of("1500.00")))
+        assertThatThrownBy(() -> account.withdraw(Money.of("1500.00"), Money.ZERO))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("limite diário de saque");
+    }
+
+    @Test
+    void withdraw_deveSomarSaquesDoDia_quandoVariosSaquesPequenosEstouramOLimite() {
+        account.credit(Money.of("5000.00"));
+
+        // 800 já sacados hoje + 300 agora = 1100 > 1000: antes passava, porque o limite era por saque
+        assertThatThrownBy(() -> account.withdraw(Money.of("300.00"), Money.of("800.00")))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("disponível hoje: 200.00");
+        assertThat(account.getBalance().amount()).isEqualByComparingTo("5000.00");
+    }
+
+    @Test
+    void withdraw_devePermitir_quandoAcumuladoFechaExatamenteNoLimite() {
+        account.credit(Money.of("5000.00"));
+
+        account.withdraw(Money.of("200.00"), Money.of("800.00"));
+
+        assertThat(account.getBalance().amount()).isEqualByComparingTo("4800.00");
+    }
+
+    // limites padrão de PIX: diário 2000.00, noturno 1000.00
+
+    @Test
+    void checkPixLimits_devePassar_quandoDentroDosLimites() {
+        account.credit(Money.of("5000.00"));
+
+        account.checkPixLimits(Money.of("500.00"), Money.of("1500.00"), Money.ZERO, false);
+    }
+
+    @Test
+    void checkPixLimits_deveSomarPixDoDia() {
+        account.credit(Money.of("5000.00"));
+
+        assertThatThrownBy(() -> account.checkPixLimits(Money.of("600.00"), Money.of("1500.00"), Money.ZERO, false))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("limite diário de PIX (disponível hoje: 500.00)");
+    }
+
+    @Test
+    void checkPixLimits_deveAplicarLimiteNoturno_soNaJanelaNoturna() {
+        account.credit(Money.of("5000.00"));
+
+        account.checkPixLimits(Money.of("1200.00"), Money.ZERO, Money.ZERO, false);
+
+        assertThatThrownBy(() -> account.checkPixLimits(Money.of("1200.00"), Money.ZERO, Money.ZERO, true))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("limite noturno de PIX");
+    }
+
+    @Test
+    void checkPixLimits_deveSomarPixDaNoite() {
+        account.credit(Money.of("5000.00"));
+
+        assertThatThrownBy(() -> account.checkPixLimits(Money.of("300.00"), Money.of("800.00"), Money.of("800.00"), true))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("disponível até as 6h: 200.00");
+    }
+
+    @Test
+    void checkPixLimits_deveRecusar_quandoSaldoInsuficiente() {
+        account.credit(Money.of("100.00"));
+
+        assertThatThrownBy(() -> account.checkPixLimits(Money.of("150.00"), Money.ZERO, Money.ZERO, false))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("Saldo insuficiente");
+    }
+
+    @Test
+    void checkPixLimits_deveRecusar_quandoContaBloqueada() {
+        account.credit(Money.of("100.00"));
+        account.block();
+
+        assertThatThrownBy(() -> account.checkPixLimits(Money.of("10.00"), Money.ZERO, Money.ZERO, false))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("não está ativa");
     }
 
     @Test

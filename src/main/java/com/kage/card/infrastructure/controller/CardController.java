@@ -1,6 +1,7 @@
 package com.kage.card.infrastructure.controller;
 
 import com.kage.card.application.usecase.*;
+import com.kage.auth.infrastructure.security.AccessGuard;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,11 +23,18 @@ public class CardController {
     private final ListInvoices listInvoices;
     private final CloseInvoice closeInvoice;
     private final CancelCard cancelCard;
+    private final AccessGuard accessGuard;
 
+    /**
+     * Emissão é do ADMIN: o limite de crédito é decisão da análise de crédito do banco, não do cliente.
+     * Compras chegam pela bandeira e o fechamento é job do banco (ambos ADMIN no SecurityConfig).
+     * O cliente consulta, bloqueia/desbloqueia, cancela e vê as faturas dos próprios cartões.
+     */
     public CardController(IssueCard issueCard, GetCard getCard, BlockCard blockCard,
                           UnblockCard unblockCard, RegisterPurchase registerPurchase,
                           GetInvoice getInvoice, ListInvoices listInvoices,
-                          CloseInvoice closeInvoice, CancelCard cancelCard) {
+                          CloseInvoice closeInvoice, CancelCard cancelCard, AccessGuard accessGuard) {
+        this.accessGuard = accessGuard;
         this.issueCard = issueCard;
         this.getCard = getCard;
         this.blockCard = blockCard;
@@ -45,21 +53,25 @@ public class CardController {
 
     @GetMapping("/{id}")
     public ResponseEntity<GetCard.Output> getById(@PathVariable UUID id) {
+        accessGuard.checkCard(id);
         return ResponseEntity.ok(getCard.execute(new GetCard.Input(id)));
     }
 
     @PatchMapping("/{id}/block")
     public ResponseEntity<BlockCard.Output> block(@PathVariable UUID id) {
+        accessGuard.checkCard(id);
         return ResponseEntity.ok(blockCard.execute(new BlockCard.Input(id)));
     }
 
     @PatchMapping("/{id}/unblock")
     public ResponseEntity<UnblockCard.Output> unblock(@PathVariable UUID id) {
+        accessGuard.checkCard(id);
         return ResponseEntity.ok(unblockCard.execute(new UnblockCard.Input(id)));
     }
 
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<CancelCard.Output> cancel(@PathVariable UUID id) {
+        accessGuard.checkCard(id);
         return ResponseEntity.ok(cancelCard.execute(new CancelCard.Input(id)));
     }
 
@@ -74,11 +86,13 @@ public class CardController {
 
     @GetMapping("/{id}/invoices")
     public ResponseEntity<ListInvoices.Output> listInvoices(@PathVariable UUID id) {
+        accessGuard.checkCard(id);
         return ResponseEntity.ok(listInvoices.execute(new ListInvoices.Input(id)));
     }
 
     @GetMapping("/{id}/invoices/{referenceMonth}")
     public ResponseEntity<GetInvoice.Output> getInvoice(@PathVariable UUID id, @PathVariable String referenceMonth) {
+        accessGuard.checkCard(id);
         return ResponseEntity.ok(getInvoice.execute(new GetInvoice.Input(id, referenceMonth)));
     }
 
