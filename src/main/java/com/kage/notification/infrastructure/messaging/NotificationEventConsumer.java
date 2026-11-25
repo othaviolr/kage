@@ -90,6 +90,12 @@ public class NotificationEventConsumer {
                 NotificationTemplates.autoDebitFailed(e.referenceMonth(), e.reason()), null, messageId);
     }
 
+    @RabbitListener(queues = "notification.pix.scheduled.failed.queue")
+    public void onScheduledPixFailed(InboundEvents.ScheduledPixFailed e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toAccountOwner(e.sourceAccountId(), NotificationType.PIX_SCHEDULED_FAILED,
+                NotificationTemplates.scheduledPixFailed(e.amount(), e.scheduledDate(), e.reason()), e.transactionId(), messageId);
+    }
+
     @RabbitListener(queues = "notification.auth.password.changed.queue")
     public void onPasswordChanged(InboundEvents.PasswordChanged e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         deliver(Optional.of(e.customerId()), "cliente " + e.customerId(), NotificationType.PASSWORD_CHANGED,

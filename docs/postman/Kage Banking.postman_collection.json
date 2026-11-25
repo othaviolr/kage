@@ -5556,6 +5556,272 @@
               }
             }
           ]
+        },
+        {
+          "name": "6.90 Agendar PIX para amanhã",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/scheduled",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "scheduled"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceAccountId\": \"{{pixSrcAccountId}}\",\n  \"targetPixKey\": \"{{dstKey}}\",\n  \"amount\": 25,\n  \"description\": \"mesada\",\n  \"scheduledDate\": \"{{tomorrow}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// data LOCAL (toISOString seria UTC: depois das 21h no Brasil já é amanhã)",
+                  "const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;",
+                  "const today = new Date();",
+                  "const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);",
+                  "pm.collectionVariables.set('today', iso(today));",
+                  "pm.collectionVariables.set('tomorrow', iso(tomorrow));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Pendente até o dia', () => {",
+                  "  pm.expect(j.status).to.eql('PENDING');",
+                  "  pm.expect(j.scheduledDate).to.eql(pm.collectionVariables.get('tomorrow'));",
+                  "});",
+                  "pm.collectionVariables.set('scheduledPixId', j.transactionId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.91 Agendar para hoje -> 422 (use o PIX imediato)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/scheduled",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "scheduled"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceAccountId\": \"{{pixSrcAccountId}}\",\n  \"targetPixKey\": \"{{dstKey}}\",\n  \"amount\": 25,\n  \"scheduledDate\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Orienta usar o PIX imediato', () => pm.expect(pm.response.json().message).to.include('PIX imediato'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.92 Listar agendamentos da conta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/scheduled?accountId={{pixSrcAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "scheduled"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "{{pixSrcAccountId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Agendamento aparece', () => pm.expect(pm.response.json().map(s => s.transactionId)).to.include(pm.collectionVariables.get('scheduledPixId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.93 Rodar PIX agendados de hoje (backoffice) - o de amanhã fica pendente",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/pix/scheduled/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "pix",
+                "scheduled",
+                "run"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Resumo da rodada', () => pm.expect(pm.response.json().sent).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.94 Cancelar o agendamento",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/scheduled/{{scheduledPixId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "scheduled",
+                "{{scheduledPixId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('CANCELLED', () => pm.expect(pm.response.json().status).to.eql('CANCELLED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.95 Cancelar de novo -> 422",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/scheduled/{{scheduledPixId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "scheduled",
+                "{{scheduledPixId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.96 Cancelar PIX imediato -> 404 (não é agendamento)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/scheduled/{{pixTxId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "scheduled",
+                "{{pixTxId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
         }
       ],
       "description": "Fluxo assíncrono: POST /send devolve PROCESSING; o débito/crédito e a confirmação acontecem via RabbitMQ (pix.sent.queue -> pix.debit.confirmed.queue). Os requests 'Aguardar' fazem retry no Collection Runner."
@@ -8373,6 +8639,18 @@
     },
     {
       "key": "resetToken",
+      "value": ""
+    },
+    {
+      "key": "today",
+      "value": ""
+    },
+    {
+      "key": "tomorrow",
+      "value": ""
+    },
+    {
+      "key": "scheduledPixId",
       "value": ""
     }
   ],

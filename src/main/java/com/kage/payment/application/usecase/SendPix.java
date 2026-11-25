@@ -73,15 +73,7 @@ public class SendPix {
     }
 
     private PixLimitUsage limitUsage(UUID sourceAccountId) {
-        LocalDateTime now = LocalDateTime.now(clock);
-        Money sentToday = pixTransactionRepository.sumAmountSentSince(sourceAccountId, now.toLocalDate().atStartOfDay());
-
-        boolean night = PixNightWindow.isNight(now);
-        Money sentTonight = night
-                ? pixTransactionRepository.sumAmountSentSince(sourceAccountId, PixNightWindow.startOfCurrentNight(now))
-                : Money.ZERO;
-
-        return new PixLimitUsage(sentToday, sentTonight, night);
+        return new PixLimitCalculator(pixTransactionRepository, clock).usageOf(sourceAccountId);
     }
 
     public record Input(UUID sourceAccountId, String targetPixKey, Money amount, String description) {}

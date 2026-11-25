@@ -10,4 +10,7 @@ public interface PixEventPublisher {
 
     /** Pede ao Account que devolva o valor do estorno de quem recebeu o PIX original para quem pagou. */
     void publishRefundApproved(PixRefund refund, PixTransaction originalTransaction);
+
+    /** O PIX agendado não pôde ser executado no dia (aviso ao cliente). */
+    void publishScheduledPixFailed(PixTransaction transaction, String reason);
 }

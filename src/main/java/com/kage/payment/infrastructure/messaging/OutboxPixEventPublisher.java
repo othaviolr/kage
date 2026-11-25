@@ -30,4 +30,15 @@ public class OutboxPixEventPublisher implements PixEventPublisher {
 
         outbox.publish("pix.exchange", "pix.refund.approved", event);
     }
+
+    @Override
+    public void publishScheduledPixFailed(PixTransaction transaction, String reason) {
+        outbox.publish("pix.exchange", "pix.scheduled.failed", new ScheduledPixFailedEvent(transaction.getTransactionId(),
+                transaction.getSourceAccountId(), transaction.getAmount().amount(),
+                transaction.getScheduledDate().toLocalDate(), reason, java.time.Instant.now()));
+    }
+
+    public record ScheduledPixFailedEvent(java.util.UUID transactionId, java.util.UUID sourceAccountId,
+                                          java.math.BigDecimal amount, java.time.LocalDate scheduledDate,
+                                          String reason, java.time.Instant occurredAt) {}
 }

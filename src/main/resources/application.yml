@@ -50,6 +50,11 @@ kage:
       # SÓ PARA DESENVOLVIMENTO: devolve o token de recuperação na resposta do /password/forgot
       # (não há envio de e-mail real). Em produção fica false.
       expose-token: ${KAGE_DEV_EXPOSE_RESET_TOKEN:false}
+  pix:
+    # dispara os PIX agendados do dia logo depois do fim da janela noturna
+    scheduler-enabled: ${KAGE_PIX_SCHEDULER_ENABLED:true}
+    scheduled-cron: "0 0 6 * * *"
+    zone: America/Sao_Paulo
   billing:
     # fecha faturas no dia de corte e cobra o débito automático no vencimento
     scheduler-enabled: ${KAGE_BILLING_SCHEDULER_ENABLED:true}

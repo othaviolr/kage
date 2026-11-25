@@ -21,6 +21,7 @@ public class NotificationRabbitMQConfig {
     static final String ACCOUNT_EXCHANGE = "account.exchange";
     static final String CARD_EXCHANGE = "card.exchange";
     static final String AUTH_EXCHANGE = "auth.exchange";
+    static final String PIX_EXCHANGE = "pix.exchange";
 
     /** routing key -> exchange de origem */
     static final Map<String, String> SUBSCRIPTIONS = Map.ofEntries(
@@ -35,7 +36,8 @@ public class NotificationRabbitMQConfig {
             Map.entry("card.invoice.closed", CARD_EXCHANGE),
             Map.entry("card.invoice.paid", CARD_EXCHANGE),
             Map.entry("card.invoice.auto-debit-failed", CARD_EXCHANGE),
-            Map.entry("auth.password.changed", AUTH_EXCHANGE)
+            Map.entry("auth.password.changed", AUTH_EXCHANGE),
+            Map.entry("pix.scheduled.failed", PIX_EXCHANGE)
     );
 
     static String queue(String routingKey) {

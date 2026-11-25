@@ -15,6 +15,7 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 - **Limites acumulados**: saque diário, PIX diário e PIX noturno (20h–6h), somando o que já foi movimentado no período
 - **Extrato**: todo movimento vira um lançamento imutável com o saldo resultante (`GET /api/accounts/{id}/statement`)
 - **PIX**: chaves, envio assíncrono com confirmação ou falha, estorno que devolve o dinheiro (ou falha com motivo, se quem recebeu já gastou)
+- **PIX agendado**: para até 1 ano à frente; saldo e limites conferidos no dia (job às 06:00, depois da janela noturna), pelo mesmo caminho do PIX imediato; sem saldo no dia vira `FAILED` e o cliente é avisado; dá para listar e cancelar até a execução
 - **Cartão de crédito**: emissão vinculada à conta, limite, compras idempotentes, fatura mensal com fechamento e pagamento pelo saldo da conta (débito, extrato e liberação do limite numa única transação)
 - **Ciclo de cobrança automático**: job diário (03:00) fecha as faturas no dia de corte e, para quem ligou o débito automático, paga no vencimento; sem saldo, a fatura fica em atraso e é tentada de novo no dia seguinte. O backoffice pode rodar o ciclo para qualquer data (`POST /api/admin/billing/run?date=`)
 
@@ -24,7 +25,7 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 ### Roadmap
 
 - 2FA no login de dispositivo novo, envio real do e-mail de recuperação de senha
-- PIX agendado
+- PIX agendado recorrente (todo mês)
 - Pagamento parcial/mínimo de fatura (rotativo), juros por atraso e parcelamento no cartão
 - TED, boletos, empréstimos, investimentos
 - Entrega real das notificações (push via FCM, e-mail, SMS) e preferências de canal por cliente

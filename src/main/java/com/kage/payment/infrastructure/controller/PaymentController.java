@@ -29,11 +29,16 @@ public class PaymentController {
     private final RejectPixRefund rejectPixRefund;
     private final GetPixRefund getPixRefund;
     private final AccessGuard accessGuard;
+    private final SchedulePix schedulePix;
+    private final ManageScheduledPix manageScheduledPix;
 
     public PaymentController(RegisterPixKey registerPixKey, DeletePixKey deletePixKey, GetPixKey getPixKey,
                              SendPix sendPix, GetPixTransaction getPixTransaction, RequestPixRefund requestPixRefund,
                              ApprovePixRefund approvePixRefund, RejectPixRefund rejectPixRefund,
-                             GetPixRefund getPixRefund, AccessGuard accessGuard) {
+                             GetPixRefund getPixRefund, AccessGuard accessGuard, SchedulePix schedulePix,
+                             ManageScheduledPix manageScheduledPix) {
+        this.schedulePix = schedulePix;
+        this.manageScheduledPix = manageScheduledPix;
         this.registerPixKey = registerPixKey;
         this.deletePixKey = deletePixKey;
         this.getPixKey = getPixKey;
@@ -71,6 +76,28 @@ public class PaymentController {
         accessGuard.checkAccount(request.sourceAccountId()); // só sai dinheiro da própria conta
         SendPix.Output output = sendPix.execute(new SendPix.Input(request.sourceAccountId(), request.targetPixKey(), Money.of(request.amount()), request.description()));
         return ResponseEntity.status(HttpStatus.CREATED).body(output);
+    }
+
+    /** Agenda um PIX para uma data futura; saldo e limites são conferidos no dia. */
+    @PostMapping("/scheduled")
+    public ResponseEntity<SchedulePix.Output> schedulePix(@RequestBody SchedulePixRequest request) {
+        accessGuard.checkAccount(request.sourceAccountId());
+        SchedulePix.Output output = schedulePix.execute(new SchedulePix.Input(request.sourceAccountId(), request.targetPixKey(),
+                Money.of(request.amount()), request.description(), request.scheduledDate()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(output);
+    }
+
+    @GetMapping("/scheduled")
+    public ResponseEntity<java.util.List<SchedulePix.Output>> listScheduled(@RequestParam UUID accountId) {
+        accessGuard.checkAccount(accountId);
+        return ResponseEntity.ok(manageScheduledPix.listPending(accountId));
+    }
+
+    /** Só quem agendou cancela, e só até a execução. */
+    @DeleteMapping("/scheduled/{transactionId}")
+    public ResponseEntity<SchedulePix.Output> cancelScheduled(@PathVariable UUID transactionId) {
+        accessGuard.checkScheduledPix(transactionId);
+        return ResponseEntity.ok(manageScheduledPix.cancel(transactionId));
     }
 
     @GetMapping("/transactions/{transactionId}")
@@ -111,6 +138,8 @@ public class PaymentController {
     public record RegisterKeyRequest(UUID accountId, PixKeyType keyType, String keyValue) {}
     public record SendPixRequest(UUID sourceAccountId, String targetPixKey,
                                  BigDecimal amount, String description) {}
+    public record SchedulePixRequest(UUID sourceAccountId, String targetPixKey, BigDecimal amount,
+                                     String description, java.time.LocalDate scheduledDate) {}
     public record RequestRefundRequest(UUID originalTransactionId, String reason,
                                        BigDecimal refundAmount) {}
 }
