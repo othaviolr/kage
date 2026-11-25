@@ -1,16 +1,17 @@
 # syntax=docker/dockerfile:1
 
 # ---- build: compila e empacota (os testes rodam na CI, não aqui) ----
-FROM eclipse-temurin:17-jdk-alpine AS build
+# o Maven já vem na imagem: o build não baixa a distribuição do Maven Central
+# (o mvnw baixava a cada build sem cache, e um 429 do Central derrubava a CI)
+FROM maven:3.9-eclipse-temurin-17-alpine AS build
 WORKDIR /workspace
 
-# dependências primeiro: mudar código não invalida a camada do download do Maven
-COPY .mvn/ .mvn/
-COPY mvnw pom.xml ./
-RUN chmod +x mvnw && ./mvnw -B -q dependency:go-offline
+# dependências primeiro: mudar código não invalida esta camada (a CI guarda ela no cache)
+COPY pom.xml ./
+RUN mvn -B -q -ntp dependency:go-offline
 
 COPY src/ src/
-RUN ./mvnw -B -q package -DskipTests && cp target/*.jar app.jar
+RUN mvn -B -q -ntp -o package -DskipTests && cp target/*.jar app.jar
 
 # ---- runtime: só o JRE e o jar ----
 FROM eclipse-temurin:17-jre-alpine

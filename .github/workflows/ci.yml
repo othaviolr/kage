@@ -28,6 +28,13 @@ jobs:
           java-version: '17'
           cache: maven
 
+      # o cache do setup-java guarda só ~/.m2/repository; sem isto o mvnw baixa o Maven toda rodada
+      - name: Cache da distribuição do Maven (mvnw)
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/wrapper
+          key: maven-wrapper-${{ hashFiles('.mvn/wrapper/maven-wrapper.properties') }}
+
       # Testcontainers usa o Docker do runner (Postgres e RabbitMQ reais)
       - name: mvn verify
         run: ./mvnw -B -ntp verify
@@ -51,8 +58,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # a imagem sai do cache do GitHub Actions: as dependências só são baixadas quando o pom muda
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Construir a imagem (com cache)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          tags: kage-app:latest
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Subir Postgres, RabbitMQ e a aplicação
-        run: docker compose up --build -d
+        run: docker compose up -d --no-build
 
       - name: Esperar a aplicação ficar saudável
         run: |

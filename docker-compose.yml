@@ -43,6 +43,8 @@ services:
 
   app:
     build: .
+    # nome fixo: a CI constrói a imagem com cache antes e sobe com --no-build
+    image: kage-app:latest
     container_name: kage-app
     depends_on:
       postgres:
