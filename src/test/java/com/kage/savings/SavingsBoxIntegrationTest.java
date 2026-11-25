@@ -9,7 +9,7 @@ import com.kage.customer.application.usecase.approvekyc.ApproveKycInput;
 import com.kage.customer.application.usecase.approvekyc.ApproveKycUseCase;
 import com.kage.notification.application.usecase.ListNotifications;
 import com.kage.savings.application.usecase.RunSavingsYield;
-import com.kage.savings.domain.service.YieldPolicy;
+import com.kage.savings.domain.service.BusinessCalendar;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -114,7 +114,8 @@ class SavingsBoxIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.balance").value(300.00))
                 .andExpect(jsonPath("$.goalProgressPercent").value(6));
         move(maria, box, "withdraw", "100.00", null).andExpect(status().isOk())
-                .andExpect(jsonPath("$.balance").value(200.00));
+                .andExpect(jsonPath("$.box.balance").value(200.00))
+                .andExpect(jsonPath("$.withdrawal.net").value(100.00)); // guardou e tirou no mesmo dia: sem imposto
 
         assertThat(accountBalance(maria)).isEqualByComparingTo("800.00");
 
@@ -166,7 +167,7 @@ class SavingsBoxIntegrationTest extends AbstractIntegrationTest {
 
         LocalDate created = jdbcTemplate.queryForObject("SELECT last_yield_date FROM savings_boxes WHERE id = ?", LocalDate.class, box);
         LocalDate runDate = created.plusDays(8); // rende até created + 7
-        int businessDays = YieldPolicy.businessDaysBetween(created, runDate.minusDays(1));
+        int businessDays = BusinessCalendar.businessDaysBetween(created, runDate.minusDays(1));
 
         runSavingsYield.execute(runDate);
         BigDecimal afterFirstRun = boxBalance(box);
@@ -186,25 +187,75 @@ class SavingsBoxIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.box.totalYield").value(afterFirstRun.subtract(new BigDecimal("10000.00")).doubleValue()));
     }
 
+    /** Volta a caixinha (e os lotes) {@code days} dias no tempo e rende até ontem: como se tivesse guardado lá atrás. */
+    private void ageAndYield(UUID box, int days) {
+        jdbcTemplate.update("UPDATE savings_box_lots SET deposited_on = deposited_on - ? WHERE box_id = ?", days, box);
+        jdbcTemplate.update("UPDATE savings_boxes SET last_yield_date = last_yield_date - ? WHERE id = ?", days, box);
+        runSavingsYield.execute(LocalDate.now());
+    }
+
     @Test
-    void encerrar_devolveSaldoComRendimentoParaConta() throws Exception {
+    void encerrar_devolveOLiquidoParaConta() throws Exception {
         Customer lia = customerWith("1000.00");
         UUID box = createBox(lia, "Curta", null);
         move(lia, box, "deposit", "1000.00", null).andExpect(status().isOk());
-        LocalDate created = jdbcTemplate.queryForObject("SELECT last_yield_date FROM savings_boxes WHERE id = ?", LocalDate.class, box);
-        runSavingsYield.execute(created.plusDays(8));
+        ageAndYield(box, 40); // 40 dias: já sem IOF, IR de 22,5%
         BigDecimal withYield = boxBalance(box);
-        assertThat(withYield).isGreaterThan(new BigDecimal("1000.00"));
+        BigDecimal gain = withYield.subtract(new BigDecimal("1000.00"));
+        assertThat(gain).isPositive();
+        BigDecimal incomeTax = gain.multiply(new BigDecimal("0.225")).setScale(2, java.math.RoundingMode.DOWN);
 
         mvc.perform(delete("/api/savings-boxes/" + box).header("Authorization", bearer(lia)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("CLOSED"))
-                .andExpect(jsonPath("$.balance").value(0));
+                .andExpect(jsonPath("$.box.status").value("CLOSED"))
+                .andExpect(jsonPath("$.box.balance").value(0))
+                .andExpect(jsonPath("$.withdrawal.gross").value(withYield.doubleValue()))
+                .andExpect(jsonPath("$.withdrawal.iof").value(0))
+                .andExpect(jsonPath("$.withdrawal.incomeTax").value(incomeTax.doubleValue()));
 
-        assertThat(accountBalance(lia)).isEqualByComparingTo(withYield);
+        BigDecimal net = withYield.subtract(incomeTax);
+        assertThat(accountBalance(lia)).isEqualByComparingTo(net);
+        List<String> entries = jdbcTemplate.queryForList("SELECT amount::text FROM account_entries WHERE account_id = ? "
+                + "AND type = 'SAVINGS_WITHDRAWAL'", String.class, lia.accountId());
+        assertThat(entries).containsExactly(net.toPlainString()); // no extrato da conta, o líquido
         move(lia, box, "deposit", "1.00", null).andExpect(status().isUnprocessableEntity());
         mvc.perform(get("/api/accounts/" + lia.accountId() + "/savings-boxes").header("Authorization", bearer(lia)))
                 .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void resgateNovo_pagaIof_eSimulacaoBateComOResgate() throws Exception {
+        Customer rui = customerWith("2000.00");
+        UUID box = createBox(rui, "Impostos", null);
+        move(rui, box, "deposit", "2000.00", null).andExpect(status().isOk());
+        ageAndYield(box, 10); // 10 dias: IOF de 66% do rendimento
+
+        String preview = mvc.perform(get("/api/savings-boxes/" + box + "/withdrawal-preview?amount=500.00")
+                        .header("Authorization", bearer(rui)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        BigDecimal iof = new BigDecimal(JsonPath.read(preview, "$.iof").toString());
+        BigDecimal net = new BigDecimal(JsonPath.read(preview, "$.net").toString());
+        assertThat(iof).isPositive();
+        assertThat(net).isLessThan(new BigDecimal("500.00"));
+
+        mvc.perform(get("/api/savings-boxes/" + box).header("Authorization", bearer(rui)))
+                .andExpect(jsonPath("$.lots.length()").value(1))
+                .andExpect(jsonPath("$.lots[0].daysHeld").value(10))
+                .andExpect(jsonPath("$.lots[0].iofRate").value(0.66))
+                .andExpect(jsonPath("$.lots[0].incomeTaxRate").value(0.225));
+
+        BigDecimal accountBefore = accountBalance(rui);
+        move(rui, box, "withdraw", "500.00", null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.withdrawal.iof").value(iof.doubleValue()))
+                .andExpect(jsonPath("$.withdrawal.net").value(net.doubleValue()));
+        assertThat(accountBalance(rui)).isEqualByComparingTo(accountBefore.add(net));
+
+        mvc.perform(get("/api/savings-boxes/" + box).header("Authorization", bearer(rui)))
+                .andExpect(jsonPath("$.movements[0].type").value("WITHDRAWAL"))
+                .andExpect(jsonPath("$.movements[0].amount").value(500.00))
+                .andExpect(jsonPath("$.movements[0].iof").value(iof.doubleValue()))
+                .andExpect(jsonPath("$.movements[0].netAmount").value(net.doubleValue()));
     }
 
     @Test

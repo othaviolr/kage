@@ -9387,7 +9387,9 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Saldo 400', () => pm.expect(pm.response.json().balance).to.eql(400));"
+                  "const j = pm.response.json();",
+                  "pm.test('Saldo 400', () => pm.expect(j.box.balance).to.eql(400));",
+                  "pm.test('Guardado hoje, sem rendimento: líquido = bruto', () => { pm.expect(j.withdrawal.net).to.eql(100); pm.expect(j.withdrawal.incomeTax).to.eql(0); });"
                 ]
               }
             }
@@ -9677,7 +9679,40 @@
           ]
         },
         {
-          "name": "11.20 Encerrar caixinha: tudo volta para a conta",
+          "name": "11.20 Simular resgate total (IOF e IR)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/savings-boxes/{{sbBoxId}}/withdrawal-preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "savings-boxes",
+                "{{sbBoxId}}",
+                "withdrawal-preview"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Bruto = saldo da caixinha', () => pm.expect(j.gross).to.eql(Number(pm.collectionVariables.get('sbBalanceWithYield'))));",
+                  "pm.test('Imposto só sobre o rendimento', () => { pm.expect(j.iof + j.incomeTax).to.be.at.most(j.gain); pm.expect(j.net).to.be.at.least(400); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.21 Encerrar caixinha: o líquido volta para a conta",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -9701,14 +9736,19 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const j = pm.response.json();",
-                  "pm.test('CLOSED e zerada', () => { pm.expect(j.status).to.eql('CLOSED'); pm.expect(j.balance).to.eql(0); });"
+                  "pm.test('CLOSED e zerada', () => { pm.expect(j.box.status).to.eql('CLOSED'); pm.expect(j.box.balance).to.eql(0); });",
+                  "pm.test('Resgatou o bruto, reteve impostos', () => {",
+                  "  pm.expect(j.withdrawal.gross).to.eql(Number(pm.collectionVariables.get('sbBalanceWithYield')));",
+                  "  pm.expect(j.withdrawal.net).to.be.closeTo(j.withdrawal.gross - j.withdrawal.iof - j.withdrawal.incomeTax, 0.001);",
+                  "});",
+                  "pm.collectionVariables.set('sbNetWithdrawn', j.withdrawal.net);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "11.21 Conta recebeu o saldo com rendimento",
+          "name": "11.22 Conta recebeu o líquido",
           "request": {
             "method": "GET",
             "header": [],
@@ -9730,15 +9770,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const expected = 600 + Number(pm.collectionVariables.get('sbBalanceWithYield'));",
-                  "pm.test('Saldo = 600 + caixinha', () => pm.expect(pm.response.json().balance).to.be.closeTo(expected, 0.001));"
+                  "const expected = 600 + Number(pm.collectionVariables.get('sbNetWithdrawn'));",
+                  "pm.test('Saldo = 600 + líquido do resgate', () => pm.expect(pm.response.json().balance).to.be.closeTo(expected, 0.001));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "11.22 Guardar em caixinha encerrada -> 422",
+          "name": "11.23 Guardar em caixinha encerrada -> 422",
           "request": {
             "method": "POST",
             "header": [

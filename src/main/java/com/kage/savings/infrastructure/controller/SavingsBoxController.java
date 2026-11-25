@@ -54,15 +54,24 @@ public class SavingsBoxController {
         return ResponseEntity.ok(savingsBoxes.deposit(id, amount(request)));
     }
 
+    /** Valor BRUTO: sai da caixinha; a conta recebe o líquido de IOF e IR. */
     @PostMapping("/api/savings-boxes/{id}/withdraw")
-    public ResponseEntity<SavingsBoxes.BoxView> withdraw(@PathVariable UUID id, @RequestBody AmountRequest request) {
+    public ResponseEntity<SavingsBoxes.WithdrawalResult> withdraw(@PathVariable UUID id, @RequestBody AmountRequest request) {
         accessGuard.checkSavingsBox(id);
         return ResponseEntity.ok(savingsBoxes.withdraw(id, amount(request)));
     }
 
-    /** Resgata o saldo inteiro para a conta e encerra. */
+    /** Simula o resgate (sem amount: tudo) — quanto sairia de imposto e quanto cairia na conta. */
+    @GetMapping("/api/savings-boxes/{id}/withdrawal-preview")
+    public ResponseEntity<SavingsBoxes.WithdrawalView> previewWithdrawal(@PathVariable UUID id,
+                                                                         @RequestParam(required = false) BigDecimal amount) {
+        accessGuard.checkSavingsBox(id);
+        return ResponseEntity.ok(savingsBoxes.previewWithdrawal(id, amount));
+    }
+
+    /** Resgata o saldo inteiro (líquido de impostos) para a conta e encerra. */
     @DeleteMapping("/api/savings-boxes/{id}")
-    public ResponseEntity<SavingsBoxes.BoxView> close(@PathVariable UUID id) {
+    public ResponseEntity<SavingsBoxes.WithdrawalResult> close(@PathVariable UUID id) {
         accessGuard.checkSavingsBox(id);
         return ResponseEntity.ok(savingsBoxes.close(id));
     }
