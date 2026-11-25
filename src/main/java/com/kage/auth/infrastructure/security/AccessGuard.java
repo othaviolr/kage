@@ -6,6 +6,7 @@ import com.kage.payment.domain.entity.PixTransaction;
 import com.kage.payment.domain.repository.PixKeyRepository;
 import com.kage.payment.domain.repository.PixRefundRepository;
 import com.kage.payment.domain.repository.PixTransactionRepository;
+import com.kage.savings.domain.repository.SavingsBoxRepository;
 import com.kage.shared.domain.exception.NotFoundException;
 import com.kage.shared.domain.exception.UnauthorizedException;
 import com.kage.shared.domain.exception.ValidationException;
@@ -29,10 +30,12 @@ public class AccessGuard {
     private final PixKeyRepository pixKeyRepository;
     private final PixTransactionRepository pixTransactionRepository;
     private final PixRefundRepository pixRefundRepository;
+    private final SavingsBoxRepository savingsBoxRepository;
 
     public AccessGuard(AccountRepository accountRepository, CardRepository cardRepository,
                        PixKeyRepository pixKeyRepository, PixTransactionRepository pixTransactionRepository,
-                       PixRefundRepository pixRefundRepository) {
+                       PixRefundRepository pixRefundRepository, SavingsBoxRepository savingsBoxRepository) {
+        this.savingsBoxRepository = savingsBoxRepository;
         this.accountRepository = accountRepository;
         this.cardRepository = cardRepository;
         this.pixKeyRepository = pixKeyRepository;
@@ -111,6 +114,15 @@ public class AccessGuard {
                 .map(t -> !ownsExistingAccount(user, t.getSourceAccountId()))
                 .orElse(false);
         if (denied) throw new NotFoundException("PIX agendado não encontrado");
+    }
+
+    public void checkSavingsBox(UUID boxId) {
+        AuthenticatedUser user = currentUser();
+        if (user.isAdmin()) return;
+        boolean denied = savingsBoxRepository.findById(boxId)
+                .map(box -> !box.getCustomerId().equals(user.customerId()))
+                .orElse(false);
+        if (denied) throw new NotFoundException("Caixinha não encontrada");
     }
 
     public void checkPixRefund(UUID refundId) {

@@ -57,7 +57,8 @@ public class IdempotencyFilter extends OncePerRequestFilter {
     static final List<PathPattern> PROTECTED = List.of(
             "/api/pix/send", "/api/pix/scheduled", "/api/pix/refunds",
             "/api/accounts/*/withdraw", "/api/accounts/*/deposit",
-            "/api/cards/*/purchases", "/api/cards/*/invoices/*/pay", "/api/cards/*/invoices/*/installment-plan"
+            "/api/cards/*/purchases", "/api/cards/*/invoices/*/pay", "/api/cards/*/invoices/*/installment-plan",
+            "/api/savings-boxes/*/deposit", "/api/savings-boxes/*/withdraw"
     ).stream().map(PathPatternParser.defaultInstance::parse).toList();
 
     private final IdempotencyRepository repository;

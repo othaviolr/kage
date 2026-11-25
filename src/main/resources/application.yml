@@ -61,6 +61,13 @@ kage:
     scheduler-enabled: ${KAGE_BILLING_SCHEDULER_ENABLED:true}
     cron: "0 0 3 * * *"
     zone: America/Sao_Paulo
+  savings:
+    # caixinhas: rende 100% do CDI por dia útil; o job rende o dia útil anterior
+    scheduler-enabled: ${KAGE_SAVINGS_SCHEDULER_ENABLED:true}
+    cron: "0 0 1 * * *"
+    zone: America/Sao_Paulo
+    # fração ao ano (0.1415 = 14,15% a.a.)
+    annual-cdi: ${KAGE_ANNUAL_CDI:0.1415}
 
 springdoc:
   api-docs:

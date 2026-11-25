@@ -8880,6 +8880,908 @@
           ]
         }
       ]
+    },
+    {
+      "name": "11. Caixinhas",
+      "item": [
+        {
+          "name": "11.1 Criar customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Caixinha\",\n  \"cpf\": \"{{sbCpf}}\",\n  \"email\": \"{{sbEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1995-05-20\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"123\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('sbCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('sbEmail', `kage.sb+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('sbCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{sbCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{sbCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.3 Criar conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{sbCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('sbAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.4 Depositar 1000.00",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{sbAccountId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{sbAccountId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.5 Criar caixinha com meta de 500",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{sbAccountId}}/savings-boxes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{sbAccountId}}",
+                "savings-boxes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Viagem\",\n  \"goalAmount\": 500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Nasce ativa e vazia', () => { pm.expect(j.status).to.eql('ACTIVE'); pm.expect(j.balance).to.eql(0); pm.expect(j.goalProgressPercent).to.eql(0); });",
+                  "pm.collectionVariables.set('sbBoxId', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.6 Caixinha sem nome -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{sbAccountId}}/savings-boxes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{sbAccountId}}",
+                "savings-boxes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \" \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.7 Guardar 300.00 (com Idempotency-Key)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{sbIdemKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/savings-boxes/{{sbBoxId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "savings-boxes",
+                "{{sbBoxId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 300\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('sbIdemKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Saldo 300, 60% da meta', () => { pm.expect(j.balance).to.eql(300); pm.expect(j.goalProgressPercent).to.eql(60); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.8 Retry do guardar com a mesma chave -> replay",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{sbIdemKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/savings-boxes/{{sbBoxId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "savings-boxes",
+                "{{sbBoxId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 300\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Resposta repetida, não guardou de novo', () => { pm.expect(pm.response.headers.get('Idempotent-Replayed')).to.eql('true'); pm.expect(pm.response.json().balance).to.eql(300); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.9 Guardar mais que o saldo da conta -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/savings-boxes/{{sbBoxId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "savings-boxes",
+                "{{sbBoxId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 700.01\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.10 Guardar 200.00: atinge a meta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/savings-boxes/{{sbBoxId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "savings-boxes",
+                "{{sbBoxId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Meta atingida', () => { pm.expect(j.goalProgressPercent).to.eql(100); pm.expect(j.goalReachedAt).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.11 Resgatar 100.00",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/savings-boxes/{{sbBoxId}}/withdraw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "savings-boxes",
+                "{{sbBoxId}}",
+                "withdraw"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Saldo 400', () => pm.expect(pm.response.json().balance).to.eql(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.12 Resgatar mais que a caixinha -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/savings-boxes/{{sbBoxId}}/withdraw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "savings-boxes",
+                "{{sbBoxId}}",
+                "withdraw"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 400.01\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.13 Conta: 600.00 (1000 - 500 guardados + 100 resgatados)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{sbAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{sbAccountId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Saldo 600', () => pm.expect(pm.response.json().balance).to.eql(600));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.14 Rodar rendimento (ADMIN, simulando daqui a 8 dias)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/savings/yield/run?date={{sbYieldDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "savings",
+                "yield",
+                "run"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{sbYieldDate}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(); d.setDate(d.getDate() + 8);",
+                  "const pad = n => String(n).padStart(2, '0');",
+                  "pm.collectionVariables.set('sbYieldDate', `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Rendeu', () => pm.expect(Number(pm.response.json().totalCredited)).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.15 Detalhe da caixinha: rendimento no extrato",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/savings-boxes/{{sbBoxId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "savings-boxes",
+                "{{sbBoxId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Rendeu acima de 400', () => { pm.expect(j.box.balance).to.be.above(400); pm.expect(j.box.totalYield).to.be.above(0); });",
+                  "pm.test('Último movimento é YIELD', () => pm.expect(j.movements[0].type).to.eql('YIELD'));",
+                  "pm.collectionVariables.set('sbBalanceWithYield', j.box.balance);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.16 Rodar o mesmo dia de novo: não rende duas vezes",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/savings/yield/run?date={{sbYieldDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "savings",
+                "yield",
+                "run"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{sbYieldDate}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.17 Saldo da caixinha não mudou",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/savings-boxes/{{sbBoxId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "savings-boxes",
+                "{{sbBoxId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Mesmo saldo', () => pm.expect(pm.response.json().box.balance).to.eql(Number(pm.collectionVariables.get('sbBalanceWithYield'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.18 Encerrar a conta com caixinha ativa -> 422",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{sbAccountId}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{sbAccountId}}",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.19 Listar caixinhas da conta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{sbAccountId}}/savings-boxes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{sbAccountId}}",
+                "savings-boxes"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Uma ativa', () => pm.expect(pm.response.json().length).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.20 Encerrar caixinha: tudo volta para a conta",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/savings-boxes/{{sbBoxId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "savings-boxes",
+                "{{sbBoxId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('CLOSED e zerada', () => { pm.expect(j.status).to.eql('CLOSED'); pm.expect(j.balance).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.21 Conta recebeu o saldo com rendimento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{sbAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{sbAccountId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const expected = 600 + Number(pm.collectionVariables.get('sbBalanceWithYield'));",
+                  "pm.test('Saldo = 600 + caixinha', () => pm.expect(pm.response.json().balance).to.be.closeTo(expected, 0.001));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.22 Guardar em caixinha encerrada -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/savings-boxes/{{sbBoxId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "savings-boxes",
+                "{{sbBoxId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
