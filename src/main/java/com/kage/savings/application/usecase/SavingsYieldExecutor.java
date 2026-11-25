@@ -3,12 +3,11 @@ package com.kage.savings.application.usecase;
 import com.kage.savings.domain.entity.SavingsBox;
 import com.kage.savings.domain.repository.SavingsBoxRepository;
 import com.kage.savings.domain.repository.SavingsBoxRepository.MovementType;
+import com.kage.savings.domain.valueobject.CdiSchedule;
 import com.kage.shared.domain.valueobject.Money;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.Clock;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -30,12 +29,12 @@ public class SavingsYieldExecutor {
 
     /** @return o que foi creditado */
     @Transactional
-    public Money accrue(UUID boxId, LocalDate upTo, BigDecimal dailyRate) {
+    public Money accrue(UUID boxId, CdiSchedule cdi) {
         SavingsBox box = repository.findById(boxId).orElse(null);
         if (box == null) return Money.ZERO;
 
         boolean hadReachedGoal = box.getGoalReachedAt() != null;
-        Money credited = box.accrueYield(upTo, dailyRate);
+        Money credited = box.accrueYield(cdi);
         repository.update(box); // também avança last_yield_date quando não rendeu centavo inteiro
 
         if (!credited.isZero()) {

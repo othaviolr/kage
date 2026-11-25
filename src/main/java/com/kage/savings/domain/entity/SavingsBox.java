@@ -1,22 +1,29 @@
 package com.kage.savings.domain.entity;
 
-import com.kage.savings.domain.service.YieldPolicy;
+import com.kage.savings.domain.service.SavingsTaxPolicy;
+import com.kage.savings.domain.valueobject.CdiSchedule;
 import com.kage.shared.domain.exception.BusinessRuleException;
 import com.kage.shared.domain.exception.ValidationException;
 import com.kage.shared.domain.valueobject.Money;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 
 /**
  * Caixinha: dinheiro separado da conta corrente, rendendo 100% do CDI por dia útil.
  *
- * O rendimento acumula em {@code pendingYield} com {@link YieldPolicy#PENDING_SCALE} casas e só os
- * centavos inteiros vão para o saldo — arredondar todo dia faria quem guarda pouco nunca render
- * (R$ 10 rendem ~R$ 0,004 por dia).
+ * O saldo é a soma dos {@link SavingsLot lotes} — um por depósito, cada um com a própria data, porque
+ * IR e IOF dependem de quanto tempo cada real ficou aplicado. Cada lote acumula o rendimento
+ * fracionário à parte e só os centavos inteiros vão para o saldo (arredondar todo dia faria quem
+ * guarda pouco nunca render).
+ *
+ * Resgate: o valor pedido é BRUTO (sai da caixinha); o cliente recebe o líquido, depois do IOF e do
+ * IR sobre o rendimento dos lotes consumidos, dos mais antigos para os mais novos.
  */
 public class SavingsBox {
 
@@ -24,13 +31,15 @@ public class SavingsBox {
 
     public enum Status { ACTIVE, CLOSED }
 
+    /** O que um resgate tira, retém e entrega. */
+    public record Withdrawal(Money gross, Money gain, Money iof, Money incomeTax, Money net) {}
+
     private final UUID id;
     private final UUID customerId;
     private final UUID accountId;
-    private String name;
+    private final String name;
     private final Money goalAmount;
-    private Money balance;
-    private BigDecimal pendingYield;
+    private final List<SavingsLot> lots;
     private Money totalYield;
     private Status status;
     private LocalDate lastYieldDate;
@@ -40,17 +49,16 @@ public class SavingsBox {
     private LocalDateTime closedAt;
     private final Long version;
 
-    private SavingsBox(UUID id, UUID customerId, UUID accountId, String name, Money goalAmount, Money balance,
-                       BigDecimal pendingYield, Money totalYield, Status status, LocalDate lastYieldDate,
-                       LocalDateTime goalReachedAt, LocalDateTime createdAt, LocalDateTime updatedAt,
-                       LocalDateTime closedAt, Long version) {
+    private SavingsBox(UUID id, UUID customerId, UUID accountId, String name, Money goalAmount, List<SavingsLot> lots,
+                       Money totalYield, Status status, LocalDate lastYieldDate, LocalDateTime goalReachedAt,
+                       LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime closedAt, Long version) {
         this.id = id;
         this.customerId = customerId;
         this.accountId = accountId;
         this.name = name;
         this.goalAmount = goalAmount;
-        this.balance = balance;
-        this.pendingYield = pendingYield;
+        this.lots = new ArrayList<>(lots);
+        this.lots.sort(Comparator.comparing(SavingsLot::getDepositedOn));
         this.totalYield = totalYield;
         this.status = status;
         this.lastYieldDate = lastYieldDate;
@@ -68,83 +76,106 @@ public class SavingsBox {
         if (name.strip().length() > MAX_NAME_LENGTH) throw new ValidationException("Nome com no máximo " + MAX_NAME_LENGTH + " caracteres");
         if (goalAmount != null && goalAmount.isZero()) throw new ValidationException("Meta deve ser maior que zero");
         LocalDateTime now = LocalDateTime.now();
-        return new SavingsBox(UUID.randomUUID(), customerId, accountId, name.strip(), goalAmount, Money.ZERO,
-                BigDecimal.ZERO.setScale(YieldPolicy.PENDING_SCALE), Money.ZERO, Status.ACTIVE, today, null, now, now, null, null);
+        return new SavingsBox(UUID.randomUUID(), customerId, accountId, name.strip(), goalAmount, List.of(),
+                Money.ZERO, Status.ACTIVE, today, null, now, now, null, null);
     }
 
     public static SavingsBox reconstitute(UUID id, UUID customerId, UUID accountId, String name, Money goalAmount,
-                                          Money balance, BigDecimal pendingYield, Money totalYield, Status status,
-                                          LocalDate lastYieldDate, LocalDateTime goalReachedAt, LocalDateTime createdAt,
-                                          LocalDateTime updatedAt, LocalDateTime closedAt, Long version) {
-        return new SavingsBox(id, customerId, accountId, name, goalAmount, balance, pendingYield, totalYield, status,
-                lastYieldDate, goalReachedAt, createdAt, updatedAt, closedAt, version);
+                                          List<SavingsLot> lots, Money totalYield, Status status, LocalDate lastYieldDate,
+                                          LocalDateTime goalReachedAt, LocalDateTime createdAt, LocalDateTime updatedAt,
+                                          LocalDateTime closedAt, Long version) {
+        return new SavingsBox(id, customerId, accountId, name, goalAmount, lots, totalYield, status, lastYieldDate,
+                goalReachedAt, createdAt, updatedAt, closedAt, version);
     }
 
-    /** @return true se este depósito fez a caixinha atingir a meta (pela primeira vez) */
-    public boolean deposit(Money amount) {
+    /** Abre um lote novo. @return true se este depósito fez a caixinha atingir a meta (pela primeira vez) */
+    public boolean deposit(Money amount, LocalDate today) {
         requireActive();
         requirePositive(amount);
-        this.balance = this.balance.add(amount);
+        lots.add(SavingsLot.open(amount.amount(), today));
         this.updatedAt = LocalDateTime.now();
         return checkGoal();
     }
 
-    public void withdraw(Money amount) {
-        requireActive();
-        requirePositive(amount);
-        if (amount.isGreaterThan(this.balance)) {
-            throw new BusinessRuleException("Saldo da caixinha insuficiente (disponível: " + this.balance.amount() + ")");
+    /** O que o resgate de {@code gross} reteria hoje, sem resgatar. */
+    public Withdrawal previewWithdrawal(Money gross, LocalDate today) {
+        requirePositive(gross);
+        if (gross.isGreaterThan(getBalance())) {
+            throw new BusinessRuleException("Saldo da caixinha insuficiente (disponível: " + getBalance().amount() + ")");
         }
-        this.balance = this.balance.subtract(amount);
+        return plan(gross.amount(), today, false);
+    }
+
+    /** Resgata {@code gross} da caixinha (FIFO pelos lotes). */
+    public Withdrawal withdraw(Money gross, LocalDate today) {
+        requireActive();
+        Withdrawal withdrawal = previewWithdrawal(gross, today);
+        plan(gross.amount(), today, true);
+        lots.removeIf(SavingsLot::isEmpty);
         this.updatedAt = LocalDateTime.now();
+        return withdrawal;
+    }
+
+    /** Valor líquido se resgatasse tudo hoje. */
+    public Withdrawal previewFullWithdrawal(LocalDate today) {
+        if (getBalance().isZero()) return new Withdrawal(Money.ZERO, Money.ZERO, Money.ZERO, Money.ZERO, Money.ZERO);
+        return plan(getBalance().amount(), today, false);
+    }
+
+    private Withdrawal plan(BigDecimal gross, LocalDate today, boolean apply) {
+        BigDecimal remaining = gross, gain = BigDecimal.ZERO, iof = BigDecimal.ZERO, incomeTax = BigDecimal.ZERO;
+        for (SavingsLot lot : lots) {
+            if (remaining.signum() == 0) break;
+            BigDecimal take = remaining.min(lot.getBalance());
+            BigDecimal lotGain = take.subtract(lot.principalFor(take)).max(BigDecimal.ZERO);
+            SavingsTaxPolicy.Taxes taxes = SavingsTaxPolicy.on(lotGain, lot.daysHeld(today));
+            gain = gain.add(lotGain);
+            iof = iof.add(taxes.iof());
+            incomeTax = incomeTax.add(taxes.incomeTax());
+            if (apply) lot.consume(take);
+            remaining = remaining.subtract(take);
+        }
+        BigDecimal net = gross.subtract(iof).subtract(incomeTax);
+        return new Withdrawal(Money.of(gross), Money.of(gain), Money.of(iof), Money.of(incomeTax), Money.of(net));
     }
 
     /**
-     * Rende os dias úteis desde o último cálculo até {@code upTo} (inclusive), capitalizando: os
-     * centavos de cada dia já rendem no seguinte. Idempotente: rodar de novo para a mesma data não
-     * rende nada, porque {@code lastYieldDate} já avançou.
+     * Rende os dias desde o último cálculo até onde o CDI é conhecido, capitalizando: os centavos de
+     * cada dia já rendem no seguinte. Idempotente: {@code lastYieldDate} avança, e rodar de novo para
+     * o mesmo período não rende nada.
      *
-     * @return o que foi creditado no saldo (centavos inteiros)
+     * @return o que foi creditado no saldo
      */
-    public Money accrueYield(LocalDate upTo, BigDecimal dailyRate) {
+    public Money accrueYield(CdiSchedule cdi) {
+        LocalDate upTo = cdi.confirmedUntil();
         if (this.status != Status.ACTIVE || !upTo.isAfter(this.lastYieldDate)) return Money.ZERO;
 
-        Money credited = Money.ZERO;
+        BigDecimal credited = BigDecimal.ZERO;
         for (LocalDate day = this.lastYieldDate.plusDays(1); !day.isAfter(upTo); day = day.plusDays(1)) {
-            if (!YieldPolicy.isBusinessDay(day)) continue;
-            this.pendingYield = this.pendingYield.add(this.balance.amount().multiply(dailyRate))
-                    .setScale(YieldPolicy.PENDING_SCALE, RoundingMode.DOWN);
-            BigDecimal cents = this.pendingYield.setScale(2, RoundingMode.DOWN);
-            if (cents.signum() > 0) {
-                Money portion = Money.of(cents);
-                this.balance = this.balance.add(portion);
-                this.totalYield = this.totalYield.add(portion);
-                this.pendingYield = this.pendingYield.subtract(cents);
-                credited = credited.add(portion);
-            }
+            var rate = cdi.rateOn(day);
+            if (rate.isEmpty()) continue; // fim de semana / feriado
+            for (SavingsLot lot : lots) credited = credited.add(lot.accrue(day, rate.get()));
         }
         this.lastYieldDate = upTo;
-        if (!credited.isZero()) this.updatedAt = LocalDateTime.now();
+        if (credited.signum() > 0) {
+            this.totalYield = this.totalYield.add(Money.of(credited));
+            this.updatedAt = LocalDateTime.now();
+        }
         checkGoal();
-        return credited;
+        return Money.of(credited);
     }
 
-    /**
-     * Encerra. Quem resgata o saldo (de volta para a conta) é o use case, antes; aqui só fecha. O
-     * rendimento fracionário ainda pendente (menos de um centavo) é perdido, como em qualquer banco.
-     */
-    public Money close() {
+    /** Encerra. O resgate do saldo (líquido de impostos) é feito antes, pelo use case. */
+    public void close() {
         requireActive();
-        Money remaining = this.balance;
-        this.balance = Money.ZERO;
+        if (!getBalance().isZero()) throw new BusinessRuleException("Resgate o saldo antes de encerrar a caixinha");
         this.status = Status.CLOSED;
         this.closedAt = LocalDateTime.now();
         this.updatedAt = this.closedAt;
-        return remaining;
     }
 
     private boolean checkGoal() {
-        if (goalAmount == null || goalReachedAt != null || balance.isLessThan(goalAmount)) return false;
+        if (goalAmount == null || goalReachedAt != null || getBalance().isLessThan(goalAmount)) return false;
         this.goalReachedAt = LocalDateTime.now();
         return true;
     }
@@ -157,13 +188,16 @@ public class SavingsBox {
         if (amount == null || amount.isZero()) throw new ValidationException("Valor deve ser maior que zero");
     }
 
+    public Money getBalance() {
+        return Money.of(lots.stream().map(SavingsLot::getBalance).reduce(BigDecimal.ZERO, BigDecimal::add));
+    }
+
     public UUID getId() { return id; }
     public UUID getCustomerId() { return customerId; }
     public UUID getAccountId() { return accountId; }
     public String getName() { return name; }
     public Money getGoalAmount() { return goalAmount; }
-    public Money getBalance() { return balance; }
-    public BigDecimal getPendingYield() { return pendingYield; }
+    public List<SavingsLot> getLots() { return List.copyOf(lots); }
     public Money getTotalYield() { return totalYield; }
     public Status getStatus() { return status; }
     public LocalDate getLastYieldDate() { return lastYieldDate; }

@@ -66,7 +66,10 @@ kage:
     scheduler-enabled: ${KAGE_SAVINGS_SCHEDULER_ENABLED:true}
     cron: "0 0 1 * * *"
     zone: America/Sao_Paulo
-    # fração ao ano (0.1415 = 14,15% a.a.)
+    # de onde vem o CDI: "bcb" = série 12 do Banco Central (real, só o passado);
+    # "fixed" = annual-cdi nos dias úteis nacionais (determinístico; simula datas futuras)
+    cdi-source: ${KAGE_SAVINGS_CDI_SOURCE:fixed}
+    # fração ao ano (0.1415 = 14,15% a.a.), usada pela fonte fixa
     annual-cdi: ${KAGE_ANNUAL_CDI:0.1415}
 
 springdoc:

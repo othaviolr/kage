@@ -13,7 +13,10 @@ public interface SavingsBoxRepository {
 
     void insert(SavingsBox box);
 
-    /** Locking otimista: a versão lida tem que ser a do banco, senão OptimisticLockingFailureException (409). */
+    /**
+     * Grava a caixinha e os lotes dela. Locking otimista: a versão lida tem que ser a do banco, senão
+     * OptimisticLockingFailureException (409).
+     */
     void update(SavingsBox box);
 
     Optional<SavingsBox> findById(UUID id);
@@ -23,15 +26,22 @@ public interface SavingsBoxRepository {
     /** Ids das caixinhas ativas que ainda não renderam até {@code date}. */
     List<UUID> findIdsPendingYieldUntil(LocalDate date);
 
+    /** O dia rendido mais antigo entre as caixinhas ativas que ainda não renderam até {@code date}. */
+    Optional<LocalDate> oldestYieldDateBefore(LocalDate date);
+
     boolean hasActiveBoxes(UUID accountId);
 
     int countActiveByCustomer(UUID customerId);
 
     void insertMovement(UUID boxId, MovementType type, Money amount, Money balanceAfter, LocalDateTime at);
 
+    void insertWithdrawal(UUID boxId, SavingsBox.Withdrawal withdrawal, Money balanceAfter, LocalDateTime at);
+
     List<Movement> findMovements(UUID boxId, int limit);
 
     enum MovementType { DEPOSIT, WITHDRAWAL, YIELD }
 
-    record Movement(UUID id, MovementType type, Money amount, Money balanceAfter, LocalDateTime createdAt) {}
+    /** Nos resgates, {@code amount} é o bruto e os campos de imposto vêm preenchidos; nos outros, nulos. */
+    record Movement(UUID id, MovementType type, Money amount, Money balanceAfter, LocalDateTime createdAt,
+                    Money gain, Money iof, Money incomeTax, Money netAmount) {}
 }
