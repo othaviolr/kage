@@ -69,6 +69,11 @@ public class InvoiceRepositoryImpl implements InvoiceRepository {
         return invoiceJpaRepository.findClosedDueUntilWithAutoDebit(date).stream().map(InvoiceRepositoryImpl::toRef).toList();
     }
 
+    @Override
+    public List<InvoiceRef> findClosedWithClosingDateBefore(LocalDate date) {
+        return invoiceJpaRepository.findClosedWithClosingDateBefore(date).stream().map(InvoiceRepositoryImpl::toRef).toList();
+    }
+
     private static InvoiceRef toRef(InvoiceJpaEntity entity) {
         return new InvoiceRef(entity.getCardId(), YearMonth.parse(entity.getReferenceMonth()));
     }

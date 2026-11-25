@@ -15,6 +15,16 @@ public final class CardEvents {
     public static final String INVOICE_CLOSED = "card.invoice.closed";
     public static final String INVOICE_PAID = "card.invoice.paid";
     public static final String AUTO_DEBIT_FAILED = "card.invoice.auto-debit-failed";
+    public static final String INVOICE_PARTIALLY_PAID = "card.invoice.partially-paid";
+    public static final String INVOICE_ROLLED_OVER = "card.invoice.rolled-over";
+
+    public record InvoicePartiallyPaidEvent(UUID cardId, UUID invoiceId, String referenceMonth, BigDecimal amountPaid,
+                                            BigDecimal remaining, BigDecimal minimumPayment, BigDecimal totalPaid,
+                                            Instant occurredAt) {}
+
+    /** @param late o cliente pagou menos que o mínimo: os encargos incluem multa e mora */
+    public record InvoiceRolledOverEvent(UUID cardId, String fromReferenceMonth, String toReferenceMonth,
+                                         BigDecimal carried, BigDecimal charges, boolean late, Instant occurredAt) {}
 
     public record InvoiceClosedEvent(UUID cardId, UUID invoiceId, String referenceMonth, BigDecimal total,
                                      LocalDate dueDate, Instant occurredAt) {}

@@ -29,6 +29,10 @@ public class InvoiceItemJpaEntity {
     @Column(name = "purchased_at", nullable = false, updatable = false)
     private LocalDateTime purchasedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, updatable = false, length = 32)
+    private com.kage.card.domain.enums.InvoiceItemKind kind;
+
     public InvoiceItemJpaEntity() {}
 
     public UUID getId() { return id; }
@@ -43,4 +47,6 @@ public class InvoiceItemJpaEntity {
     public void setAmount(BigDecimal amount) { this.amount = amount; }
     public LocalDateTime getPurchasedAt() { return purchasedAt; }
     public void setPurchasedAt(LocalDateTime purchasedAt) { this.purchasedAt = purchasedAt; }
+    public com.kage.card.domain.enums.InvoiceItemKind getKind() { return kind; }
+    public void setKind(com.kage.card.domain.enums.InvoiceItemKind kind) { this.kind = kind; }
 }

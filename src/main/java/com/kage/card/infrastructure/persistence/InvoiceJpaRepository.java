@@ -31,6 +31,13 @@ public interface InvoiceJpaRepository extends JpaRepository<InvoiceJpaEntity, UU
     List<InvoiceJpaEntity> findOpenWithClosingDateBefore(@Param("date") LocalDate date);
 
     @Query("""
+            SELECT i FROM InvoiceJpaEntity i
+            WHERE i.status = com.kage.card.domain.enums.InvoiceStatus.CLOSED AND i.closingDate < :date
+            ORDER BY i.closingDate
+            """)
+    List<InvoiceJpaEntity> findClosedWithClosingDateBefore(@Param("date") LocalDate date);
+
+    @Query("""
             SELECT i FROM InvoiceJpaEntity i JOIN CardJpaEntity c ON c.id = i.cardId
             WHERE i.status = com.kage.card.domain.enums.InvoiceStatus.CLOSED
               AND i.dueDate <= :date

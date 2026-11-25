@@ -2861,11 +2861,17 @@
                   "  const amounts = j.items.map(i => Number(i.amount)).sort((a, b) => a - b);",
                   "  pm.expect(amounts).to.eql([300, 1200]);",
                   "  pm.expect(j.items.map(i => i.purchaseId)).to.include(pm.collectionVariables.get('purchaseId'));",
-                  "  j.items.forEach(i => pm.expect(i).to.have.all.keys('id', 'purchaseId', 'description', 'amount', 'purchasedAt'));",
+                  "  j.items.forEach(i => pm.expect(i).to.have.all.keys('id', 'purchaseId', 'description', 'amount', 'purchasedAt', 'kind'));",
                   "});",
                   "pm.test('Fecha dia 10 e vence dia 20', () => {",
                   "  pm.expect(String(j.closingDate).slice(8, 10)).to.eql('10');",
                   "  pm.expect(String(j.dueDate).slice(8, 10)).to.eql('20');",
+                  "});",
+                  "pm.test('Mínimo de 15% (225) e nada pago ainda', () => {",
+                  "  pm.expect(Number(j.minimumPayment)).to.eql(225);",
+                  "  pm.expect(Number(j.paidAmount)).to.eql(0);",
+                  "  pm.expect(Number(j.remaining)).to.eql(1500);",
+                  "  j.items.forEach(i => pm.expect(i.kind).to.eql('PURCHASE'));",
                   "});"
                 ]
               }
@@ -3526,7 +3532,105 @@
           ]
         },
         {
-          "name": "3.33.2 Pagar fatura fechada (1500) -> PAID",
+          "name": "3.33.1b Pagar parte da fatura (500 de 1500) -> segue CLOSED",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/{{referenceMonth}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "{{referenceMonth}}",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Parcial: fatura continua fechada com saldo', () => {",
+                  "  pm.expect(j.status).to.eql('CLOSED');",
+                  "  pm.expect(Number(j.amountPaid)).to.eql(500);",
+                  "  pm.expect(Number(j.remaining)).to.eql(1000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.1c Pagar mais que o saldo devedor -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/invoices/{{referenceMonth}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "invoices",
+                "{{referenceMonth}}",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000.01\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.33.2 Pagar o restante (1000) -> PAID",
           "request": {
             "method": "POST",
             "header": [],
@@ -3553,9 +3657,10 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const j = pm.response.json();",
-                  "pm.test('Fatura paga pelo total', () => {",
+                  "pm.test('Fatura quitada', () => {",
                   "  pm.expect(j.status).to.eql('PAID');",
-                  "  pm.expect(Number(j.amountPaid)).to.eql(1500);",
+                  "  pm.expect(Number(j.amountPaid)).to.eql(1000);",
+                  "  pm.expect(Number(j.remaining)).to.eql(0);",
                   "  pm.expect(j.paidAt).to.be.a('string');",
                   "});",
                   "pm.test('Limite liberado (sobra só a compra de 100 da próxima fatura)', () => pm.expect(Number(j.availableLimit)).to.eql(4900));"
@@ -3590,10 +3695,9 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const j = pm.response.json();",
-                  "pm.test('Lançamento INVOICE_PAYMENT de -1500', () => {",
-                  "  const e = j.entries.find(x => x.type === 'INVOICE_PAYMENT');",
-                  "  pm.expect(e).to.exist;",
-                  "  pm.expect(Number(e.amount)).to.eql(-1500);",
+                  "const payments = j.entries.filter(x => x.type === 'INVOICE_PAYMENT').map(x => Number(x.amount));",
+                  "pm.test('Dois débitos de fatura (500 + 1000)', () => {",
+                  "  pm.expect(payments.slice(0, 2).sort((a, b) => a - b)).to.eql([-1000, -500]);",
                   "});",
                   "pm.test('Saldo voltou ao de antes do depósito', () =>",
                   "  pm.expect(Number(j.currentBalance)).to.eql(Number(pm.collectionVariables.get('balanceBeforeInvoice')) - 1500));"

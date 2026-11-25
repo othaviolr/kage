@@ -67,6 +67,23 @@ public final class NotificationTemplates {
                 + ". Seu limite foi liberado.");
     }
 
+    public static Text invoicePartiallyPaid(String referenceMonth, BigDecimal amountPaid, BigDecimal remaining,
+                                            BigDecimal minimumPayment, BigDecimal totalPaid) {
+        String warning = totalPaid.compareTo(minimumPayment) < 0
+                ? " Atenção: você ainda não chegou ao pagamento mínimo de " + money(minimumPayment)
+                  + " — abaixo dele há multa e juros de mora."
+                : " O que não for pago até o próximo fechamento entra no rotativo, com juros.";
+        return new Text("Pagamento recebido", "Recebemos " + money(amountPaid) + " da fatura de " + month(referenceMonth)
+                + ". Faltam " + money(remaining) + "." + warning);
+    }
+
+    public static Text invoiceRolledOver(String fromMonth, String toMonth, BigDecimal carried, BigDecimal charges, boolean late) {
+        return new Text("Saldo da fatura foi para o rotativo", "O saldo de " + money(carried) + " da fatura de "
+                + month(fromMonth) + " foi para a fatura de " + month(toMonth) + " com " + money(charges)
+                + (late ? " de juros, multa e mora por atraso." : " de juros do rotativo.")
+                + " Pagar o total evita novos juros.");
+    }
+
     public static Text autoDebitFailed(String referenceMonth, String reason) {
         return new Text("Não conseguimos pagar sua fatura", "O débito automático da fatura de " + month(referenceMonth)
                 + " não passou (" + reason + "). Vamos tentar de novo amanhã, ou você pode pagar pelo app.");

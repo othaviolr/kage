@@ -40,6 +40,9 @@ public class InvoiceJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "paid_amount", nullable = false, precision = 19, scale = 2)
+    private java.math.BigDecimal paidAmount;
+
     @Version
     @Column(nullable = false)
     private Long version;
@@ -64,6 +67,8 @@ public class InvoiceJpaEntity {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public java.math.BigDecimal getPaidAmount() { return paidAmount; }
+    public void setPaidAmount(java.math.BigDecimal paidAmount) { this.paidAmount = paidAmount; }
     public Long getVersion() { return version; }
     void setVersion(Long version) { this.version = version; }
 }

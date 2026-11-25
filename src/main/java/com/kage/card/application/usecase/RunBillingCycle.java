@@ -5,7 +5,13 @@ import com.kage.card.domain.repository.InvoiceRepository.InvoiceRef;
 import com.kage.shared.domain.exception.DomainException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.kage.card.domain.entity.Card;
+import com.kage.card.domain.entity.Invoice;
+import com.kage.card.domain.repository.CardRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+
+import java.time.YearMonth;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -14,7 +20,8 @@ import java.util.UUID;
 
 /**
  * Ciclo de cobrança do dia, na ordem em que um banco faz:
- * 1. fecha as faturas abertas cujo dia de corte já passou;
+ * 0. garante que saldo devedor antigo tenha uma fatura seguinte para onde ir (rotativo);
+ * 1. fecha as faturas abertas cujo dia de corte já passou (o fechamento faz a virada do rotativo);
  * 2. no vencimento, paga com o saldo da conta as faturas fechadas dos cartões com débito automático.
  *
  * Cada fatura roda na própria transação (os use cases chamados são @Transactional): uma falha não
@@ -35,13 +42,15 @@ public class RunBillingCycle {
     public record Output(LocalDate date, int invoicesClosed, int invoicesPaid, List<Failure> failures) {}
 
     private final InvoiceRepository invoiceRepository;
+    private final CardRepository cardRepository;
     private final CloseInvoice closeInvoice;
     private final PayInvoice payInvoice;
     private final CardEventPublisher eventPublisher;
 
-    public RunBillingCycle(InvoiceRepository invoiceRepository, CloseInvoice closeInvoice, PayInvoice payInvoice,
-                           CardEventPublisher eventPublisher) {
+    public RunBillingCycle(InvoiceRepository invoiceRepository, CardRepository cardRepository, CloseInvoice closeInvoice,
+                           PayInvoice payInvoice, CardEventPublisher eventPublisher) {
         this.invoiceRepository = invoiceRepository;
+        this.cardRepository = cardRepository;
         this.closeInvoice = closeInvoice;
         this.payInvoice = payInvoice;
         this.eventPublisher = eventPublisher;
@@ -49,6 +58,13 @@ public class RunBillingCycle {
 
     public Output execute(LocalDate today) {
         List<Failure> failures = new ArrayList<>();
+
+        // 0. saldo devedor não pode ficar parado só porque o cliente não comprou no mês seguinte: se o
+        //    fechamento seguinte já passou e a fatura dele não existe, ela é aberta (vazia) para que o
+        //    passo 1 a feche — e o fechamento faz a virada do rotativo.
+        for (InvoiceRef ref : invoiceRepository.findClosedWithClosingDateBefore(today.minusMonths(1))) {
+            attempt(ref, "CARRY_OVER", failures, () -> openNextInvoiceIfMissing(ref));
+        }
 
         int closed = 0;
         for (InvoiceRef ref : invoiceRepository.findOpenWithClosingDateBefore(today)) {
@@ -75,11 +91,23 @@ public class RunBillingCycle {
         return new Output(today, closed, paid, failures);
     }
 
+    private void openNextInvoiceIfMissing(InvoiceRef ref) {
+        boolean hasDebt = invoiceRepository.findByCardIdAndReferenceMonth(ref.cardId(), ref.referenceMonth())
+                .map(invoice -> !invoice.remaining().isZero())
+                .orElse(false);
+        YearMonth next = ref.referenceMonth().plusMonths(1);
+        if (!hasDebt || invoiceRepository.findByCardIdAndReferenceMonth(ref.cardId(), next).isPresent()) return;
+
+        Card card = cardRepository.findById(ref.cardId()).orElseThrow();
+        // UNIQUE (card_id, reference_month) segura duas instâncias abrindo a mesma fatura
+        invoiceRepository.save(Invoice.open(card.getId(), next, card.getClosingDay(), card.getDueDay()));
+    }
+
     private boolean attempt(InvoiceRef ref, String step, List<Failure> failures, Runnable action) {
         try {
             action.run();
             return true;
-        } catch (DomainException | OptimisticLockingFailureException e) {
+        } catch (DomainException | OptimisticLockingFailureException | DataIntegrityViolationException e) {
             // regra de negócio (sem saldo, conta bloqueada, já processada por outra instância): segue o lote
             logger.warn("Ciclo de cobrança: {} falhou para o cartão {} ({}): {}", step, ref.cardId(), ref.referenceMonth(), e.getMessage());
             failures.add(new Failure(ref.cardId(), ref.referenceMonth().toString(), step, e.getMessage()));

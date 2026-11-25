@@ -120,9 +120,10 @@ public class CardConfig {
     }
 
     @Bean
-    public RunBillingCycle runBillingCycle(InvoiceRepository invoiceRepository, CloseInvoice closeInvoice,
-                                           PayInvoice payInvoice, CardEventPublisher cardEventPublisher) {
-        return new RunBillingCycle(invoiceRepository, closeInvoice, payInvoice, cardEventPublisher);
+    public RunBillingCycle runBillingCycle(InvoiceRepository invoiceRepository, CardRepository cardRepository,
+                                           CloseInvoice closeInvoice, PayInvoice payInvoice,
+                                           CardEventPublisher cardEventPublisher) {
+        return new RunBillingCycle(invoiceRepository, cardRepository, closeInvoice, payInvoice, cardEventPublisher);
     }
 
     @Bean

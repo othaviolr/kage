@@ -15,9 +15,15 @@ import java.util.UUID;
 public class GetInvoice {
 
     public record Input(UUID cardId, String referenceMonth) {}
-    public record ItemOutput(UUID id, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt) {}
+    public record ItemOutput(UUID id, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
+                             String kind) {}
+    /**
+     * @param minimumPayment pagando menos que isso até o vencimento, a virada cobra multa e mora
+     * @param remaining      saldo devedor; o que sobrar no próximo fechamento vai para o rotativo
+     */
     public record Output(UUID invoiceId, UUID cardId, String referenceMonth, LocalDate closingDate, LocalDate dueDate,
-                         String status, BigDecimal total, LocalDateTime paidAt, List<ItemOutput> items) {}
+                         String status, BigDecimal total, BigDecimal paidAmount, BigDecimal remaining,
+                         BigDecimal minimumPayment, LocalDateTime paidAt, List<ItemOutput> items) {}
 
     private final CardRepository cardRepository;
     private final InvoiceRepository invoiceRepository;
@@ -38,11 +44,12 @@ public class GetInvoice {
 
         List<ItemOutput> items = invoice.getItems().stream()
                 .map(item -> new ItemOutput(item.id(), item.purchaseId(), item.description(),
-                        item.amount().amount(), item.purchasedAt()))
+                        item.amount().amount(), item.purchasedAt(), item.kind().name()))
                 .toList();
 
         return new Output(invoice.getId(), invoice.getCardId(), invoice.getReferenceMonth().toString(),
                 invoice.getClosingDate(), invoice.getDueDate(), invoice.getStatus().name(),
-                invoice.total().amount(), invoice.getPaidAt(), items);
+                invoice.total().amount(), invoice.getPaidAmount().amount(), invoice.remaining().amount(),
+                invoice.minimumPayment().amount(), invoice.getPaidAt(), items);
     }
 }

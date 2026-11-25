@@ -111,11 +111,17 @@ public class CardController {
     public record AutoDebitRequest(Boolean enabled) {
     }
 
-    /** Paga o total da fatura fechada com o saldo da conta vinculada ao cartão. */
+    /** Paga a fatura fechada (total ou parcial) com o saldo da conta vinculada ao cartão. */
     @PostMapping("/{id}/invoices/{referenceMonth}/pay")
-    public ResponseEntity<PayInvoice.Output> payInvoice(@PathVariable UUID id, @PathVariable String referenceMonth) {
+    public ResponseEntity<PayInvoice.Output> payInvoice(@PathVariable UUID id, @PathVariable String referenceMonth,
+                                                        @RequestBody(required = false) PayInvoiceRequest request) {
         accessGuard.checkCard(id);
-        return ResponseEntity.ok(payInvoice.execute(new PayInvoice.Input(id, referenceMonth)));
+        BigDecimal amount = request == null ? null : request.amount();
+        return ResponseEntity.ok(payInvoice.execute(new PayInvoice.Input(id, referenceMonth, amount)));
+    }
+
+    /** Sem corpo (ou sem amount): paga o saldo devedor inteiro. Com amount: pagamento parcial. */
+    public record PayInvoiceRequest(BigDecimal amount) {
     }
 
     @PatchMapping("/{id}/invoices/{referenceMonth}/close")

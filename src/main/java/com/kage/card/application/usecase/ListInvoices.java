@@ -14,7 +14,8 @@ public class ListInvoices {
 
     public record Input(UUID cardId) {}
     public record InvoiceSummary(UUID invoiceId, String referenceMonth, LocalDate closingDate, LocalDate dueDate,
-                                 String status, BigDecimal total, int itemCount) {}
+                                 String status, BigDecimal total, BigDecimal remaining, BigDecimal minimumPayment,
+                                 int itemCount) {}
     public record Output(UUID cardId, List<InvoiceSummary> invoices) {}
 
     private final CardRepository cardRepository;
@@ -38,6 +39,7 @@ public class ListInvoices {
 
     private InvoiceSummary toSummary(Invoice invoice) {
         return new InvoiceSummary(invoice.getId(), invoice.getReferenceMonth().toString(), invoice.getClosingDate(),
-                invoice.getDueDate(), invoice.getStatus().name(), invoice.total().amount(), invoice.getItems().size());
+                invoice.getDueDate(), invoice.getStatus().name(), invoice.total().amount(), invoice.remaining().amount(),
+                invoice.minimumPayment().amount(), invoice.getItems().size());
     }
 }
