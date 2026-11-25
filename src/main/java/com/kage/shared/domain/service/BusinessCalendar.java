@@ -1,4 +1,4 @@
-package com.kage.savings.domain.service;
+package com.kage.shared.domain.service;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;

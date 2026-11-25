@@ -9,7 +9,7 @@ import com.kage.customer.application.usecase.approvekyc.ApproveKycInput;
 import com.kage.customer.application.usecase.approvekyc.ApproveKycUseCase;
 import com.kage.notification.application.usecase.ListNotifications;
 import com.kage.savings.application.usecase.RunSavingsYield;
-import com.kage.savings.domain.service.BusinessCalendar;
+import com.kage.shared.domain.service.BusinessCalendar;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

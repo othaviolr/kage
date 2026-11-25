@@ -107,6 +107,16 @@ public final class NotificationTemplates {
                         + " Se não foi você, fale com o atendimento agora.");
     }
 
+    public static Text boletoReceived(String payerName, BigDecimal paidAmount, boolean viaClearing) {
+        return new Text("Boleto pago", payerName + " pagou o boleto de " + money(paidAmount)
+                + (viaClearing ? " em outro banco" : "") + ". O dinheiro já está na sua conta.");
+    }
+
+    public static Text boletoPaymentMade(BigDecimal paidAmount, String beneficiaryName) {
+        return new Text("Boleto pago com sucesso", "Você pagou " + money(paidAmount)
+                + (beneficiaryName != null ? " para " + beneficiaryName : "") + ". Guarde o comprovante no app.");
+    }
+
     public static Text savingsGoalReached(String boxName, BigDecimal goalAmount) {
         return new Text("Meta alcançada! 🎉",
                 "Sua caixinha \"" + boxName + "\" chegou a " + money(goalAmount) + ". O dinheiro continua rendendo.");

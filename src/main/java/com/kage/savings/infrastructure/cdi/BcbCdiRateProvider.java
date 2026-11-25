@@ -1,6 +1,6 @@
 package com.kage.savings.infrastructure.cdi;
 
-import com.kage.savings.domain.service.BusinessCalendar;
+import com.kage.shared.domain.service.BusinessCalendar;
 import com.kage.savings.domain.service.CdiRateProvider;
 import com.kage.savings.domain.valueobject.CdiSchedule;
 import org.springframework.http.HttpStatus;

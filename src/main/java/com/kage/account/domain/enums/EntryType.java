@@ -11,7 +11,11 @@ public enum EntryType {
     /** Guardou na caixinha (sai da conta). */
     SAVINGS_DEPOSIT(false),
     /** Resgatou da caixinha (volta para a conta). */
-    SAVINGS_WITHDRAWAL(true);
+    SAVINGS_WITHDRAWAL(true),
+    /** Pagou um boleto. */
+    BOLETO_PAYMENT(false),
+    /** Recebeu o pagamento de um boleto que emitiu. */
+    BOLETO_RECEIVED(true);
 
     private final boolean credit;
 

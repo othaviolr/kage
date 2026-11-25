@@ -126,6 +126,18 @@ public class NotificationEventConsumer {
                 NotificationTemplates.savingsGoalReached(e.name(), e.goalAmount()), e.boxId(), messageId);
     }
 
+    @RabbitListener(queues = "notification.boleto.paid.queue")
+    public void onBoletoPaid(InboundEvents.BoletoPaid e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toAccountOwner(e.beneficiaryAccountId(), NotificationType.BOLETO_RECEIVED, NotificationTemplates.boletoReceived(
+                e.payerName(), e.paidAmount(), "COMPENSACAO".equals(e.via())), e.boletoId(), messageId);
+    }
+
+    @RabbitListener(queues = "notification.boleto.payment.made.queue")
+    public void onBoletoPaymentMade(InboundEvents.BoletoPaymentMade e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toAccountOwner(e.payerAccountId(), NotificationType.BOLETO_PAYMENT_MADE,
+                NotificationTemplates.boletoPaymentMade(e.paidAmount(), e.beneficiaryName()), e.paymentId(), messageId);
+    }
+
     private void toAccountOwner(UUID accountId, NotificationType type, NotificationTemplates.Text text,
                                 UUID referenceId, String messageId) {
         deliver(recipients.customerOfAccount(accountId), "conta " + accountId, type, text, referenceId, messageId);
