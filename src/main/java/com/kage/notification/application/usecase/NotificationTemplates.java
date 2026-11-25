@@ -107,6 +107,11 @@ public final class NotificationTemplates {
                         + " Se não foi você, fale com o atendimento agora.");
     }
 
+    public static Text savingsGoalReached(String boxName, BigDecimal goalAmount) {
+        return new Text("Meta alcançada! 🎉",
+                "Sua caixinha \"" + boxName + "\" chegou a " + money(goalAmount) + ". O dinheiro continua rendendo.");
+    }
+
     static String money(BigDecimal amount) {
         // NumberFormat usa espaço não separável depois do "R$"; troca por espaço comum para push/e-mail
         return NumberFormat.getCurrencyInstance(PT_BR).format(amount).replace(' ', ' ');

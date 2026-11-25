@@ -120,6 +120,12 @@ public class NotificationEventConsumer {
                 NotificationTemplates.passwordChanged("RESET".equals(e.reason())), null, messageId);
     }
 
+    @RabbitListener(queues = "notification.savings.goal.reached.queue")
+    public void onSavingsGoalReached(InboundEvents.SavingsGoalReached e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        deliver(Optional.of(e.customerId()), "cliente " + e.customerId(), NotificationType.SAVINGS_GOAL_REACHED,
+                NotificationTemplates.savingsGoalReached(e.name(), e.goalAmount()), e.boxId(), messageId);
+    }
+
     private void toAccountOwner(UUID accountId, NotificationType type, NotificationTemplates.Text text,
                                 UUID referenceId, String messageId) {
         deliver(recipients.customerOfAccount(accountId), "conta " + accountId, type, text, referenceId, messageId);

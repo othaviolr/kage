@@ -4,6 +4,7 @@ import com.kage.account.application.usecase.*;
 import com.kage.account.domain.repository.AccountEntryRepository;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.domain.service.AccountCustomerValidationService;
+import com.kage.account.domain.service.AccountSavingsCheck;
 import com.kage.account.infrastructure.messaging.OutboxAccountEventPublisher;
 import com.kage.account.infrastructure.persistence.AccountEntryRepositoryImpl;
 import com.kage.account.infrastructure.persistence.AccountJpaRepository;
@@ -52,8 +53,8 @@ public class AccountConfig {
     }
 
     @Bean
-    public CloseAccount closeAccount(AccountRepository accountRepository) {
-        return new CloseAccount(accountRepository);
+    public CloseAccount closeAccount(AccountRepository accountRepository, AccountSavingsCheck accountSavingsCheck) {
+        return new CloseAccount(accountRepository, accountSavingsCheck);
     }
 
     @Bean

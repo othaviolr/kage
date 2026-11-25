@@ -21,6 +21,7 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 - **Cartão de crédito**: emissão vinculada à conta, limite, compras idempotentes, fatura mensal com fechamento e pagamento pelo saldo da conta (débito, extrato e liberação do limite numa única transação)
 - **Rotativo**: pagamento total ou parcial (um ou vários); o mínimo (15%, piso de R$ 50) aparece na fatura. O que sobra no próximo fechamento vai para a fatura seguinte como "Saldo anterior" com juros do rotativo (14% a.m.); abaixo do mínimo, também multa de 2% e mora de 1% a.m. pro rata. Encargos respeitam o teto da Lei 14.690/2023 (no máximo 100% da dívida original) e consomem limite
 - **Parcelamento**: compra parcelada sem juros em até 12x (consome o limite total na hora; uma parcela por fatura, faturas futuras criadas na compra); parcelamento da fatura em 2–12x a 8,99% a.m. (Tabela Price), com simulação antes de contratar; e a regra do Bacen: rotativo não pago por dois ciclos é parcelado automaticamente em 6x. Juros do parcelamento contam no mesmo teto legal do rotativo
+- **Caixinhas**: reservas separadas da conta que rendem **100% do CDI por dia útil** (capitalização diária na convenção de 252 dias úteis; job à 01:00 rende o dia útil anterior). Guardar e resgatar a qualquer hora, sem carência; a conta e a caixinha mudam na mesma transação, com lançamento nos dois extratos. Meta opcional com progresso e aviso quando é atingida. Frações de centavo acumulam até virar centavo, para quem guarda pouco também render. Encerrar devolve tudo para a conta; conta com caixinha ativa não pode ser encerrada. O backoffice pode rodar o rendimento para qualquer data (`POST /api/admin/savings/yield/run?date=`), e reprocessar o mesmo dia não rende duas vezes
 - **Ciclo de cobrança automático**: job diário (03:00) fecha as faturas no dia de corte e, para quem ligou o débito automático, paga no vencimento; sem saldo, a fatura fica em atraso e é tentada de novo no dia seguinte. O backoffice pode rodar o ciclo para qualquer data (`POST /api/admin/billing/run?date=`)
 
 - **Notificações**: depósito, saque, PIX enviado/recebido/recusado, estornos, fatura fechada/paga e débito automático recusado viram avisos na caixa de entrada do cliente (`GET /api/notifications`) e são entregues por um canal externo (hoje simulado em log; a porta `NotificationChannel` aceita FCM, SES etc.). Consome os eventos que os contextos já publicam pelo outbox; reentrega não duplica aviso
@@ -31,7 +32,8 @@ KAGE 影 - é um projeto de portfólio que simula um banco digital moderno, do t
 - 2FA no login de dispositivo novo, envio real do e-mail de recuperação de senha
 - PIX agendado recorrente (todo mês)
 - Antecipação de parcelas (com desconto dos juros) e compra parcelada com juros do emissor
-- TED, boletos, empréstimos, investimentos
+- Caixinhas: CDI do dia vindo do Banco Central (série SGS), calendário de feriados da B3, IR regressivo e IOF no resgate
+- TED, boletos, empréstimos, outros investimentos (CDB, Tesouro)
 - Entrega real das notificações (push via FCM, e-mail, SMS) e preferências de canal por cliente
 
 ## Stack
@@ -58,7 +60,7 @@ Contextos: `customer`, `account`, `payment` (PIX), `card`, `auth` e `notificatio
 - **Falha é um resultado, não uma exceção**: se o débito de um PIX ou estorno viola regra de negócio, o Account responde `*.failed` com o motivo, em vez de deixar a mensagem cair na DLQ e a operação ficar presa em processamento.
 - **Concorrência**: locking otimista (`@Version`) em conta, cartão e fatura; lock pessimista na conta de origem durante o envio de PIX, para dois envios simultâneos não furarem o limite.
 - **Ledger**: o extrato é append-only e guarda o saldo após cada lançamento.
-- **Idempotency-Key** (modelo Stripe): nas rotas que movem dinheiro (PIX, saque, depósito, compra, pagamento e parcelamento de fatura, estorno), o header `Idempotency-Key` garante que um retry de rede não execute duas vezes — o reenvio devolve a resposta guardada com `Idempotent-Replayed: true`. Chave por usuário, válida por 24h; mesma chave com outro corpo → 422; em andamento → 409 (na dúvida, nunca reexecuta).
+- **Idempotency-Key** (modelo Stripe): nas rotas que movem dinheiro (PIX, saque, depósito, compra, pagamento e parcelamento de fatura, estorno, guardar e resgatar da caixinha), o header `Idempotency-Key` garante que um retry de rede não execute duas vezes — o reenvio devolve a resposta guardada com `Idempotent-Replayed: true`. Chave por usuário, válida por 24h; mesma chave com outro corpo → 422; em andamento → 409 (na dúvida, nunca reexecuta).
 
 ### Fluxo do PIX
 
