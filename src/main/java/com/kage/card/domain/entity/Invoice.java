@@ -124,6 +124,34 @@ public class Invoice {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * Tira desta fatura a parcela do plano {@code planId} (antecipação: ela vai para a fatura atual).
+     * Só fatura aberta — a parcela de uma fatura já fechada é cobrada nela.
+     */
+    public InvoiceItem removeInstallment(UUID planId) {
+        if (this.status != InvoiceStatus.OPEN) throw new BusinessRuleException("Só dá para antecipar parcela de fatura aberta");
+        InvoiceItem item = items.stream()
+                .filter(i -> i.purchaseId().equals(planId) && i.installmentNumber() != null)
+                .findFirst()
+                .orElseThrow(() -> new BusinessRuleException("Parcela não está nesta fatura"));
+        this.items.remove(item);
+        this.updatedAt = LocalDateTime.now();
+        return item;
+    }
+
+    /** Lança a antecipação de parcelas futuras. Idempotente pelo id da antecipação. */
+    public void addAnticipation(InvoiceItem anticipation) {
+        if (this.status != InvoiceStatus.OPEN) throw new BusinessRuleException("Fatura não está aberta para novos lançamentos");
+        if (anticipation.kind() != InvoiceItemKind.ANTICIPATION) throw new ValidationException("Lançamento não é uma antecipação");
+        if (items.stream().anyMatch(item -> item.purchaseId().equals(anticipation.purchaseId()))) return;
+        this.items.add(anticipation);
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public boolean isEmpty() {
+        return items.isEmpty();
+    }
+
     public Money total() {
         return items.stream()
                 .map(InvoiceItem::amount)

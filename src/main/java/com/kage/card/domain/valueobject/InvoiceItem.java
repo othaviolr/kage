@@ -59,6 +59,20 @@ public record InvoiceItem(UUID id, UUID purchaseId, String description, Money am
                 description, amount, at, InvoiceItemKind.INVOICE_INSTALLMENT, number, count);
     }
 
+    /** Id do plano do parcelamento da fatura {@code sourceInvoiceId} (o purchaseId das parcelas dele). */
+    public static UUID invoiceInstallmentPlanId(UUID sourceInvoiceId) {
+        return deterministicId(InvoiceItemKind.INVOICE_INSTALLMENT, sourceInvoiceId);
+    }
+
+    /**
+     * Antecipação das parcelas de um plano a partir da {@code firstNumber}: o id sai do plano e da
+     * primeira parcela antecipada, então duas antecipações do mesmo plano não colidem.
+     */
+    public static InvoiceItem anticipation(UUID planId, int firstNumber, String description, Money amount, LocalDateTime at) {
+        UUID id = UUID.nameUUIDFromBytes((InvoiceItemKind.ANTICIPATION.name() + ":" + planId + ":" + firstNumber).getBytes());
+        return new InvoiceItem(UUID.randomUUID(), id, description, amount, at, InvoiceItemKind.ANTICIPATION, null, null);
+    }
+
     private static UUID deterministicId(InvoiceItemKind kind, UUID sourceInvoiceId) {
         return UUID.nameUUIDFromBytes((kind.name() + ":" + sourceInvoiceId).getBytes());
     }

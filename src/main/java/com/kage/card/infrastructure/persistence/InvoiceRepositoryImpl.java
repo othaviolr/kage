@@ -2,6 +2,7 @@ package com.kage.card.infrastructure.persistence;
 
 import com.kage.card.domain.entity.Invoice;
 import com.kage.card.domain.repository.InvoiceRepository;
+import com.kage.card.domain.valueobject.InvoiceItem;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -29,15 +30,29 @@ public class InvoiceRepositoryImpl implements InvoiceRepository {
         Set<UUID> alreadyPersistedIds = invoiceItemJpaRepository.findByInvoiceId(invoice.getId()).stream()
                 .map(InvoiceItemJpaEntity::getId)
                 .collect(Collectors.toSet());
+        Set<UUID> currentIds = invoice.getItems().stream().map(InvoiceItem::id).collect(Collectors.toSet());
 
         List<InvoiceItemJpaEntity> newItems = InvoiceMapper.toJpaItemEntities(invoice).stream()
                 .filter(item -> !alreadyPersistedIds.contains(item.getId()))
                 .toList();
 
+        // linha que saiu da fatura (parcela antecipada). Seguro contra corrida: a versão da fatura
+        // acabou de ser conferida no save acima
+        List<UUID> removed = alreadyPersistedIds.stream().filter(id -> !currentIds.contains(id)).toList();
+        if (!removed.isEmpty()) invoiceItemJpaRepository.deleteAllByIdInBatch(removed);
+
         invoiceItemJpaRepository.saveAll(newItems);
 
         List<InvoiceItemJpaEntity> allItems = invoiceItemJpaRepository.findByInvoiceId(invoice.getId());
         return InvoiceMapper.toDomain(savedEntity, allItems);
+    }
+
+    @Override
+    public void delete(Invoice invoice) {
+        if (!invoice.isEmpty()) throw new IllegalStateException("Só fatura sem lançamentos pode ser removida");
+        invoiceItemJpaRepository.deleteAllByIdInBatch(invoiceItemJpaRepository.findByInvoiceId(invoice.getId()).stream()
+                .map(InvoiceItemJpaEntity::getId).toList());
+        invoiceJpaRepository.delete(InvoiceMapper.toJpaEntity(invoice)); // com a versão: conflito vira erro
     }
 
     @Override
