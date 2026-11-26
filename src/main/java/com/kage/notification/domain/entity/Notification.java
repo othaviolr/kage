@@ -11,6 +11,8 @@ import java.util.UUID;
  * e-mail é uma tentativa em cima dela.
  *
  * @param sourceEventId id da mensagem que gerou o aviso: a mesma mensagem reentregue não gera outro
+ * @param pushed        foi (ou tentou ser) enviado por push; false = o cliente desligou a categoria e o
+ *                      aviso ficou só no app
  */
 public class Notification {
 
@@ -23,9 +25,12 @@ public class Notification {
     private final String sourceEventId;
     private final LocalDateTime createdAt;
     private LocalDateTime readAt;
+    private final boolean pushed;
 
     private Notification(UUID id, UUID customerId, NotificationType type, String title, String message,
-                         UUID referenceId, String sourceEventId, LocalDateTime createdAt, LocalDateTime readAt) {
+                         UUID referenceId, String sourceEventId, LocalDateTime createdAt, LocalDateTime readAt,
+                         boolean pushed) {
+        this.pushed = pushed;
         this.id = id;
         this.customerId = customerId;
         this.type = type;
@@ -39,17 +44,24 @@ public class Notification {
 
     public static Notification create(UUID customerId, NotificationType type, String title, String message,
                                       UUID referenceId, String sourceEventId, LocalDateTime now) {
+        return create(customerId, type, title, message, referenceId, sourceEventId, now, true);
+    }
+
+    public static Notification create(UUID customerId, NotificationType type, String title, String message,
+                                      UUID referenceId, String sourceEventId, LocalDateTime now, boolean pushed) {
         if (customerId == null) throw new ValidationException("Destinatário é obrigatório");
         if (type == null) throw new ValidationException("Tipo da notificação é obrigatório");
         if (title == null || title.isBlank()) throw new ValidationException("Título é obrigatório");
         if (sourceEventId == null || sourceEventId.isBlank()) throw new ValidationException("Evento de origem é obrigatório");
-        return new Notification(UUID.randomUUID(), customerId, type, title, message, referenceId, sourceEventId, now, null);
+        return new Notification(UUID.randomUUID(), customerId, type, title, message, referenceId, sourceEventId, now, null,
+                pushed);
     }
 
     public static Notification reconstitute(UUID id, UUID customerId, NotificationType type, String title, String message,
                                             UUID referenceId, String sourceEventId, LocalDateTime createdAt,
-                                            LocalDateTime readAt) {
-        return new Notification(id, customerId, type, title, message, referenceId, sourceEventId, createdAt, readAt);
+                                            LocalDateTime readAt, boolean pushed) {
+        return new Notification(id, customerId, type, title, message, referenceId, sourceEventId, createdAt, readAt,
+                pushed);
     }
 
     /** Idempotente: marcar como lida de novo mantém a data da primeira leitura. */
@@ -70,4 +82,5 @@ public class Notification {
     public String getSourceEventId() { return sourceEventId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getReadAt() { return readAt; }
+    public boolean isPushed() { return pushed; }
 }

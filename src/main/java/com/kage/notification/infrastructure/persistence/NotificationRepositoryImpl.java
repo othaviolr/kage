@@ -14,7 +14,7 @@ import java.util.UUID;
 public class NotificationRepositoryImpl implements NotificationRepository {
 
     private static final String COLUMNS =
-            "id, customer_id, type, title, message, reference_id, source_event_id, created_at, read_at";
+            "id, customer_id, type, title, message, reference_id, source_event_id, created_at, read_at, pushed";
 
     private static final RowMapper<Notification> MAPPER = (rs, rowNum) -> Notification.reconstitute(
             rs.getObject("id", UUID.class),
@@ -25,7 +25,8 @@ public class NotificationRepositoryImpl implements NotificationRepository {
             rs.getObject("reference_id", UUID.class),
             rs.getString("source_event_id"),
             rs.getTimestamp("created_at").toLocalDateTime(),
-            rs.getTimestamp("read_at") == null ? null : rs.getTimestamp("read_at").toLocalDateTime());
+            rs.getTimestamp("read_at") == null ? null : rs.getTimestamp("read_at").toLocalDateTime(),
+            rs.getBoolean("pushed"));
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -36,11 +37,11 @@ public class NotificationRepositoryImpl implements NotificationRepository {
     @Override
     public boolean saveIfNew(Notification n) {
         // ON CONFLICT em vez de capturar exceção: num INSERT que falha o Postgres aborta a transação inteira
-        int inserted = jdbcTemplate.update("INSERT INTO notifications (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+        int inserted = jdbcTemplate.update("INSERT INTO notifications (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                         + "ON CONFLICT (source_event_id) DO NOTHING",
                 n.getId(), n.getCustomerId(), n.getType().name(), n.getTitle(), n.getMessage(), n.getReferenceId(),
                 n.getSourceEventId(), Timestamp.valueOf(n.getCreatedAt()),
-                n.getReadAt() == null ? null : Timestamp.valueOf(n.getReadAt()));
+                n.getReadAt() == null ? null : Timestamp.valueOf(n.getReadAt()), n.isPushed());
         return inserted == 1;
     }
 
