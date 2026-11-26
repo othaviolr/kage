@@ -35,6 +35,7 @@ public class NotificationRabbitMQConfig {
             Map.entry("account.pix.refund.sent", ACCOUNT_EXCHANGE),
             Map.entry("account.pix.refund.received", ACCOUNT_EXCHANGE),
             Map.entry("account.pix.refund.failed", ACCOUNT_EXCHANGE),
+            Map.entry("account.limit.increase.requested", ACCOUNT_EXCHANGE),
             Map.entry("card.invoice.closed", CARD_EXCHANGE),
             Map.entry("card.invoice.paid", CARD_EXCHANGE),
             Map.entry("card.invoice.auto-debit-failed", CARD_EXCHANGE),

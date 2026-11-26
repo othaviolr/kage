@@ -1651,7 +1651,7 @@
           ]
         },
         {
-          "name": "2.11 Atualizar limites",
+          "name": "2.11 Atualizar limites: reduzir vale já, aumentar só daqui a 24h",
           "request": {
             "method": "PATCH",
             "header": [
@@ -1689,10 +1689,13 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Limites atualizados', () => {",
-                  "  const j = pm.response.json();",
-                  "  pm.expect(Number(j.pixDailyLimit)).to.eql(3000);",
-                  "  pm.expect(Number(j.dailyWithdrawalLimit)).to.eql(2000);",
+                  "const j = pm.response.json();",
+                  "pm.test('Redução do noturno valeu na hora', () => pm.expect(j.pixNightLimit).to.eql(500));",
+                  "pm.test('Aumentos ainda não valem', () => { pm.expect(j.pixDailyLimit).to.eql(2000); pm.expect(j.dailyWithdrawalLimit).to.eql(1000); });",
+                  "pm.test('Quatro pedidos pendentes, para daqui a 24h', () => {",
+                  "  pm.expect(j.pending.map(p => p.type).sort()).to.eql(['DAILY_TRANSFER', 'DAILY_WITHDRAWAL', 'MONTHLY_TRANSFER', 'PIX_DAILY']);",
+                  "  const p = j.pending[0];",
+                  "  pm.expect(new Date(p.effectiveAt) - new Date(p.requestedAt)).to.eql(24 * 3600 * 1000);",
                   "});"
                 ]
               }
@@ -14555,6 +14558,511 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "17. Limites ajustáveis",
+      "item": [
+        {
+          "name": "17.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Limites\",\n  \"cpf\": \"{{lmCpf}}\",\n  \"email\": \"{{lmEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('lmCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('lmEmail', `kage.lm+${Date.now()}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('lmCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{lmCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{lmCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{lmCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('lmAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.4 Limites padrão",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lmAccountId}}/limits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lmAccountId}}",
+                "limits"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('PIX 2000 de dia, 1000 à noite, nada pendente', () => { pm.expect(j.pixDailyLimit).to.eql(2000); pm.expect(j.pixNightLimit).to.eql(1000); pm.expect(j.pending).to.eql([]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.5 Pedir aumento do PIX (5000 de dia, 3000 à noite)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lmAccountId}}/limits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lmAccountId}}",
+                "limits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pixDailyLimit\": 5000,\n  \"pixNightLimit\": 3000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Nada muda agora', () => { pm.expect(j.pixDailyLimit).to.eql(2000); pm.expect(j.pixNightLimit).to.eql(1000); });",
+                  "pm.test('Dois pedidos para daqui a 24h', () => pm.expect(j.pending.length).to.eql(2));",
+                  "pm.collectionVariables.set('lmNightRequestId', j.pending.find(p => p.type === 'PIX_NIGHT').id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.6 Cliente é avisado do pedido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{lmCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{lmCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 2000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('LIMIT_INCREASE_REQUESTED', () => pm.expect(pm.response.json().notifications.map(n => n.type)).to.include('LIMIT_INCREASE_REQUESTED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.7 Desistir do aumento noturno",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lmAccountId}}/limits/requests/{{lmNightRequestId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lmAccountId}}",
+                "limits",
+                "requests",
+                "{{lmNightRequestId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Sobrou só o diário', () => pm.expect(pm.response.json().pending.map(p => p.type)).to.eql(['PIX_DAILY']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.8 Cancelar de novo -> 404",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lmAccountId}}/limits/requests/{{lmNightRequestId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lmAccountId}}",
+                "limits",
+                "requests",
+                "{{lmNightRequestId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.9 Reduzir o noturno para 300: vale na hora",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lmAccountId}}/limits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lmAccountId}}",
+                "limits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pixNightLimit\": 300\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('300 já', () => pm.expect(pm.response.json().pixNightLimit).to.eql(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.10 Reduzir o diário para 1500 derruba o aumento pendente dele",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lmAccountId}}/limits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lmAccountId}}",
+                "limits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pixDailyLimit\": 1500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('1500 já, sem pendências', () => { pm.expect(j.pixDailyLimit).to.eql(1500); pm.expect(j.pending).to.eql([]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.11 Acima do teto -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lmAccountId}}/limits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lmAccountId}}",
+                "limits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pixDailyLimit\": 25000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Teto de 20000', () => pm.expect(pm.response.json().message).to.include('20000.00'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.12 Noturno maior que o diário -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lmAccountId}}/limits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lmAccountId}}",
+                "limits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pixNightLimit\": 1800\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Regra do noturno', () => pm.expect(pm.response.json().message).to.include('noturno'));"
                 ]
               }
             }

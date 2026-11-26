@@ -9,10 +9,12 @@ import com.kage.shared.domain.exception.NotFoundException;
 import com.kage.shared.domain.valueobject.Money;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import com.kage.account.application.usecase.LimitChanges;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -30,8 +32,15 @@ class AccountValidationServiceImplTest {
     @Mock
     AccountRepository accountRepository;
 
-    @InjectMocks
+    @Mock
+    LimitChanges limitChanges; // sem aumento vencido: applyDue devolve false
+
     AccountValidationServiceImpl validation;
+
+    @BeforeEach
+    void setUp() {
+        validation = new AccountValidationServiceImpl(accountRepository, limitChanges, Clock.systemDefaultZone());
+    }
 
     @Test
     void validate_deveTravarAContaAntesDeCalcularOUsoDoLimite() {
