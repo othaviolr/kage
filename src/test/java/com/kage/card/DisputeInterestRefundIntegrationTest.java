@@ -90,11 +90,12 @@ class DisputeInterestRefundIntegrationTest extends AbstractIntegrationTest {
         DisputePurchase.Output accepted = disputeAndAccept(s, LocalDate.of(2034, 2, 15));
 
         assertThat(accepted.status()).isEqualTo("ACCEPTED");
-        assertThat(accepted.interestRefunded()).isEqualByComparingTo("33.60"); // 84 × 400/1000
-        // fatura atual (março): o crédito da compra e o estorno dos juros
+        // 400/1000 de (84 de juros + 3,81 de IOF): 33,60 + 1,52
+        assertThat(accepted.interestRefunded()).isEqualByComparingTo("35.12");
+        // fatura atual (março): o crédito da compra e o estorno dos juros e do IOF
         assertThat(itemsOfKind(s.cardId(), "2034-03", "DISPUTE_CREDIT")).isEqualByComparingTo("400.00");
-        assertThat(itemsOfKind(s.cardId(), "2034-03", "DISPUTE_INTEREST_REFUND")).isEqualByComparingTo("33.60");
-        // juros devolvidos saem da conta do teto legal
+        assertThat(itemsOfKind(s.cardId(), "2034-03", "DISPUTE_INTEREST_REFUND")).isEqualByComparingTo("35.12");
+        // só os juros saem da conta do teto legal: o IOF nunca esteve nela
         assertThat(cardRepository.findById(s.cardId()).orElseThrow().getRevolvingCharges().amount())
                 .isEqualByComparingTo(chargesBefore.subtract(new BigDecimal("33.60")));
     }
@@ -109,14 +110,22 @@ class DisputeInterestRefundIntegrationTest extends AbstractIntegrationTest {
         BigDecimal januaryCharges = itemsOfKind(s.cardId(), "2034-02", "REVOLVING_INTEREST")
                 .add(itemsOfKind(s.cardId(), "2034-02", "LATE_FINE"))
                 .add(itemsOfKind(s.cardId(), "2034-02", "LATE_INTEREST"));
-        BigDecimal planned = listInvoices.execute(new ListInvoices.Input(s.cardId())).invoices().stream()
-                .map(i -> itemsOfKind(s.cardId(), i.referenceMonth(), "INVOICE_INSTALLMENT"))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal february = new BigDecimal("1000.00").add(januaryCharges);
-        // a compra é 40% de janeiro; essa parte (com os encargos dela) é 40% de fevereiro também
-        BigDecimal expected = januaryCharges.multiply(new BigDecimal("0.4"))
-                .add(planned.subtract(february).multiply(new BigDecimal("0.4")))
-                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal januaryIof = itemsOfKind(s.cardId(), "2034-02", "IOF");
+        BigDecimal planned = BigDecimal.ZERO;
+        BigDecimal allIof = BigDecimal.ZERO;
+        for (var invoice : listInvoices.execute(new ListInvoices.Input(s.cardId())).invoices()) {
+            planned = planned.add(itemsOfKind(s.cardId(), invoice.referenceMonth(), "INVOICE_INSTALLMENT"));
+            allIof = allIof.add(itemsOfKind(s.cardId(), invoice.referenceMonth(), "IOF"));
+        }
+        BigDecimal planIof = allIof.subtract(januaryIof);
+        assertThat(januaryIof).isPositive();
+        assertThat(planIof).isPositive();
+        BigDecimal february = new BigDecimal("1000.00").add(januaryCharges).add(januaryIof);
+        // a compra é 40% de janeiro; essa parte (com os encargos e o IOF dela) é 40% de fevereiro também
+        BigDecimal ratio = new BigDecimal("0.4");
+        BigDecimal charges = januaryCharges.add(planned.subtract(february)).multiply(ratio).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal iof = januaryIof.add(planIof).multiply(ratio).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal expected = charges.add(iof);
 
         DisputePurchase.Output accepted = disputeAndAccept(s, LocalDate.of(2034, 3, 15));
 

@@ -10,6 +10,7 @@ import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
 import com.kage.card.domain.repository.VirtualCardRepository;
 import com.kage.card.domain.service.CardHolderDirectory;
+import com.kage.card.domain.service.CetPolicy;
 import com.kage.card.domain.service.InstallmentPolicy;
 import com.kage.card.domain.service.RevolvingCreditPolicy;
 import com.kage.shared.domain.DomainTime;
@@ -40,7 +41,12 @@ public class InvoiceDocuments {
     /** @param credit linha que abate o total (crédito de contestação, saldo credor, estorno) */
     public record Line(LocalDate date, String description, BigDecimal amount, boolean credit, String virtualCard) {}
 
-    public record Rate(String name, BigDecimal monthly, BigDecimal yearly) {}
+    /** @param display texto pronto no lugar de "x% ao mês • y% ao ano" (ex.: a fórmula do IOF) */
+    public record Rate(String name, BigDecimal monthly, BigDecimal yearly, String display) {
+        public Rate(String name, BigDecimal monthly, BigDecimal yearly) {
+            this(name, monthly, yearly, null);
+        }
+    }
 
     public record Statement(String holderName, String cardLastDigits, String referenceMonth, LocalDate closingDate,
                             LocalDate dueDate, String status, BigDecimal total, BigDecimal minimumPayment,
@@ -105,7 +111,10 @@ public class InvoiceDocuments {
                 rate("Juros do rotativo", RevolvingCreditPolicy.REVOLVING_MONTHLY_RATE),
                 rate("Juros do parcelamento da fatura", InstallmentPolicy.INVOICE_MONTHLY_RATE),
                 rate("Juros de mora (atraso)", RevolvingCreditPolicy.LATE_INTEREST_MONTHLY_RATE),
-                new Rate("Multa por atraso (uma vez)", RevolvingCreditPolicy.LATE_FINE_RATE, null));
+                new Rate("Multa por atraso (uma vez)", RevolvingCreditPolicy.LATE_FINE_RATE, null),
+                new Rate("IOF (rotativo e parcelamento)", null, null, "0,38% + 0,0082% ao dia"),
+                cet("CET do rotativo (30 dias)", CetPolicy.revolvingReference(invoice.getDueDate())),
+                cet("CET do parcelamento em 12x", CetPolicy.installmentReference(invoice.getDueDate(), 12)));
 
         return new Statement(holders.nameOf(card.getCustomerId()).orElse("Titular"), lastDigits, month.toString(),
                 invoice.getClosingDate(), invoice.getDueDate(), invoice.getStatus().name(), invoice.total().amount(),
@@ -117,6 +126,10 @@ public class InvoiceDocuments {
 
     private String nickname(UUID virtualCardId) {
         return virtualCardRepository.findById(virtualCardId).map(VirtualCard::nickname).orElse("virtual");
+    }
+
+    private static Rate cet(String name, CetPolicy.Cet cet) {
+        return new Rate(name, cet.monthly(), cet.yearly());
     }
 
     /** Taxa mensal e o equivalente anual com capitalização: (1 + i)^12 - 1. */

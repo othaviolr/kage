@@ -6,13 +6,17 @@ import com.kage.card.domain.entity.Invoice;
 import com.kage.card.domain.enums.InvoiceStatus;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
+import com.kage.card.domain.enums.InvoiceItemKind;
+import com.kage.card.domain.service.CetPolicy;
 import com.kage.card.domain.service.InstallmentPolicy;
+import com.kage.card.domain.service.IofPolicy;
 import com.kage.shared.domain.exception.BusinessRuleException;
 import com.kage.shared.domain.exception.NotFoundException;
 import com.kage.shared.domain.valueobject.Money;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -26,6 +30,9 @@ import java.util.UUID;
  * pagamento) e lança uma parcela em cada uma das N faturas seguintes. Os juros:
  * - contam no teto da Lei 14.690/2023 junto com os do rotativo (o Card corta o excedente);
  * - aumentam a dívida, então consomem limite.
+ * O IOF (0,38% + 0,0082% ao dia sobre o que cada parcela amortiza) vai numa linha própria na fatura da
+ * 1ª parcela — fora do teto, é imposto. A simulação mostra o CET (Res. CMN 3.517): a taxa que inclui
+ * juros e IOF, contada do vencimento da fatura parcelada.
  *
  * Também usado pelo fechamento para o parcelamento automático da regra do Bacen.
  */
@@ -34,8 +41,13 @@ public class FinanceInvoice {
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MM/yyyy");
 
     public record InstallmentView(int number, String referenceMonth, BigDecimal amount) {}
+    /**
+     * @param iof        imposto, cobrado na fatura da 1ª parcela
+     * @param cetMonthly CET ao mês e @param cetYearly ao ano (frações: 0,1234 = 12,34%)
+     */
     public record Output(UUID invoiceId, String referenceMonth, String status, int installments, BigDecimal principal,
-                         BigDecimal interest, BigDecimal total, BigDecimal monthlyRate, List<InstallmentView> schedule) {}
+                         BigDecimal interest, BigDecimal total, BigDecimal monthlyRate, List<InstallmentView> schedule,
+                         BigDecimal iof, BigDecimal cetMonthly, BigDecimal cetYearly) {}
 
     private final CardRepository cardRepository;
     private final InvoiceRepository invoiceRepository;
@@ -53,7 +65,12 @@ public class FinanceInvoice {
         Card card = findCard(cardId);
         Invoice invoice = findFinanceable(card, ReferenceMonths.parse(referenceMonth));
         InstallmentPolicy.Quote quote = cappedQuote(card, invoice.remaining(), installments);
-        return toOutput(invoice, "SIMULATION", quote, invoice.getReferenceMonth().plusMonths(1));
+        YearMonth firstMonth = invoice.getReferenceMonth().plusMonths(1);
+        List<LocalDate> dueDates = new ArrayList<>();
+        for (int k = 0; k < quote.installments(); k++) {
+            dueDates.add(Invoice.dueDateOf(firstMonth.plusMonths(k), card.getClosingDay(), card.getDueDay()));
+        }
+        return toOutput(invoice, "SIMULATION", quote, firstMonth, dueDates);
     }
 
     @Transactional
@@ -89,19 +106,31 @@ public class FinanceInvoice {
 
         String source = invoice.getReferenceMonth().format(MONTH);
         YearMonth month = firstMonth;
+        List<Invoice> targets = new ArrayList<>();
         for (int number = 1; number <= installments; number++) {
             Invoice target = (number == 1 && firstInvoiceInMemory != null)
                     ? firstInvoiceInMemory
                     : openInvoiceFrom(card, month);
             target.addInvoiceInstallment(invoice.getId(), "Parcelamento da fatura de " + source + " (" + number + "/" + installments + ")",
                     quote.amounts().get(number - 1), DomainTime.now(), number, installments);
-            if (target != firstInvoiceInMemory) invoiceRepository.save(target);
+            targets.add(target);
             month = target.getReferenceMonth().plusMonths(1);
+        }
+
+        // IOF na fatura da 1ª parcela, pelos dias de cada amortização desde o vencimento da fatura parcelada
+        List<LocalDate> dueDates = targets.stream().map(Invoice::getDueDate).toList();
+        Money iof = IofPolicy.installments(quote.principal(), InstallmentPolicy.amortizations(quote),
+                CetPolicy.days(invoice.getDueDate(), dueDates));
+        targets.get(0).addCharge(InvoiceItemKind.IOF, invoice.getId(), "IOF do parcelamento da fatura de " + source,
+                iof, DomainTime.now());
+        card.addTax(iof);
+        for (Invoice target : targets) {
+            if (target != firstInvoiceInMemory) invoiceRepository.save(target);
         }
 
         eventPublisher.publishInvoiceFinanced(invoice, quote.installments(), quote.amounts().get(quote.installments() - 1),
                 quote.total(), firstInvoiceInMemory != null);
-        return toOutput(invoice, invoice.getStatus().name(), quote, firstMonth);
+        return toOutput(invoice, invoice.getStatus().name(), quote, firstMonth, dueDates);
     }
 
     private InstallmentPolicy.Quote cappedQuote(Card card, Money principal, int installments) {
@@ -135,12 +164,17 @@ public class FinanceInvoice {
         }
     }
 
-    private static Output toOutput(Invoice invoice, String status, InstallmentPolicy.Quote quote, YearMonth firstMonth) {
+    private static Output toOutput(Invoice invoice, String status, InstallmentPolicy.Quote quote, YearMonth firstMonth,
+                                   List<LocalDate> dueDates) {
         List<InstallmentView> schedule = new ArrayList<>();
         for (int k = 0; k < quote.installments(); k++) {
             schedule.add(new InstallmentView(k + 1, firstMonth.plusMonths(k).toString(), quote.amounts().get(k).amount()));
         }
+        Money iof = IofPolicy.installments(quote.principal(), InstallmentPolicy.amortizations(quote),
+                CetPolicy.days(invoice.getDueDate(), dueDates));
+        CetPolicy.Cet cet = CetPolicy.installment(quote, invoice.getDueDate(), dueDates);
         return new Output(invoice.getId(), invoice.getReferenceMonth().toString(), status, quote.installments(),
-                quote.principal().amount(), quote.interest().amount(), quote.total().amount(), quote.monthlyRate(), schedule);
+                quote.principal().amount(), quote.interest().amount(), quote.total().amount(), quote.monthlyRate(), schedule,
+                iof.amount(), cet.monthly(), cet.yearly());
     }
 }

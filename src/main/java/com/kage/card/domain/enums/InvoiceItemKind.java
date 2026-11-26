@@ -22,7 +22,9 @@ public enum InvoiceItemKind {
     /** Crédito que sobrou da fatura anterior (os créditos dela passaram do que ela cobrava). */
     CREDIT_BALANCE,
     /** Contestação procedente: devolução dos juros e encargos que a compra gerou. */
-    DISPUTE_INTEREST_REFUND;
+    DISPUTE_INTEREST_REFUND,
+    /** IOF do rotativo ou do parcelamento da fatura (imposto: fora do teto da Lei 14.690). */
+    IOF;
 
     /** Linha que abate o total da fatura em vez de somar. */
     public boolean isCredit() {

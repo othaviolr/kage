@@ -77,10 +77,12 @@ class RevolvingCreditIntegrationTest extends AbstractIntegrationTest {
         assertThat(itemOfKind(february, "PREVIOUS_BALANCE")).isEqualByComparingTo("600.00");
         assertThat(itemOfKind(february, "REVOLVING_INTEREST")).isEqualByComparingTo("84.00"); // 14% de 600
         assertThat(itemOfKind(february, "LATE_FINE")).isEqualByComparingTo("0");
-        assertThat(february.total()).isEqualByComparingTo("734.00"); // 600 + 84 + 50
+        // IOF: 0,38% de 600 (2,28) + 0,0082% ao dia × 31 dias, de 20/01 a 20/02 (1,5252)
+        assertThat(itemOfKind(february, "IOF")).isEqualByComparingTo("3.81");
+        assertThat(february.total()).isEqualByComparingTo("737.81"); // 600 + 84 + 3,81 + 50
 
-        // os juros consomem limite: 5000 - (600 + 84 + 50)
-        assertThat(getCard.execute(new GetCard.Input(s.cardId())).availableLimit()).isEqualByComparingTo("4266.00");
+        // juros e IOF consomem limite: 5000 - 737,81
+        assertThat(getCard.execute(new GetCard.Input(s.cardId())).availableLimit()).isEqualByComparingTo("4262.19");
 
         // quitar fevereiro encerra a dívida do rotativo e devolve o limite todo
         PayInvoice.Output paid = payInvoice.execute(new PayInvoice.Input(s.cardId(), "2033-02"));
@@ -102,11 +104,13 @@ class RevolvingCreditIntegrationTest extends AbstractIntegrationTest {
         assertThat(itemOfKind(february, "REVOLVING_INTEREST")).isEqualByComparingTo("140.00"); // 14%
         assertThat(itemOfKind(february, "LATE_FINE")).isEqualByComparingTo("20.00");          // 2%
         assertThat(itemOfKind(february, "LATE_INTEREST")).isEqualByComparingTo("7.00");        // 1% a.m. x 21/30
-        assertThat(february.total()).isEqualByComparingTo("1167.00");
+        // IOF: 0,38% de 1000 (3,80) + 0,0082% ao dia × 31 dias (2,542)
+        assertThat(itemOfKind(february, "IOF")).isEqualByComparingTo("6.34");
+        assertThat(february.total()).isEqualByComparingTo("1173.34");
         assertThat(february.status()).isEqualTo("CLOSED");
 
         // rodar o ciclo de novo não lança os encargos outra vez
         runBillingCycle.execute(LocalDate.of(2033, 2, 11));
-        assertThat(invoice(s, "2033-02").total()).isEqualByComparingTo("1167.00");
+        assertThat(invoice(s, "2033-02").total()).isEqualByComparingTo("1173.34");
     }
 }

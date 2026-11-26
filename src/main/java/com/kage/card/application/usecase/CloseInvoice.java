@@ -8,6 +8,7 @@ import com.kage.card.domain.enums.InvoiceStatus;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
 import com.kage.card.domain.service.InstallmentPolicy;
+import com.kage.card.domain.service.IofPolicy;
 import com.kage.card.domain.service.RevolvingCreditPolicy;
 import com.kage.shared.domain.exception.NotFoundException;
 import com.kage.shared.domain.valueobject.Money;
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 /**
@@ -117,6 +119,11 @@ public class CloseInvoice {
         target.addCharge(InvoiceItemKind.REVOLVING_INTEREST, previous.getId(), "Juros do rotativo (fatura de " + month + ")", interest, now);
         target.addCharge(InvoiceItemKind.LATE_FINE, previous.getId(), "Multa por atraso (fatura de " + month + ")", fine, now);
         target.addCharge(InvoiceItemKind.LATE_INTEREST, previous.getId(), "Juros de mora (fatura de " + month + ")", lateInterest, now);
+
+        // IOF sobre o saldo financiado, do vencimento da fatura anterior ao da nova (fora do teto legal)
+        Money iof = IofPolicy.revolving(carried, ChronoUnit.DAYS.between(previous.getDueDate(), target.getDueDate()));
+        target.addCharge(InvoiceItemKind.IOF, previous.getId(), "IOF do rotativo (fatura de " + month + ")", iof, now);
+        card.addTax(iof);
 
         invoiceRepository.save(previous);
         eventPublisher.publishInvoiceRolledOver(previous, target, carried, interest.add(fine).add(lateInterest), proposed.late());

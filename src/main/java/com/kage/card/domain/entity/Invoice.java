@@ -61,9 +61,7 @@ public class Invoice {
         if (referenceMonth == null) throw new ValidationException("Mês de referência é obrigatório");
 
         LocalDate closingDate = referenceMonth.atDay(closingDay);
-        LocalDate dueDate = dueDay > closingDay
-                ? referenceMonth.atDay(dueDay)
-                : referenceMonth.plusMonths(1).atDay(dueDay);
+        LocalDate dueDate = dueDateOf(referenceMonth, closingDay, dueDay);
 
         LocalDateTime now = DomainTime.now();
         return new Invoice(UUID.randomUUID(), cardId, referenceMonth, closingDate, dueDate,
@@ -76,6 +74,11 @@ public class Invoice {
                                        LocalDateTime updatedAt, Long version) {
         return new Invoice(id, cardId, referenceMonth, closingDate, dueDate, status, items,
                 paidAmount, paidAt, createdAt, updatedAt, version);
+    }
+
+    /** Vencimento da fatura do mês: no mesmo mês se o dia vem depois do fechamento; senão, no seguinte. */
+    public static LocalDate dueDateOf(YearMonth referenceMonth, int closingDay, int dueDay) {
+        return dueDay > closingDay ? referenceMonth.atDay(dueDay) : referenceMonth.plusMonths(1).atDay(dueDay);
     }
 
     public static YearMonth referenceMonthFor(LocalDate purchaseDate, int closingDay) {

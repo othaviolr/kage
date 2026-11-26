@@ -41,7 +41,7 @@ class DisputeInterestPolicyTest {
         Invoice january = january();
         january.pay();
 
-        assertThat(DisputeInterestPolicy.refundFor(List.of(january), disputed).amount()).isEqualByComparingTo("0.00");
+        assertThat(DisputeInterestPolicy.refundFor(List.of(january), disputed).total().amount()).isEqualByComparingTo("0.00");
     }
 
     @Test
@@ -49,7 +49,7 @@ class DisputeInterestPolicyTest {
         Invoice open = Invoice.open(cardId, YearMonth.of(2034, 1), 10, 20);
         open.addItem(disputed, "Loja", Money.of("400.00"), AT);
 
-        assertThat(DisputeInterestPolicy.refundFor(List.of(open), disputed).amount()).isEqualByComparingTo("0.00");
+        assertThat(DisputeInterestPolicy.refundFor(List.of(open), disputed).total().amount()).isEqualByComparingTo("0.00");
     }
 
     @Test
@@ -62,7 +62,7 @@ class DisputeInterestPolicyTest {
         february.pay();
 
         // 84 de juros × 400/1000 da fatura de janeiro
-        assertThat(DisputeInterestPolicy.refundFor(List.of(january, february), disputed).amount())
+        assertThat(DisputeInterestPolicy.refundFor(List.of(january, february), disputed).total().amount())
                 .isEqualByComparingTo("33.60");
     }
 
@@ -78,8 +78,25 @@ class DisputeInterestPolicyTest {
         march.pay();
 
         // janeiro: 160 × 0,4 = 64; a parte em fevereiro é 400 + 64 = 464 de 1160 (0,4): 185,60 × 0,4 = 74,24
-        assertThat(DisputeInterestPolicy.refundFor(List.of(january, february, march), disputed).amount())
+        assertThat(DisputeInterestPolicy.refundFor(List.of(january, february, march), disputed).total().amount())
                 .isEqualByComparingTo("138.24");
+    }
+
+    @Test
+    void rotativoComIof_devolveOIofSeparadoDosEncargos() {
+        Invoice january = january();
+        january.registerPayment(Money.of("400.00"), AT);
+        Invoice february = Invoice.open(cardId, YearMonth.of(2034, 2), 10, 20);
+        roll(january, february, "84.00", "0.00");
+        february.addCharge(InvoiceItemKind.IOF, january.getId(), "IOF do rotativo", Money.of("3.81"), AT);
+        february.close();
+        february.pay();
+
+        DisputeInterestPolicy.Refund refund = DisputeInterestPolicy.refundFor(List.of(january, february), disputed);
+
+        assertThat(refund.charges().amount()).isEqualByComparingTo("33.60"); // 84 × 0,4: sai do teto legal
+        assertThat(refund.iof().amount()).isEqualByComparingTo("1.52");      // 3,81 × 0,4: imposto, fora do teto
+        assertThat(refund.total().amount()).isEqualByComparingTo("35.12");
     }
 
     @Test
@@ -92,7 +109,7 @@ class DisputeInterestPolicyTest {
         march.addInvoiceInstallment(january.getId(), "Parcela 2/2", Money.of("560.00"), AT, 2, 2);
 
         // juros do plano: 1120 - 1000 = 120; × 0,4
-        assertThat(DisputeInterestPolicy.refundFor(List.of(january, february, march), disputed).amount())
+        assertThat(DisputeInterestPolicy.refundFor(List.of(january, february, march), disputed).total().amount())
                 .isEqualByComparingTo("48.00");
     }
 
@@ -105,7 +122,7 @@ class DisputeInterestPolicyTest {
         // a 2ª foi antecipada (saiu do plano, com desconto dos juros)
 
         // juros por parcela: 60; resta 1 parcela; × 0,4
-        assertThat(DisputeInterestPolicy.refundFor(List.of(january, february), disputed).amount())
+        assertThat(DisputeInterestPolicy.refundFor(List.of(january, february), disputed).total().amount())
                 .isEqualByComparingTo("24.00");
     }
 }

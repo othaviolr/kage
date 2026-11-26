@@ -28,6 +28,8 @@ public final class InstallmentPolicy {
     public static final int MAX_INVOICE_INSTALLMENTS = 12;
     public static final int AUTO_INSTALLMENTS = 6;
     public static final BigDecimal INVOICE_MONTHLY_RATE = new BigDecimal("0.0899");
+    /** Diferença de arredondamento da parcela em centavos: abaixo disso, vale a taxa do contrato. */
+    static final BigDecimal RATE_TOLERANCE = new BigDecimal("0.00001");
 
     private InstallmentPolicy() {
     }
@@ -64,6 +66,32 @@ public final class InstallmentPolicy {
         Money total = quote.principal().add(maxInterest);
         return new Quote(quote.installments(), quote.principal(), total, maxInterest, quote.monthlyRate(),
                 split(total, quote.installments()));
+    }
+
+    /**
+     * Quanto do principal cada parcela amortiza (Price: os juros saem do saldo, o resto amortiza). A
+     * taxa é a implícita nas parcelas, então vale também quando o teto legal cortou os juros. A última
+     * leva o que sobrar, para a soma fechar no principal.
+     */
+    public static List<Money> amortizations(Quote quote) {
+        Money sample = quote.amounts().get(quote.installments() - 1); // a 1ª carrega os centavos
+        BigDecimal implied = AnticipationPolicy.impliedMonthlyRate(quote.principal(), sample, quote.installments());
+        // a implícita sai um fio abaixo da do contrato pelo arredondamento da parcela: só vale se o teto cortou os juros
+        BigDecimal rate = implied.compareTo(quote.monthlyRate().subtract(RATE_TOLERANCE)) >= 0 ? quote.monthlyRate() : implied;
+        BigDecimal balance = quote.principal().amount();
+        List<Money> result = new ArrayList<>(quote.installments());
+        for (int k = 0; k < quote.installments(); k++) {
+            BigDecimal amortization;
+            if (k == quote.installments() - 1) {
+                amortization = balance;
+            } else {
+                BigDecimal interest = balance.multiply(rate).setScale(2, RoundingMode.HALF_UP);
+                amortization = quote.amounts().get(k).amount().subtract(interest).max(BigDecimal.ZERO).min(balance);
+            }
+            result.add(Money.of(amortization));
+            balance = balance.subtract(amortization);
+        }
+        return result;
     }
 
     private static List<Money> split(Money total, int installments) {

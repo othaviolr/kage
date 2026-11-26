@@ -215,14 +215,14 @@ public class DisputePurchase {
     private Dispute acceptRefundingCharges(Dispute dispute, String note) {
         Card card = findCard(dispute.cardId());
         List<Invoice> invoices = new ArrayList<>(invoiceRepository.findByCardId(card.getId()));
-        Money refund = DisputeInterestPolicy.refundFor(invoices, dispute.purchaseId());
-        Dispute accepted = dispute.accept(note, refund); // valida o parecer antes de mexer na fatura
-        if (!refund.isZero()) {
+        DisputeInterestPolicy.Refund refund = DisputeInterestPolicy.refundFor(invoices, dispute.purchaseId());
+        Dispute accepted = dispute.accept(note, refund.total()); // valida o parecer antes de mexer na fatura
+        if (!refund.total().isZero()) {
             Invoice current = currentInvoice(card, invoices);
             current.addCredit(InvoiceItemKind.DISPUTE_INTEREST_REFUND, dispute.id(),
-                    "Estorno de juros e encargos: " + dispute.description(), refund, DomainTime.now());
+                    "Estorno de juros, encargos e IOF: " + dispute.description(), refund.total(), DomainTime.now());
             invoiceRepository.save(current);
-            card.refundRevolvingCharges(refund);
+            card.refundRevolvingCharges(refund.charges()); // o IOF não estava no teto
             cardRepository.save(card);
         }
         return accepted;

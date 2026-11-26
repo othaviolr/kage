@@ -98,10 +98,16 @@ class InstallmentsIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(plan.status()).isEqualTo("FINANCED");
         assertThat(plan.interest()).isEqualByComparingTo("337.10");
-        assertThat(invoiceTotal(s, "2034-07")).isEqualByComparingTo("222.85");
+        // IOF: 0,38% de 1000 (3,80) + 0,0082% ao dia sobre cada amortização até o vencimento dela (9,39)
+        assertThat(plan.iof()).isEqualByComparingTo("13.19");
+        assertThat(quote.iof()).isEqualByComparingTo("13.19"); // a simulação já mostrava
+        // CET: juros de 8,99% a.m. mais o IOF — acima da taxa de juros sozinha
+        assertThat(plan.cetMonthly()).isGreaterThan(new BigDecimal("0.0899")).isLessThan(new BigDecimal("0.0950"));
+        assertThat(plan.cetYearly()).isGreaterThan(new BigDecimal("1.8094"));
+        assertThat(invoiceTotal(s, "2034-07")).isEqualByComparingTo("236.04"); // 1ª parcela + IOF
         assertThat(invoiceTotal(s, "2034-12")).isEqualByComparingTo("222.85");
-        // juros consomem limite: 5000 - 1000 - 337,10
-        assertThat(getCard.execute(new GetCard.Input(s.cardId())).availableLimit()).isEqualByComparingTo("3662.90");
+        // juros e IOF consomem limite: 5000 - 1000 - 337,10 - 13,19
+        assertThat(getCard.execute(new GetCard.Input(s.cardId())).availableLimit()).isEqualByComparingTo("3649.71");
 
         assertThatThrownBy(() -> payInvoice.execute(new PayInvoice.Input(s.cardId(), "2034-06")))
                 .isInstanceOf(BusinessRuleException.class).hasMessageContaining("parcelada");

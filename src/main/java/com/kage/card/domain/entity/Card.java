@@ -101,6 +101,16 @@ public class Card {
     }
 
     /**
+     * IOF lançado na fatura: aumenta a dívida (consome limite), mas não conta no teto da Lei 14.690 —
+     * é imposto, não encargo do banco.
+     */
+    public void addTax(Money amount) {
+        if (amount.isZero()) return;
+        this.usedLimit = this.usedLimit.add(amount);
+        this.updatedAt = DomainTime.now();
+    }
+
+    /**
      * Contestação negada: a compra volta a ser dívida. Não passa pela autorização — o cliente já fez a
      * compra; pode ultrapassar o limite (aí novas compras ficam bloqueadas até pagar).
      */
