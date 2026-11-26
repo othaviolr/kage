@@ -45,4 +45,18 @@ public interface CardEventPublisher {
      * Chamar dentro da transação do pedido.
      */
     void publishCardReissued(CardPlastic plastic, boolean oldNumberCancelled);
+
+    /**
+     * Compra aprovada (não é chamada na retentativa idempotente). Chamar dentro da transação da compra.
+     *
+     * @param virtualCardNickname compra com cartão virtual: o nome dele; nulo = físico
+     */
+    void publishPurchaseApproved(UUID cardId, UUID purchaseId, String description, Money amount, int installments,
+                                 Money installmentAmount, Money availableLimit, String virtualCardNickname);
+
+    /**
+     * Compra recusada por regra de negócio (limite, cartão bloqueado, virtual expirado...). Abre
+     * transação própria: a da compra já sofreu rollback quando a recusa aparece.
+     */
+    void publishPurchaseDeclined(UUID cardId, String description, Money amount, String reason, String virtualCardNickname);
 }

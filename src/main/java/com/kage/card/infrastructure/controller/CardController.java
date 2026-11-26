@@ -34,6 +34,7 @@ public class CardController {
     private final DisputePurchase disputePurchase;
     private final VirtualCards virtualCards;
     private final CardPlastics cardPlastics;
+    private final AuthorizePurchase authorizePurchase;
 
     /**
      * Emissão é do ADMIN: o limite de crédito é decisão da análise de crédito do banco, não do cliente.
@@ -46,7 +47,8 @@ public class CardController {
                           CloseInvoice closeInvoice, CancelCard cancelCard, AccessGuard accessGuard,
                           PayInvoice payInvoice, SetAutoDebit setAutoDebit, FinanceInvoice financeInvoice,
                           AnticipateInstallments anticipateInstallments, DisputePurchase disputePurchase,
-                          VirtualCards virtualCards, CardPlastics cardPlastics) {
+                          VirtualCards virtualCards, CardPlastics cardPlastics, AuthorizePurchase authorizePurchase) {
+        this.authorizePurchase = authorizePurchase;
         this.virtualCards = virtualCards;
         this.cardPlastics = cardPlastics;
         this.anticipateInstallments = anticipateInstallments;
@@ -99,7 +101,7 @@ public class CardController {
     public ResponseEntity<RegisterPurchase.Output> registerPurchase(@PathVariable UUID id,
                                                                      @RequestBody PurchaseRequest request) {
         LocalDateTime purchasedAt = request.purchasedAt() != null ? request.purchasedAt() : DomainTime.now();
-        RegisterPurchase.Output output = registerPurchase.execute(new RegisterPurchase.Input(
+        RegisterPurchase.Output output = authorizePurchase.execute(new RegisterPurchase.Input(
                 id, request.purchaseId(), request.description(), request.amount(), purchasedAt, request.installments(),
                 request.virtualCardNumber()));
         return ResponseEntity.status(HttpStatus.CREATED).body(output);

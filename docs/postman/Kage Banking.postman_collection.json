@@ -18788,10 +18788,335 @@
       ]
     },
     {
-      "name": "21. Estorno de juros na contestação",
+      "name": "21. Aviso de compra no cartão",
       "item": [
         {
           "name": "21.1.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Aviso de Compra\",\n  \"cpf\": \"{{pnCpf}}\",\n  \"email\": \"{{pnEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('pnCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('pnEmail', `kage.pn+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('pnCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "21.1.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{pnCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{pnCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "21.1.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{pnCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('pnAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "21.2 Emitir cartão (limite 5000)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{pnCustomerId}}\",\n  \"accountId\": \"{{pnAccountId}}\",\n  \"creditLimit\": 5000,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('pnCardId', pm.response.json().cardId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "21.3 Compra aprovada: 300 em 3x",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{pnCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{pnCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Farmácia\",\n  \"amount\": 300,\n  \"installments\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "21.4 Compra acima do limite -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{pnCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{pnCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Eletrônicos\",\n  \"amount\": 6000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "21.5 Caixa de entrada: aviso da aprovada e da recusada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{pnCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{pnCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// o aviso é assíncrono (outbox -> RabbitMQ -> notificação): dá um tempo para ele chegar",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const all = pm.response.json().notifications;",
+                  "const approved = all.find(n => n.type === 'CARD_PURCHASE_APPROVED');",
+                  "const declined = all.find(n => n.type === 'CARD_PURCHASE_DECLINED');",
+                  "pm.test('Aprovada: valor, parcelas e limite', () => {",
+                  "  pm.expect(approved, 'o aviso chega pelo RabbitMQ; se falhar, rode de novo').to.exist;",
+                  "  pm.expect(approved.title).to.eql('Compra aprovada');",
+                  "  pm.expect(approved.message).to.include('R$ 300,00 em Farmácia, em 3x de R$ 100,00');",
+                  "  pm.expect(approved.message).to.include('Limite disponível: R$ 4.700,00');",
+                  "});",
+                  "pm.test('Recusada: com o motivo', () => {",
+                  "  pm.expect(declined, 'o aviso chega pelo RabbitMQ; se falhar, rode de novo').to.exist;",
+                  "  pm.expect(declined.title).to.eql('Compra recusada');",
+                  "  pm.expect(declined.message).to.include('R$ 6.000,00 em Eletrônicos foi recusada: Limite disponível insuficiente');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "22. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "22.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -18848,7 +19173,7 @@
           ]
         },
         {
-          "name": "21.1.2 Aprovar KYC",
+          "name": "22.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -18879,7 +19204,7 @@
           ]
         },
         {
-          "name": "21.1.3 Abrir conta",
+          "name": "22.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -18922,7 +19247,7 @@
           ]
         },
         {
-          "name": "21.1.4 Depositar 3000",
+          "name": "22.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -18966,7 +19291,7 @@
           ]
         },
         {
-          "name": "21.2 Emitir cartão",
+          "name": "22.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -19009,7 +19334,7 @@
           ]
         },
         {
-          "name": "21.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "22.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -19062,7 +19387,7 @@
           ]
         },
         {
-          "name": "21.4 Outras compras: 600",
+          "name": "22.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -19106,7 +19431,7 @@
           ]
         },
         {
-          "name": "21.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "22.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -19142,7 +19467,7 @@
           ]
         },
         {
-          "name": "21.6 Paga só 400 de 1000",
+          "name": "22.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -19189,7 +19514,7 @@
           ]
         },
         {
-          "name": "21.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "22.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -19225,7 +19550,7 @@
           ]
         },
         {
-          "name": "21.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "22.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -19257,7 +19582,7 @@
           ]
         },
         {
-          "name": "21.9 Contestar a compra de 400",
+          "name": "22.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -19305,7 +19630,7 @@
           ]
         },
         {
-          "name": "21.10 Procedente: devolve os juros que a compra gerou",
+          "name": "22.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -19354,7 +19679,7 @@
           ]
         },
         {
-          "name": "21.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "22.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],

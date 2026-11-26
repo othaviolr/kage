@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -129,16 +130,29 @@ public class VirtualCards {
     /**
      * Compra chegou com o número de um virtual: ele precisa ser deste cartão e estar valendo.
      *
-     * @return o id do virtual, que fica gravado na linha da fatura
+     * @return o virtual (o id fica gravado na linha da fatura; o nome vai no aviso da compra)
      */
-    public UUID authorize(UUID cardId, String number) {
-        String digits = number == null ? "" : number.replaceAll("[\\s.-]", "");
+    public VirtualCard authorize(UUID cardId, String number) {
+        String digits = normalize(number);
         if (!digits.matches("\\d{16}")) throw new ValidationException("Número do cartão virtual deve ter 16 dígitos");
         VirtualCard virtual = virtualCardRepository.findByNumberHash(numbers.hash(digits))
                 .filter(v -> v.cardId().equals(cardId))
                 .orElseThrow(() -> new NotFoundException("Cartão virtual não encontrado"));
         virtual.requireUsable(DomainTime.now());
-        return virtual.id();
+        return virtual;
+    }
+
+    /** Nome do virtual deste cartão com esse número (para o aviso de compra recusada), sem validar se ele vale. */
+    public Optional<String> nicknameOf(UUID cardId, String number) {
+        String digits = normalize(number);
+        if (!digits.matches("\\d{16}")) return Optional.empty();
+        return virtualCardRepository.findByNumberHash(numbers.hash(digits))
+                .filter(v -> v.cardId().equals(cardId))
+                .map(VirtualCard::nickname);
+    }
+
+    private static String normalize(String number) {
+        return number == null ? "" : number.replaceAll("[\\s.-]", "");
     }
 
     private Output save(VirtualCard virtual) {
