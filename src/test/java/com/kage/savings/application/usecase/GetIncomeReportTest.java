@@ -107,7 +107,7 @@ class GetIncomeReportTest {
         assertThat(out.totals().iofWithheld()).isEqualByComparingTo("3.00");
         assertThat(out.totals().incomeTaxWithheld()).isEqualByComparingTo("9.57");
         assertThat(out.totals().exclusiveTaxationIncome()).isEqualByComparingTo("37.43");
-        assertThat(out.guide().exclusiveTaxation()).contains("37.43").contains("9.57");
+        assertThat(out.guide().exclusiveTaxation()).contains("R$ 37,43").contains("R$ 9,57");
     }
 
     @Test

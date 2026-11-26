@@ -130,7 +130,8 @@ class IncomeReportIntegrationTest extends AbstractIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         assertThat((String) JsonPath.read(report, "$.holderCpf"))
                 .isEqualTo(ana.cpf().replaceFirst("(\\d{3})(\\d{3})(\\d{3})(\\d{2})", "$1.$2.$3-$4"));
-        assertThat((String) JsonPath.read(report, "$.guide.exclusiveTaxation")).contains(gain.subtract(incomeTax).toPlainString());
+        assertThat((String) JsonPath.read(report, "$.guide.exclusiveTaxation"))
+                .contains("R$ " + gain.subtract(incomeTax).toPlainString().replace('.', ','));
 
         // o ano corrente parte dos saldos de 31/12 do ano passado e ainda não tem resgate
         mvc.perform(get("/api/customers/" + ana.id() + "/income-report?year=" + (lastYear + 1))
@@ -152,6 +153,30 @@ class IncomeReportIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.accounts.length()").value(0)) // a conta foi aberta este ano
                 .andExpect(jsonPath("$.debts.length()").value(0))
                 .andExpect(jsonPath("$.guide.debts").value(org.hamcrest.Matchers.containsString("nada a informar")));
+    }
+
+    @Test
+    void informeEmPdf_doTitular_eDeOutroCliente404() throws Exception {
+        Customer bia = customerWith("1234.56");
+        int year = LocalDate.now().getYear();
+
+        var response = mvc.perform(get("/api/customers/" + bia.id() + "/income-report/pdf?year=" + year)
+                        .header("Authorization", "Bearer " + bia.token()))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .contentType(MediaType.APPLICATION_PDF))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("informe-de-rendimentos-kage-" + year + "-parcial.pdf")))
+                .andReturn().getResponse();
+        try (var document = org.apache.pdfbox.Loader.loadPDF(response.getContentAsByteArray())) {
+            String text = new org.apache.pdfbox.text.PDFTextStripper().getText(document);
+            assertThat(text).contains("Informe de rendimentos " + year).contains("Cliente Informe").contains("PARCIAL")
+                    .contains("R$ 1.234,56").contains("Autenticação:");
+        }
+
+        Customer curioso = customerWith("10.00");
+        mvc.perform(get("/api/customers/" + bia.id() + "/income-report/pdf").header("Authorization", "Bearer " + curioso.token()))
+                .andExpect(status().isNotFound());
     }
 
     @Test
