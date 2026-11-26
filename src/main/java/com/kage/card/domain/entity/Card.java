@@ -1,5 +1,6 @@
 package com.kage.card.domain.entity;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.card.domain.enums.CardStatus;
 import com.kage.shared.domain.exception.BusinessRuleException;
 import com.kage.shared.domain.exception.ValidationException;
@@ -57,7 +58,7 @@ public class Card {
         validateDay(closingDay, "Dia de fechamento");
         validateDay(dueDay, "Dia de vencimento");
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DomainTime.now();
         return new Card(UUID.randomUUID(), customerId, accountId, creditLimit, Money.ZERO, closingDay, dueDay, CardStatus.ACTIVE, false, Money.ZERO, Money.ZERO, now, now, null);
     }
 
@@ -79,33 +80,33 @@ public class Card {
         if (amount.isZero()) throw new ValidationException("Valor da compra deve ser maior que zero");
         if (amount.isGreaterThan(availableLimit())) throw new BusinessRuleException("Limite disponível insuficiente");
         this.usedLimit = this.usedLimit.add(amount);
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public void releaseLimit(Money amount) {
         if (amount.isGreaterThan(this.usedLimit)) throw new BusinessRuleException("Valor a liberar excede o limite utilizado");
         this.usedLimit = this.usedLimit.subtract(amount);
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public void block() {
         if (this.status == CardStatus.CANCELLED) throw new BusinessRuleException("Cartão já está cancelado");
         if (this.status == CardStatus.BLOCKED) throw new BusinessRuleException("Cartão já está bloqueado");
         this.status = CardStatus.BLOCKED;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public void unblock() {
         if (this.status != CardStatus.BLOCKED) throw new BusinessRuleException("Cartão não está bloqueado");
         this.status = CardStatus.ACTIVE;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public void cancel() {
         if (this.status == CardStatus.CANCELLED) throw new BusinessRuleException("Cartão já está cancelado");
         if (!this.usedLimit.isZero()) throw new BusinessRuleException("Não é possível cancelar um cartão com fatura em aberto");
         this.status = CardStatus.CANCELLED;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     /**
@@ -127,7 +128,7 @@ public class Card {
 
         this.revolvingCharges = this.revolvingCharges.add(applied);
         this.usedLimit = this.usedLimit.add(applied);
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
         return applied;
     }
 
@@ -140,14 +141,14 @@ public class Card {
         this.usedLimit = discount.isGreaterThan(this.usedLimit) ? Money.ZERO : this.usedLimit.subtract(discount);
         this.revolvingCharges = discount.isGreaterThan(this.revolvingCharges)
                 ? Money.ZERO : this.revolvingCharges.subtract(discount);
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     /** Dívida do rotativo quitada: o próximo uso do rotativo começa uma conta nova. */
     public void settleRevolving() {
         this.revolvingPrincipal = Money.ZERO;
         this.revolvingCharges = Money.ZERO;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public boolean hasRevolvingDebt() {
@@ -161,12 +162,12 @@ public class Card {
     public void enableAutoDebit() {
         if (this.status == CardStatus.CANCELLED) throw new BusinessRuleException("Cartão cancelado não pode ter débito automático");
         this.autoDebit = true;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public void disableAutoDebit() {
         this.autoDebit = false;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     private static void validateDay(int day, String field) {

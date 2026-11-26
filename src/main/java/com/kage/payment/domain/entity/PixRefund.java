@@ -1,5 +1,6 @@
 package com.kage.payment.domain.entity;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.payment.domain.enums.RefundStatus;
 import com.kage.shared.domain.exception.DomainException;
 import com.kage.shared.domain.valueobject.Money;
@@ -46,7 +47,7 @@ public class PixRefund {
             throw new DomainException("Valor do estorno deve ser maior que zero");
         }
         return new PixRefund(UUID.randomUUID(), originalTransactionId, reason, refundAmount, RefundStatus.REQUESTED,
-                LocalDateTime.now(), null, null, null);
+                DomainTime.now(), null, null, null);
     }
 
     public static PixRefund reconstitute(UUID refundId, UUID originalTransactionId, String reason,
@@ -62,7 +63,7 @@ public class PixRefund {
         }
         this.refundStatus = RefundStatus.APPROVED;
         this.processedBy = processedBy;
-        this.processedAt = LocalDateTime.now();
+        this.processedAt = DomainTime.now();
     }
 
     public void reject(String processedBy) {
@@ -71,7 +72,7 @@ public class PixRefund {
         }
         this.refundStatus = RefundStatus.REJECTED;
         this.processedBy = processedBy;
-        this.processedAt = LocalDateTime.now();
+        this.processedAt = DomainTime.now();
     }
 
     /** O dinheiro voltou para quem pagou o PIX original. */
@@ -80,7 +81,7 @@ public class PixRefund {
             throw new DomainException("Estorno precisa estar aprovado para ser concluído");
         }
         this.refundStatus = RefundStatus.COMPLETED;
-        this.processedAt = LocalDateTime.now();
+        this.processedAt = DomainTime.now();
     }
 
     /** A devolução foi recusada pelo Account; nenhum saldo foi alterado. */
@@ -90,7 +91,7 @@ public class PixRefund {
         }
         this.refundStatus = RefundStatus.FAILED;
         this.failureReason = failureReason;
-        this.processedAt = LocalDateTime.now();
+        this.processedAt = DomainTime.now();
     }
 
     // getters

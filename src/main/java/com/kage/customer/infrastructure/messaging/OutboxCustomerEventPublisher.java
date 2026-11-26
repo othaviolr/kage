@@ -1,5 +1,6 @@
 package com.kage.customer.infrastructure.messaging;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.customer.application.usecase.CustomerEventPublisher;
 import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
 
@@ -19,7 +20,7 @@ public class OutboxCustomerEventPublisher implements CustomerEventPublisher {
 
     @Override
     public void publishCustomerBlocked(UUID customerId) {
-        outbox.publish(EXCHANGE, CUSTOMER_BLOCKED, new CustomerBlockedEvent(customerId, Instant.now()));
+        outbox.publish(EXCHANGE, CUSTOMER_BLOCKED, new CustomerBlockedEvent(customerId, DomainTime.instant()));
     }
 
     public record CustomerBlockedEvent(UUID customerId, Instant occurredAt) {}

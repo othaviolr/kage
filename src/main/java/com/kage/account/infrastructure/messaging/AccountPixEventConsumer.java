@@ -1,5 +1,6 @@
 package com.kage.account.infrastructure.messaging;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.account.domain.entity.Account;
 import com.kage.account.domain.entity.AccountEntry;
 import com.kage.account.domain.enums.EntryType;
@@ -54,7 +55,7 @@ public class AccountPixEventConsumer {
             logger.warn("Falha ao efetivar PIX (transactionId={}): {}", event.transactionId(), failure.get());
             outbox.publish("pix.exchange", "pix.debit.failed", new PixDebitFailedEvent(event.transactionId(), failure.get()));
             outbox.publish(ACCOUNT_EXCHANGE, "account.pix.failed", new AccountPixFailedEvent(event.sourceAccountId(),
-                    event.transactionId(), event.amount(), failure.get(), Instant.now()));
+                    event.transactionId(), event.amount(), failure.get(), DomainTime.instant()));
             return;
         }
 
@@ -80,7 +81,7 @@ public class AccountPixEventConsumer {
             outbox.publish("pix.exchange", "pix.refund.failed", new PixRefundFailedEvent(event.refundId(), failure.get()));
             // quem precisa saber é quem pediu o estorno: o pagador original, que receberia o dinheiro de volta
             outbox.publish(ACCOUNT_EXCHANGE, "account.pix.refund.failed", new AccountPixFailedEvent(event.toAccountId(),
-                    event.refundId(), event.amount(), failure.get(), Instant.now()));
+                    event.refundId(), event.amount(), failure.get(), DomainTime.instant()));
             return;
         }
 
@@ -92,7 +93,7 @@ public class AccountPixEventConsumer {
     /** Um evento por conta afetada, na mesma transação do débito/crédito (outbox). */
     private void publishMovements(UUID fromAccountId, UUID toAccountId, UUID referenceId, BigDecimal amount,
                                   String debitRoutingKey, String creditRoutingKey) {
-        Instant now = Instant.now();
+        Instant now = DomainTime.instant();
         outbox.publish(ACCOUNT_EXCHANGE, debitRoutingKey, new AccountPixMovementEvent(fromAccountId, referenceId, amount, now));
         outbox.publish(ACCOUNT_EXCHANGE, creditRoutingKey, new AccountPixMovementEvent(toAccountId, referenceId, amount, now));
     }

@@ -1,5 +1,6 @@
 package com.kage.card.domain.entity;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.card.domain.enums.InvoiceItemKind;
 import com.kage.card.domain.enums.InvoiceStatus;
 import com.kage.card.domain.service.RevolvingCreditPolicy;
@@ -64,7 +65,7 @@ public class Invoice {
                 ? referenceMonth.atDay(dueDay)
                 : referenceMonth.plusMonths(1).atDay(dueDay);
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DomainTime.now();
         return new Invoice(UUID.randomUUID(), cardId, referenceMonth, closingDate, dueDate,
                 InvoiceStatus.OPEN, List.of(), Money.ZERO, null, now, now, null);
     }
@@ -88,7 +89,7 @@ public class Invoice {
         if (alreadyRegistered) throw new ConflictException("Compra já lançada nesta fatura");
 
         this.items.add(InvoiceItem.create(purchaseId, description, amount, purchasedAt));
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     /** Parcela de compra parcelada (a mesma compra tem uma linha em cada fatura do plano). */
@@ -99,7 +100,7 @@ public class Invoice {
             throw new ConflictException("Compra já lançada nesta fatura");
         }
         this.items.add(InvoiceItem.installment(purchaseId, description, amount, purchasedAt, number, count));
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     /** Parcela do parcelamento de outra fatura. Idempotente pela fatura de origem. */
@@ -109,7 +110,7 @@ public class Invoice {
         InvoiceItem installment = InvoiceItem.invoiceInstallment(sourceInvoiceId, description, amount, at, number, count);
         if (items.stream().anyMatch(item -> item.purchaseId().equals(installment.purchaseId()))) return;
         this.items.add(installment);
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     /** Lança saldo trazido ou encargo do rotativo. Valor zero (ex.: cortado pelo teto) não vira linha. */
@@ -121,7 +122,7 @@ public class Invoice {
         InvoiceItem charge = InvoiceItem.charge(kind, sourceInvoiceId, description, amount, at);
         if (items.stream().anyMatch(item -> item.purchaseId().equals(charge.purchaseId()))) return; // já lançado
         this.items.add(charge);
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     /**
@@ -135,7 +136,7 @@ public class Invoice {
                 .findFirst()
                 .orElseThrow(() -> new BusinessRuleException("Parcela não está nesta fatura"));
         this.items.remove(item);
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
         return item;
     }
 
@@ -145,7 +146,7 @@ public class Invoice {
         if (anticipation.kind() != InvoiceItemKind.ANTICIPATION) throw new ValidationException("Lançamento não é uma antecipação");
         if (items.stream().anyMatch(item -> item.purchaseId().equals(anticipation.purchaseId()))) return;
         this.items.add(anticipation);
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public boolean isEmpty() {
@@ -175,7 +176,7 @@ public class Invoice {
     public void close() {
         if (this.status != InvoiceStatus.OPEN) throw new BusinessRuleException("Somente faturas abertas podem ser fechadas");
         this.status = InvoiceStatus.CLOSED;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     /**
@@ -200,7 +201,7 @@ public class Invoice {
     /** Paga o saldo devedor inteiro (fatura zerada é quitada sem pagamento). */
     public void pay() {
         requirePayable();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DomainTime.now();
         if (remaining().isZero()) {
             this.status = InvoiceStatus.PAID;
             this.paidAt = now;

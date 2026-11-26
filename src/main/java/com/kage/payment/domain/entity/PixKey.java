@@ -1,5 +1,6 @@
 package com.kage.payment.domain.entity;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.payment.domain.enums.PixKeyStatus;
 import com.kage.payment.domain.enums.PixKeyType;
 
@@ -27,7 +28,7 @@ public class PixKey {
     }
 
     public static PixKey create(UUID accountId, PixKeyType keyType, String keyValue) {
-        return new PixKey(UUID.randomUUID(), accountId, keyType, keyValue, PixKeyStatus.ACTIVE, LocalDateTime.now(),null);
+        return new PixKey(UUID.randomUUID(), accountId, keyType, keyValue, PixKeyStatus.ACTIVE, DomainTime.now(),null);
     }
 
     public static PixKey reconstitute(UUID pixKeyId, UUID accountId, PixKeyType keyType, String keyValue, PixKeyStatus keyStatus, LocalDateTime createdAt, LocalDateTime deletedAt) {
@@ -39,7 +40,7 @@ public class PixKey {
             throw new com.kage.shared.domain.exception.DomainException("Chave PIX não está ativa");
         }
         this.keyStatus = PixKeyStatus.DELETED;
-        this.deletedAt = LocalDateTime.now();
+        this.deletedAt = DomainTime.now();
     }
 
     // getters

@@ -1,9 +1,9 @@
 package com.kage.payment.infrastructure.persistence.idempotency;
 
+import com.kage.shared.domain.DomainTime;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class ProcessedEventRepository {
@@ -18,7 +18,7 @@ public class ProcessedEventRepository {
         try {
             jdbcTemplate.update(
                     "INSERT INTO payment_processed_events (event_id, processed_at) VALUES (?, ?)",
-                    eventId, LocalDateTime.now()
+                    eventId, DomainTime.now()
             );
             return true;
         } catch (DuplicateKeyException e) {

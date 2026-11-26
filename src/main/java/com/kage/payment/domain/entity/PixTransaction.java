@@ -1,5 +1,6 @@
 package com.kage.payment.domain.entity;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.payment.domain.enums.PixTransactionStatus;
 import com.kage.payment.domain.enums.TransactionType;
 import com.kage.shared.domain.exception.DomainException;
@@ -77,7 +78,7 @@ public class PixTransaction {
                 PixTransactionStatus.PENDING,
                 null,
                 generateE2eId(),
-                LocalDateTime.now(),
+                DomainTime.now(),
                 null,
                 null,
                 recurrenceId,
@@ -143,7 +144,7 @@ public class PixTransaction {
         }
         this.status = PixTransactionStatus.PROCESSING;
         this.targetAccountId = targetAccountId;
-        this.processedAt = LocalDateTime.now();
+        this.processedAt = DomainTime.now();
     }
 
     public void complete() {
@@ -151,7 +152,7 @@ public class PixTransaction {
             throw new DomainException("Transação não está em processamento");
         }
         this.status = PixTransactionStatus.COMPLETED;
-        this.completedAt = LocalDateTime.now();
+        this.completedAt = DomainTime.now();
     }
 
     public void fail(String reason) {
@@ -161,7 +162,7 @@ public class PixTransaction {
         }
         this.status = PixTransactionStatus.FAILED;
         this.failureReason = reason;
-        this.completedAt = LocalDateTime.now();
+        this.completedAt = DomainTime.now();
     }
 
     public void cancel() {
@@ -169,7 +170,7 @@ public class PixTransaction {
             throw new DomainException("Apenas transações pendentes podem ser canceladas");
         }
         this.status = PixTransactionStatus.CANCELLED;
-        this.completedAt = LocalDateTime.now();
+        this.completedAt = DomainTime.now();
     }
 
     private static String generateE2eId() {

@@ -1,5 +1,6 @@
 package com.kage.shared.infrastructure.exception;
 
+import com.kage.shared.domain.DomainTime;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -7,10 +8,10 @@ public record ErrorResponse(int status, String error, String message, String pat
     public record FieldErrorResponse(String field, String message) {}
 
     public static ErrorResponse of(int status, String error, String message, String path) {
-        return new ErrorResponse(status, error, message, path, LocalDateTime.now(), List.of());
+        return new ErrorResponse(status, error, message, path, DomainTime.now(), List.of());
     }
 
     public static ErrorResponse of(int status, String error, String message, String path, List<FieldErrorResponse> fieldErrors) {
-        return new ErrorResponse(status, error, message, path, LocalDateTime.now(), fieldErrors);
+        return new ErrorResponse(status, error, message, path, DomainTime.now(), fieldErrors);
     }
 }

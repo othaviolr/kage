@@ -1,5 +1,6 @@
 package com.kage.auth.infrastructure.messaging;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.auth.domain.service.AuthEventPublisher;
 import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
 
@@ -20,12 +21,12 @@ public class OutboxAuthEventPublisher implements AuthEventPublisher {
 
     @Override
     public void publishPasswordChanged(UUID customerId, PasswordChangeReason reason) {
-        outbox.publish(EXCHANGE, PASSWORD_CHANGED, new PasswordChangedEvent(customerId, reason.name(), Instant.now()));
+        outbox.publish(EXCHANGE, PASSWORD_CHANGED, new PasswordChangedEvent(customerId, reason.name(), DomainTime.instant()));
     }
 
     @Override
     public void publishNewDeviceTrusted(UUID customerId, String userAgent) {
-        outbox.publish(EXCHANGE, DEVICE_TRUSTED, new DeviceTrustedEvent(customerId, userAgent, Instant.now()));
+        outbox.publish(EXCHANGE, DEVICE_TRUSTED, new DeviceTrustedEvent(customerId, userAgent, DomainTime.instant()));
     }
 
     public record PasswordChangedEvent(UUID customerId, String reason, Instant occurredAt) {}

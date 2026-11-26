@@ -1,10 +1,10 @@
 package com.kage.savings.infrastructure.messaging;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.savings.application.usecase.SavingsEventPublisher;
 import com.kage.savings.domain.entity.SavingsBox;
 import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
 
-import java.time.Instant;
 
 public class OutboxSavingsEventPublisher implements SavingsEventPublisher {
 
@@ -18,6 +18,6 @@ public class OutboxSavingsEventPublisher implements SavingsEventPublisher {
     public void publishGoalReached(SavingsBox box) {
         outbox.publish(SavingsEvents.EXCHANGE, SavingsEvents.GOAL_REACHED, new SavingsEvents.GoalReachedEvent(
                 box.getId(), box.getCustomerId(), box.getAccountId(), box.getName(), box.getGoalAmount().amount(),
-                box.getBalance().amount(), Instant.now()));
+                box.getBalance().amount(), DomainTime.instant()));
     }
 }

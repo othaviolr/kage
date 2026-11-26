@@ -1,5 +1,6 @@
 package com.kage.boleto.domain.entity;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.boleto.domain.service.BoletoChargePolicy;
 import com.kage.boleto.domain.valueobject.BoletoCode;
 import com.kage.shared.domain.exception.BusinessRuleException;
@@ -92,7 +93,7 @@ public class Boleto {
         String free = "%4s".formatted(r.branch()).replace(' ', '0') + "%8s".formatted(r.accountNumber()).replace(' ', '0')
                 + "%013d".formatted(r.ourNumber());
         BoletoCode code = BoletoCode.build(r.bankCode(), r.dueDate(), r.amount().amount(), free);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DomainTime.now();
         return new Boleto(UUID.randomUUID(), r.beneficiaryAccountId(), r.ourNumber(), code, r.amount(), r.dueDate(),
                 r.dueDate().plusDays(DEFAULT_DAYS_PAYABLE_AFTER_DUE), fine, interest, r.payerName().strip(), document,
                 r.description() == null ? null : r.description().strip(), Status.OPEN, null, null, null, now, now, null);
@@ -123,7 +124,7 @@ public class Boleto {
         Money total = totalOn(date);
         this.status = Status.PAID;
         this.paidAmount = total;
-        this.paidAt = LocalDateTime.now();
+        this.paidAt = DomainTime.now();
         this.paidVia = via;
         this.updatedAt = this.paidAt;
         return total;
@@ -132,7 +133,7 @@ public class Boleto {
     public void cancel() {
         if (status != Status.OPEN) throw new BusinessRuleException("Só boleto em aberto pode ser cancelado");
         this.status = Status.CANCELLED;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     private void requirePayable(LocalDate date) {
