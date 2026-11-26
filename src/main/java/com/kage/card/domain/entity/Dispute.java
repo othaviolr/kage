@@ -21,11 +21,13 @@ import java.util.UUID;
  * @param creditMonth    fatura que recebeu o crédito; nulo se nada tinha sido cobrado ainda
  * @param virtualCardId  compra feita com um cartão virtual: qual; nulo = cartão físico
  * @param virtualCardDeleted "não reconheço" numa compra do virtual: ele foi apagado (o físico segue ativo)
+ * @param interestRefunded   procedente: juros e encargos que a compra gerou, devolvidos na fatura atual
  */
 public record Dispute(UUID id, UUID cardId, UUID purchaseId, String description, Money amount, Money creditedAmount,
                       String creditMonth, DisputeReason reason, String details, DisputeStatus status,
                       boolean cardBlocked, LocalDateTime openedAt, LocalDateTime resolvedAt, String resolutionNote,
-                      String reversalMonth, UUID virtualCardId, boolean virtualCardDeleted) {
+                      String reversalMonth, UUID virtualCardId, boolean virtualCardDeleted,
+                      Money interestRefunded) {
 
     public static final int MAX_DETAILS = 500;
 
@@ -35,7 +37,7 @@ public record Dispute(UUID id, UUID cardId, UUID purchaseId, String description,
         String cleanDetails = validDetails(reason, details);
         return new Dispute(UUID.randomUUID(), cardId, purchaseId, description, amount, creditedAmount, creditMonth,
                 reason, cleanDetails, DisputeStatus.OPEN, cardBlocked, DomainTime.now(), null, null, null, virtualCardId,
-                virtualCardDeleted);
+                virtualCardDeleted, Money.ZERO);
     }
 
     /**
@@ -57,10 +59,15 @@ public record Dispute(UUID id, UUID cardId, UUID purchaseId, String description,
     }
 
     public Dispute accept(String note) {
+        return accept(note, Money.ZERO);
+    }
+
+    /** @param interestRefunded encargos atribuíveis à compra (DisputeInterestPolicy), devolvidos ao cliente */
+    public Dispute accept(String note, Money interestRefunded) {
         requireOpen();
         return new Dispute(id, cardId, purchaseId, description, amount, creditedAmount, creditMonth, reason, details,
                 DisputeStatus.ACCEPTED, cardBlocked, openedAt, DomainTime.now(), clean(note), null, virtualCardId,
-                virtualCardDeleted);
+                virtualCardDeleted, interestRefunded);
     }
 
     /** O motivo é obrigatório: o cliente tem direito de saber por que vai pagar (CDC, art. 6º, III). */
@@ -70,7 +77,7 @@ public record Dispute(UUID id, UUID cardId, UUID purchaseId, String description,
         if (cleanNote == null) throw new ValidationException("Informe o motivo da negativa (note)");
         return new Dispute(id, cardId, purchaseId, description, amount, creditedAmount, creditMonth, reason, details,
                 DisputeStatus.REJECTED, cardBlocked, openedAt, DomainTime.now(), cleanNote, reversalMonth,
-                virtualCardId, virtualCardDeleted);
+                virtualCardId, virtualCardDeleted, Money.ZERO);
     }
 
     private void requireOpen() {

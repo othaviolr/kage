@@ -66,7 +66,7 @@ public class OutboxCardEventPublisher implements CardEventPublisher {
     public void publishDisputeResolved(Dispute d) {
         outbox.publish(CardEvents.EXCHANGE, CardEvents.DISPUTE_RESOLVED, new CardEvents.DisputeResolvedEvent(
                 d.cardId(), d.id(), d.description(), d.amount().amount(), d.status().name(), d.resolutionNote(),
-                d.reversalMonth(), DomainTime.instant()));
+                d.reversalMonth(), d.interestRefunded().amount(), DomainTime.instant()));
     }
 
     @Override

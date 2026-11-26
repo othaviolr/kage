@@ -139,10 +139,14 @@ public final class NotificationTemplates {
     }
 
     public static Text disputeResolved(String description, BigDecimal amount, boolean accepted, String note,
-                                       String reversalMonth) {
+                                       String reversalMonth, BigDecimal interestRefunded) {
         if (accepted) {
+            String refund = interestRefunded != null && interestRefunded.signum() > 0
+                    ? " Também devolvemos " + money(interestRefunded) + " de juros e encargos que essa compra gerou, "
+                    + "como crédito na sua fatura."
+                    : "";
             return new Text("Contestação aceita", "Sua contestação de \"" + description + "\" foi aceita: o valor de "
-                    + money(amount) + " não será cobrado.");
+                    + money(amount) + " não será cobrado." + refund);
         }
         String where = reversalMonth == null ? "" : " na fatura de " + month(reversalMonth);
         return new Text("Contestação negada", "Sua contestação de \"" + description + "\" foi negada (" + note

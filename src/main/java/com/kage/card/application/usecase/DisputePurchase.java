@@ -11,6 +11,7 @@ import com.kage.card.domain.enums.InvoiceStatus;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.DisputeRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
+import com.kage.card.domain.service.DisputeInterestPolicy;
 import com.kage.card.domain.valueobject.InvoiceItem;
 import com.kage.shared.domain.DomainTime;
 import com.kage.shared.domain.exception.BusinessRuleException;
@@ -52,13 +53,14 @@ public class DisputePurchase {
     public record Output(UUID disputeId, UUID cardId, UUID purchaseId, String description, BigDecimal amount,
                          BigDecimal creditedAmount, String creditMonth, String reason, String details, String status,
                          boolean cardBlocked, LocalDateTime openedAt, LocalDateTime resolvedAt, String resolutionNote,
-                         String reversalMonth, UUID virtualCardId, boolean virtualCardDeleted) {
+                         String reversalMonth, UUID virtualCardId, boolean virtualCardDeleted,
+                         BigDecimal interestRefunded) {
 
         static Output of(Dispute d) {
             return new Output(d.id(), d.cardId(), d.purchaseId(), d.description(), d.amount().amount(),
                     d.creditedAmount().amount(), d.creditMonth(), d.reason().name(), d.details(), d.status().name(),
                     d.cardBlocked(), d.openedAt(), d.resolvedAt(), d.resolutionNote(), d.reversalMonth(),
-                    d.virtualCardId(), d.virtualCardDeleted());
+                    d.virtualCardId(), d.virtualCardDeleted(), d.interestRefunded().amount());
         }
     }
 
@@ -189,7 +191,7 @@ public class DisputePurchase {
 
         Dispute resolved;
         if (accepted) {
-            resolved = dispute.accept(note);
+            resolved = acceptRefundingCharges(dispute, note);
         } else {
             Card card = findCard(cardId);
             List<Invoice> invoices = new ArrayList<>(invoiceRepository.findByCardId(cardId));
@@ -204,6 +206,26 @@ public class DisputePurchase {
         if (!disputeRepository.resolve(resolved)) throw new ConflictException("Contestação já foi resolvida");
         eventPublisher.publishDisputeResolved(resolved);
         return Output.of(resolved);
+    }
+
+    /**
+     * Procedente: além do crédito da compra (que já entrou na abertura), devolve os juros e encargos
+     * que ela gerou enquanto estava cobrada — numa linha de crédito na fatura atual.
+     */
+    private Dispute acceptRefundingCharges(Dispute dispute, String note) {
+        Card card = findCard(dispute.cardId());
+        List<Invoice> invoices = new ArrayList<>(invoiceRepository.findByCardId(card.getId()));
+        Money refund = DisputeInterestPolicy.refundFor(invoices, dispute.purchaseId());
+        Dispute accepted = dispute.accept(note, refund); // valida o parecer antes de mexer na fatura
+        if (!refund.isZero()) {
+            Invoice current = currentInvoice(card, invoices);
+            current.addCredit(InvoiceItemKind.DISPUTE_INTEREST_REFUND, dispute.id(),
+                    "Estorno de juros e encargos: " + dispute.description(), refund, DomainTime.now());
+            invoiceRepository.save(current);
+            card.refundRevolvingCharges(refund);
+            cardRepository.save(card);
+        }
+        return accepted;
     }
 
     private record Line(Invoice invoice, InvoiceItem item) {}

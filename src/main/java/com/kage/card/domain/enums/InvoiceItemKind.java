@@ -20,10 +20,12 @@ public enum InvoiceItemKind {
     /** Contestação negada: a compra volta a ser cobrada, à vista. */
     DISPUTE_REVERSAL,
     /** Crédito que sobrou da fatura anterior (os créditos dela passaram do que ela cobrava). */
-    CREDIT_BALANCE;
+    CREDIT_BALANCE,
+    /** Contestação procedente: devolução dos juros e encargos que a compra gerou. */
+    DISPUTE_INTEREST_REFUND;
 
     /** Linha que abate o total da fatura em vez de somar. */
     public boolean isCredit() {
-        return this == DISPUTE_CREDIT || this == CREDIT_BALANCE;
+        return this == DISPUTE_CREDIT || this == CREDIT_BALANCE || this == DISPUTE_INTEREST_REFUND;
     }
 }

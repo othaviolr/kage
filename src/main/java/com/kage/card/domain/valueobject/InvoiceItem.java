@@ -74,6 +74,11 @@ public record InvoiceItem(UUID id, UUID purchaseId, String description, Money am
                 description, amount, at, InvoiceItemKind.INVOICE_INSTALLMENT, number, count);
     }
 
+    /** purchaseId da linha de encargo/saldo {@code kind} que a fatura {@code sourceInvoiceId} gerou na seguinte. */
+    public static UUID chargeId(InvoiceItemKind kind, UUID sourceInvoiceId) {
+        return deterministicId(kind, sourceInvoiceId);
+    }
+
     /** Id do plano do parcelamento da fatura {@code sourceInvoiceId} (o purchaseId das parcelas dele). */
     public static UUID invoiceInstallmentPlanId(UUID sourceInvoiceId) {
         return deterministicId(InvoiceItemKind.INVOICE_INSTALLMENT, sourceInvoiceId);
