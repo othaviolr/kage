@@ -51,7 +51,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // público
                         // refresh é público: quem chama tem um refresh token, não um access token válido
-                        .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login", "/api/auth/admin/login",
+                        .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login", "/api/auth/login/verify", "/api/auth/admin/login",
                                 "/api/auth/refresh", "/api/auth/password/forgot", "/api/auth/password/reset").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs/**", "/actuator/health").permitAll()
                         .requestMatchers("/error").permitAll()

@@ -43,6 +43,7 @@ class PasswordRecoveryTest {
     @Mock PasswordHasher passwordHasher;
     @Mock PasswordResetSender sender;
     @Mock AuthEventPublisher eventPublisher;
+    @Mock com.kage.auth.domain.repository.DeviceVerificationRepository deviceRepository;
 
     private final SessionTokensTest.MutableClock clock = new SessionTokensTest.MutableClock(Instant.parse("2026-11-25T13:00:00Z"));
     private UUID customerId;
@@ -164,7 +165,7 @@ class PasswordRecoveryTest {
 
     private ResetPassword reset() {
         return new ResetPassword(resetRepository, credentialRepository, sessionRepository, customerDirectory, passwordHasher,
-                eventPublisher, clock);
+                eventPublisher, deviceRepository, clock);
     }
 
     private void tokenValid(String token) {
@@ -173,7 +174,7 @@ class PasswordRecoveryTest {
     }
 
     @Test
-    void reset_deveTrocarDestravarEDerrubarTodasAsSessoes() {
+    void reset_deveTrocarDestravarDerrubarAsSessoes_eEsquecerOsAparelhos() {
         for (int i = 0; i < Credential.MAX_FAILED_ATTEMPTS; i++) credential.registerFailedAttempt(now());
         tokenValid("link");
         when(customerDirectory.isBlocked(customerId)).thenReturn(Optional.of(false));
@@ -185,6 +186,7 @@ class PasswordRecoveryTest {
         assertThat(credential.getPasswordHash()).isEqualTo("new-hash");
         assertThat(credential.isLocked(now())).isFalse();
         verify(sessionRepository).revokeAllByCustomer(customerId, "PASSWORD_RESET", now());
+        verify(deviceRepository).revokeAllTrusted(customerId, now());
         verify(eventPublisher).publishPasswordChanged(customerId, AuthEventPublisher.PasswordChangeReason.RESET);
     }
 

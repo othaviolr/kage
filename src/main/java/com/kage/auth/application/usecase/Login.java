@@ -5,6 +5,7 @@ import com.kage.auth.domain.entity.Session;
 import com.kage.auth.domain.repository.CredentialRepository;
 import com.kage.auth.domain.service.CustomerDirectory;
 import com.kage.auth.domain.service.PasswordHasher;
+import com.kage.auth.domain.valueobject.DeviceId;
 import com.kage.shared.domain.exception.TooManyRequestsException;
 import com.kage.shared.domain.exception.UnauthorizedException;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import java.util.Optional;
  *   existe: nem a resposta nem o tempo dela revelam quem é cliente.
  * - A tentativa errada é gravada mesmo com a exceção (noRollbackFor), senão o contador de força
  *   bruta nunca subiria.
+ * - Dispositivo novo: a senha certa não basta, vem o código por SMS (DeviceVerification).
  */
 public class Login {
 
@@ -32,11 +34,14 @@ public class Login {
     private final CredentialRepository credentialRepository;
     private final PasswordHasher passwordHasher;
     private final SessionTokens sessionTokens;
+    private final DeviceVerification deviceVerification;
     private final Clock clock;
     private final String timingDummyHash;
 
     public Login(CustomerDirectory customerDirectory, CredentialRepository credentialRepository,
-                 PasswordHasher passwordHasher, SessionTokens sessionTokens, Clock clock) {
+                 PasswordHasher passwordHasher, SessionTokens sessionTokens, DeviceVerification deviceVerification,
+                 Clock clock) {
+        this.deviceVerification = deviceVerification;
         this.customerDirectory = customerDirectory;
         this.credentialRepository = credentialRepository;
         this.passwordHasher = passwordHasher;
@@ -45,16 +50,17 @@ public class Login {
         this.timingDummyHash = passwordHasher.hash("kage-timing-dummy-password-1");
     }
 
-    public AuthTokens execute(Input input) {
-        return execute(input, null);
-    }
-
-    /** @param userAgent dispositivo que está entrando, para a lista de sessões ("onde estou logado") */
+    /**
+     * @param userAgent dispositivo que está entrando, para a lista de sessões ("onde estou logado")
+     * @param deviceId  X-Device-Id do app: aparelho confiável entra direto; novo (ou sem id) recebe o
+     *                  desafio do código por SMS
+     */
     @Transactional(noRollbackFor = UnauthorizedException.class)
-    public AuthTokens execute(Input input, String userAgent) {
+    public LoginResult execute(Input input, String userAgent, String deviceId) {
         if (input.cpf() == null || input.cpf().isBlank() || input.password() == null) {
             throw new UnauthorizedException(INVALID_CREDENTIALS);
         }
+        String deviceHash = DeviceId.hashOrNull(deviceId);
         LocalDateTime now = LocalDateTime.now(clock);
 
         Optional<CustomerDirectory.CustomerIdentity> customer = customerDirectory.findByCpf(input.cpf());
@@ -85,6 +91,10 @@ public class Login {
             throw new UnauthorizedException("Acesso bloqueado. Fale com o atendimento");
         }
 
-        return sessionTokens.open(Session.forCustomer(found.getCustomerId(), userAgent, now));
+        // senha certa: aparelho confiável entra; novo precisa do código (a senha sozinha não basta)
+        if (deviceVerification.isTrusted(found.getCustomerId(), deviceHash, now)) {
+            return LoginResult.signedIn(sessionTokens.open(Session.forCustomer(found.getCustomerId(), userAgent, now)));
+        }
+        return LoginResult.verificationRequired(deviceVerification.challenge(found.getCustomerId(), deviceHash, userAgent, now));
     }
 }

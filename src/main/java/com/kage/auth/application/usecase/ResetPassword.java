@@ -2,6 +2,7 @@ package com.kage.auth.application.usecase;
 
 import com.kage.auth.domain.entity.Credential;
 import com.kage.auth.domain.repository.CredentialRepository;
+import com.kage.auth.domain.repository.DeviceVerificationRepository;
 import com.kage.auth.domain.repository.PasswordResetRepository;
 import com.kage.auth.domain.repository.SessionRepository;
 import com.kage.auth.domain.service.AuthEventPublisher;
@@ -16,8 +17,9 @@ import java.time.LocalDateTime;
 import java.time.Clock;
 
 /**
- * Define a senha nova a partir do link de recuperação. Derruba TODAS as sessões: se alguém entrou
- * na conta do cliente, é exatamente esse o momento de expulsá-lo. Também destrava o login.
+ * Define a senha nova a partir do link de recuperação. Derruba TODAS as sessões e esquece os
+ * aparelhos confiáveis: se alguém entrou na conta do cliente, é exatamente esse o momento de
+ * expulsá-lo. Também destrava o login.
  *
  * Link inválido, usado ou vencido respondem igual — não interessa a quem tenta adivinhar qual é.
  */
@@ -33,11 +35,14 @@ public class ResetPassword {
     private final CustomerDirectory customerDirectory;
     private final PasswordHasher passwordHasher;
     private final AuthEventPublisher eventPublisher;
+    private final DeviceVerificationRepository deviceRepository;
     private final Clock clock;
 
     public ResetPassword(PasswordResetRepository resetRepository, CredentialRepository credentialRepository,
                          SessionRepository sessionRepository, CustomerDirectory customerDirectory,
-                         PasswordHasher passwordHasher, AuthEventPublisher eventPublisher, Clock clock) {
+                         PasswordHasher passwordHasher, AuthEventPublisher eventPublisher,
+                         DeviceVerificationRepository deviceRepository, Clock clock) {
+        this.deviceRepository = deviceRepository;
         this.resetRepository = resetRepository;
         this.credentialRepository = credentialRepository;
         this.sessionRepository = sessionRepository;
@@ -73,6 +78,8 @@ public class ResetPassword {
         credentialRepository.update(credential);
 
         sessionRepository.revokeAllByCustomer(token.customerId(), "PASSWORD_RESET", now);
+        // quem invadiu pode ter deixado um aparelho confiável: todo aparelho volta a pedir código
+        deviceRepository.revokeAllTrusted(token.customerId(), now);
         eventPublisher.publishPasswordChanged(token.customerId(), AuthEventPublisher.PasswordChangeReason.RESET);
     }
 }

@@ -42,7 +42,7 @@ class PasswordIntegrationTest extends AbstractIntegrationTest {
 
     private Customer signUp() throws Exception {
         String cpf = randomCpf();
-        String body = mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON).content("""
+        String body = mvc.perform(post("/api/auth/signup").header("X-Device-Id", TEST_DEVICE).contentType(MediaType.APPLICATION_JSON).content("""
                         {"fullName":"Cliente Senha","cpf":"%s","email":"%s@teste.com","phone":"41999991234",
                          "birthDate":"1990-01-01","street":"Rua A","number":"1","city":"Curitiba","state":"PR",
                          "zipCode":"80000-000","password":"%s"}""".formatted(cpf, UUID.randomUUID(), PASSWORD)))
@@ -51,7 +51,7 @@ class PasswordIntegrationTest extends AbstractIntegrationTest {
     }
 
     private ResultActions login(String cpf, String password) throws Exception {
-        return mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+        return mvc.perform(post("/api/auth/login").header("X-Device-Id", TEST_DEVICE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"cpf\":\"%s\",\"password\":\"%s\"}".formatted(cpf, password)));
     }
 
@@ -112,7 +112,7 @@ class PasswordIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void recuperacao_deveTrocarASenha_destravarOLogin_eDerrubarTodasAsSessoes() throws Exception {
+    void recuperacao_deveTrocarASenha_destravarOLogin_derrubarAsSessoes_eEsquecerOsAparelhos() throws Exception {
         Customer maria = signUp();
         String session = token(maria.cpf(), PASSWORD);
         for (int i = 0; i < 5; i++) login(maria.cpf(), "Errada-123").andExpect(status().isUnauthorized());
@@ -124,7 +124,9 @@ class PasswordIntegrationTest extends AbstractIntegrationTest {
         reset(resetToken, NEW_PASSWORD).andExpect(status().isNoContent());
 
         me(session).andExpect(status().isUnauthorized());                        // todas as sessões caíram
-        login(maria.cpf(), NEW_PASSWORD).andExpect(status().isOk());             // e a trava foi liberada
+        // a trava foi liberada, e os aparelhos esquecidos: até o do cadastro volta a pedir o código
+        login(maria.cpf(), NEW_PASSWORD).andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.verificationRequired").value(true));
         reset(resetToken, "Outra-senha-2028").andExpect(status().isBadRequest()) // link de uso único
                 .andExpect(jsonPath("$.message").value("Link de recuperação inválido ou expirado. Peça um novo"));
     }

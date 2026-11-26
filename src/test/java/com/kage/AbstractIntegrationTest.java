@@ -35,6 +35,12 @@ import java.util.function.Supplier;
 @SpringBootTest
 public abstract class AbstractIntegrationTest {
 
+    /**
+     * X-Device-Id dos testes que entram pelo HTTP: o aparelho do cadastro nasce confiável, então o
+     * login com ele entra direto (sem o código do dispositivo novo).
+     */
+    protected static final String TEST_DEVICE = "kage-test-device-0001";
+
     /*
      * Singleton containers: sobem uma vez por JVM e só morrem no fim da suíte (o Ryuk do Testcontainers
      * limpa). Antes eram @Container static, que o JUnit derruba no fim de CADA classe de teste — mas o
@@ -74,6 +80,8 @@ public abstract class AbstractIntegrationTest {
 
         // sem e-mail real, o teste da recuperação de senha precisa receber o token na resposta
         registry.add("kage.security.password-reset.expose-token", () -> "true");
+        // e o do login em dispositivo novo, sem SMS real
+        registry.add("kage.security.login-code.expose-code", () -> "true");
     }
 
     /**

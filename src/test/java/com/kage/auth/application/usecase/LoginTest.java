@@ -4,6 +4,7 @@ import com.kage.auth.domain.entity.Credential;
 import com.kage.auth.domain.repository.CredentialRepository;
 import com.kage.auth.domain.service.CustomerDirectory;
 import com.kage.auth.domain.service.PasswordHasher;
+import com.kage.auth.domain.valueobject.DeviceId;
 
 import com.kage.shared.domain.exception.TooManyRequestsException;
 import com.kage.shared.domain.exception.UnauthorizedException;
@@ -40,6 +41,9 @@ class LoginTest {
     @Mock CredentialRepository credentialRepository;
     @Mock PasswordHasher passwordHasher;
     @Mock SessionTokens sessionTokens;
+    @Mock DeviceVerification deviceVerification;
+
+    private static final String DEVICE = "aparelho-do-cliente-123";
 
     Login login;
     UUID customerId;
@@ -48,7 +52,7 @@ class LoginTest {
     @BeforeEach
     void setUp() {
         when(passwordHasher.hash(anyString())).thenReturn("dummy-hash");
-        login = new Login(customerDirectory, credentialRepository, passwordHasher, sessionTokens,
+        login = new Login(customerDirectory, credentialRepository, passwordHasher, sessionTokens, deviceVerification,
                 Clock.fixed(NOW.atZone(ZONE).toInstant(), ZONE));
         customerId = UUID.randomUUID();
         credential = Credential.create(customerId, "real-hash", NOW.minusDays(1));
@@ -59,14 +63,21 @@ class LoginTest {
         when(credentialRepository.findByCustomerId(customerId)).thenReturn(Optional.of(credential));
     }
 
+    private LoginResult login(String password) {
+        return login.execute(new Login.Input(CPF, password), "app", DEVICE);
+    }
+
     @Test
-    void execute_deveEmitirToken_quandoSenhaCorreta() {
+    void execute_deveEmitirToken_quandoSenhaCorreta_eAparelhoConfiavel() {
         customerExists(false);
         when(passwordHasher.matches("Senha-forte-1", "real-hash")).thenReturn(true);
+        when(deviceVerification.isTrusted(eq(customerId), eq(DeviceId.hashOrNull(DEVICE)), any())).thenReturn(true);
         when(sessionTokens.open(any())).thenReturn(new AuthTokens("jwt", "Bearer", Instant.EPOCH, "refresh", NOW.plusDays(30), UUID.randomUUID()));
 
-        AuthTokens output = login.execute(new Login.Input(CPF, "Senha-forte-1"));
+        LoginResult result = login("Senha-forte-1");
 
+        assertThat(result.isVerificationRequired()).isFalse();
+        AuthTokens output = result.tokens();
         assertThat(output.accessToken()).isEqualTo("jwt");
         assertThat(output.tokenType()).isEqualTo("Bearer");
         assertThat(output.refreshToken()).isEqualTo("refresh");
@@ -75,11 +86,36 @@ class LoginTest {
     }
 
     @Test
+    void execute_devePedirCodigo_semAbrirSessao_quandoAparelhoNovo() {
+        customerExists(false);
+        when(passwordHasher.matches("Senha-forte-1", "real-hash")).thenReturn(true);
+        when(deviceVerification.isTrusted(eq(customerId), any(), any())).thenReturn(false);
+        var challenge = new DeviceVerification.LoginChallenge(true, UUID.randomUUID(), NOW.plusMinutes(5), "código enviado", null);
+        when(deviceVerification.challenge(eq(customerId), eq(DeviceId.hashOrNull(DEVICE)), eq("app"), any())).thenReturn(challenge);
+
+        LoginResult result = login("Senha-forte-1");
+
+        assertThat(result.isVerificationRequired()).isTrue();
+        assertThat(result.challenge()).isEqualTo(challenge);
+        verify(sessionTokens, never()).open(any()); // a senha sozinha não abre sessão
+    }
+
+    @Test
+    void execute_naoDeveRevelarSeOAparelhoEConfiavel_quandoSenhaErrada() {
+        customerExists(false);
+        when(passwordHasher.matches("errada", "real-hash")).thenReturn(false);
+
+        assertThatThrownBy(() -> login("errada")).isInstanceOf(UnauthorizedException.class);
+        verify(deviceVerification, never()).isTrusted(any(), any(), any());
+        verify(deviceVerification, never()).challenge(any(), any(), any(), any()); // sem SMS para quem errou a senha
+    }
+
+    @Test
     void execute_deveContarTentativaErrada_eResponderMensagemGenerica() {
         customerExists(false);
         when(passwordHasher.matches("errada", "real-hash")).thenReturn(false);
 
-        assertThatThrownBy(() -> login.execute(new Login.Input(CPF, "errada")))
+        assertThatThrownBy(() -> login("errada"))
                 .isInstanceOf(UnauthorizedException.class)
                 .hasMessage(Login.INVALID_CREDENTIALS);
         assertThat(credential.getFailedAttempts()).isEqualTo(1);
@@ -90,7 +126,7 @@ class LoginTest {
     void execute_deveResponderAMesmaMensagemEAindaRodarOHash_quandoCpfNaoExiste() {
         when(customerDirectory.findByCpf(CPF)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> login.execute(new Login.Input(CPF, "qualquer1")))
+        assertThatThrownBy(() -> login("qualquer1"))
                 .isInstanceOf(UnauthorizedException.class)
                 .hasMessage(Login.INVALID_CREDENTIALS);
         // o hash roda mesmo assim: o tempo de resposta não denuncia que o CPF não é cliente
@@ -102,7 +138,7 @@ class LoginTest {
         for (int i = 0; i < Credential.MAX_FAILED_ATTEMPTS; i++) credential.registerFailedAttempt(NOW.minusMinutes(1));
         customerExists(false);
 
-        assertThatThrownBy(() -> login.execute(new Login.Input(CPF, "Senha-forte-1")))
+        assertThatThrownBy(() -> login("Senha-forte-1"))
                 .isInstanceOf(TooManyRequestsException.class)
                 .hasMessageContaining("14 minuto");
         verify(passwordHasher, never()).matches(eq("Senha-forte-1"), any());
@@ -113,7 +149,7 @@ class LoginTest {
         customerExists(true);
         when(passwordHasher.matches("Senha-forte-1", "real-hash")).thenReturn(true);
 
-        assertThatThrownBy(() -> login.execute(new Login.Input(CPF, "Senha-forte-1")))
+        assertThatThrownBy(() -> login("Senha-forte-1"))
                 .isInstanceOf(UnauthorizedException.class)
                 .hasMessageContaining("bloqueado");
         verify(sessionTokens, never()).open(any());

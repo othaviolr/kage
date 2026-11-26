@@ -56,7 +56,7 @@ class IdempotencyIntegrationTest extends AbstractIntegrationTest {
 
     private Customer customerWith(String balance) throws Exception {
         String cpf = randomCpf();
-        String body = mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON).content("""
+        String body = mvc.perform(post("/api/auth/signup").header("X-Device-Id", TEST_DEVICE).contentType(MediaType.APPLICATION_JSON).content("""
                         {"fullName":"Cliente Idem","cpf":"%s","email":"%s@teste.com","phone":"41999991234",
                          "birthDate":"1990-01-01","street":"Rua A","number":"1","city":"Curitiba","state":"PR",
                          "zipCode":"80000-000","password":"%s"}""".formatted(cpf, UUID.randomUUID(), PASSWORD)))
@@ -65,7 +65,7 @@ class IdempotencyIntegrationTest extends AbstractIntegrationTest {
         approveKyc.execute(new ApproveKycInput(customerId));
         UUID accountId = createAccount.execute(new CreateAccount.Input(customerId, "CHECKING")).accountId();
         if (new BigDecimal(balance).signum() > 0) depositAccount.execute(new DepositAccount.Input(accountId, new BigDecimal(balance)));
-        String login = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+        String login = mvc.perform(post("/api/auth/login").header("X-Device-Id", TEST_DEVICE).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"cpf\":\"%s\",\"password\":\"%s\"}".formatted(cpf, PASSWORD)))
                 .andReturn().getResponse().getContentAsString();
         return new Customer(customerId, JsonPath.read(login, "$.accessToken"), accountId);

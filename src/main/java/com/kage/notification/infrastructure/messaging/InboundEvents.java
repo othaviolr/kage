@@ -61,6 +61,9 @@ public final class InboundEvents {
     public record PasswordChanged(UUID customerId, String reason) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record DeviceTrusted(UUID customerId, String userAgent, Instant occurredAt) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record BoletoPaid(UUID boletoId, UUID beneficiaryAccountId, String payerName, BigDecimal paidAmount, String via) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
