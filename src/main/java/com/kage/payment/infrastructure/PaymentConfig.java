@@ -44,8 +44,10 @@ public class PaymentConfig {
     }
 
     @Bean
-    public AccountValidationService accountValidationService(AccountRepository accountRepository) {
-        return new AccountValidationServiceImpl(accountRepository);
+    public AccountValidationService accountValidationService(AccountRepository accountRepository,
+                                                             com.kage.account.application.usecase.LimitChanges limitChanges,
+                                                             Clock clock) {
+        return new AccountValidationServiceImpl(accountRepository, limitChanges, clock);
     }
 
     @Bean

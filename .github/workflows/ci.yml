@@ -65,6 +65,9 @@ jobs:
     env:
       # só no ambiente efêmero da CI: deixa a coleção testar a recuperação de senha completa
       KAGE_DEV_EXPOSE_RESET_TOKEN: 'true'
+      # o newman monta "hoje" e "amanhã" no fuso local: o mesmo da aplicação (Brasília), senão
+      # entre 21h e meia-noite o "hoje" do runner (UTC) já é o amanhã da aplicação
+      TZ: America/Sao_Paulo
     steps:
       - uses: actions/checkout@v7
 

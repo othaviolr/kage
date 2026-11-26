@@ -132,6 +132,13 @@ public final class NotificationTemplates {
                         + " Se não foi você, fale com o atendimento agora.");
     }
 
+    public static Text limitIncreaseRequested(String limitLabel, BigDecimal requestedAmount, java.time.LocalDateTime effectiveAt) {
+        return new Text("Pedido de aumento de limite", "Recebemos o pedido para aumentar o seu " + limitLabel + " para "
+                + money(requestedAmount) + ". Por segurança, ele passa a valer em "
+                + effectiveAt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm"))
+                + ". Se não foi você, cancele o pedido no app e troque a senha.");
+    }
+
     public static Text newDeviceLogin(String userAgent, java.time.Instant at) {
         String when = at == null ? "" : " em " + java.time.format.DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm")
                 .withZone(java.time.ZoneId.of("America/Sao_Paulo")).format(at);

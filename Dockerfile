@@ -24,7 +24,9 @@ USER kage
 
 EXPOSE 8080
 # o container respeita o limite de memória dele (e não o da máquina)
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"
+# fuso de Brasília: o "dia" do limite diário, a janela noturna do PIX (20h–6h) e o "hoje" dos
+# agendamentos são horários locais. Sem isso a JVM roda em UTC e o dia vira às 21h de Brasília
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError -Duser.timezone=America/Sao_Paulo"
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=60s --retries=5 \
   CMD wget -qO- http://localhost:8080/actuator/health | grep -q '"status":"UP"' || exit 1

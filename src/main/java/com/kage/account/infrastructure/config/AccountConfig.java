@@ -3,6 +3,10 @@ package com.kage.account.infrastructure.config;
 import com.kage.account.application.usecase.*;
 import com.kage.account.domain.repository.AccountEntryRepository;
 import com.kage.account.domain.repository.AccountRepository;
+import com.kage.account.domain.repository.LimitChangeRepository;
+import com.kage.account.infrastructure.persistence.JdbcLimitChangeRepository;
+import com.kage.account.infrastructure.scheduling.LimitChangesScheduler;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import com.kage.account.domain.service.AccountCustomerValidationService;
 import com.kage.account.domain.service.AccountSavingsCheck;
 import com.kage.account.infrastructure.messaging.OutboxAccountEventPublisher;
@@ -58,8 +62,20 @@ public class AccountConfig {
     }
 
     @Bean
-    public UpdateLimits updateLimits(AccountRepository accountRepository) {
-        return new UpdateLimits(accountRepository);
+    public LimitChangeRepository limitChangeRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcLimitChangeRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public LimitChanges limitChanges(AccountRepository accountRepository, LimitChangeRepository limitChangeRepository,
+                                     AccountEventPublisher accountEventPublisher, Clock clock) {
+        return new LimitChanges(accountRepository, limitChangeRepository, accountEventPublisher, clock);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "kage.limits.scheduler-enabled", havingValue = "true", matchIfMissing = true)
+    public LimitChangesScheduler limitChangesScheduler(LimitChanges limitChanges) {
+        return new LimitChangesScheduler(limitChanges);
     }
 
     @Bean
@@ -80,8 +96,9 @@ public class AccountConfig {
 
     @Bean
     public WithdrawAccount withdrawAccount(AccountRepository accountRepository, AccountEntryRepository accountEntryRepository,
-                                           AccountEventPublisher accountEventPublisher, Clock clock) {
-        return new WithdrawAccount(accountRepository, accountEntryRepository, accountEventPublisher, clock);
+                                           AccountEventPublisher accountEventPublisher, LimitChanges limitChanges,
+                                           Clock clock) {
+        return new WithdrawAccount(accountRepository, accountEntryRepository, accountEventPublisher, limitChanges, clock);
     }
 
     @Bean

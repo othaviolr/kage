@@ -5,6 +5,7 @@ import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class OutboxAccountEventPublisher implements AccountEventPublisher {
@@ -26,4 +27,14 @@ public class OutboxAccountEventPublisher implements AccountEventPublisher {
         outbox.publish("account.exchange", "account.withdrawal.made",
                 new WithdrawalMadeEvent(accountId, amount, newBalance, Instant.now()));
     }
+
+    @Override
+    public void publishLimitIncreaseRequested(UUID requestId, UUID accountId, String limitLabel, BigDecimal requestedAmount,
+                                              LocalDateTime effectiveAt) {
+        outbox.publish("account.exchange", "account.limit.increase.requested",
+                new LimitIncreaseRequestedEvent(requestId, accountId, limitLabel, requestedAmount, effectiveAt, Instant.now()));
+    }
+
+    public record LimitIncreaseRequestedEvent(UUID requestId, UUID accountId, String limitLabel, BigDecimal requestedAmount,
+                                              LocalDateTime effectiveAt, Instant occurredAt) {}
 }

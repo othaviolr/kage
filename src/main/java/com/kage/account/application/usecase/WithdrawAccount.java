@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -28,10 +29,12 @@ public class WithdrawAccount {
     private final AccountRepository accountRepository;
     private final AccountEntryRepository entryRepository;
     private final AccountEventPublisher eventPublisher;
+    private final LimitChanges limitChanges;
     private final Clock clock;
 
     public WithdrawAccount(AccountRepository accountRepository, AccountEntryRepository entryRepository,
-                           AccountEventPublisher eventPublisher, Clock clock) {
+                           AccountEventPublisher eventPublisher, LimitChanges limitChanges, Clock clock) {
+        this.limitChanges = limitChanges;
         this.accountRepository = accountRepository;
         this.entryRepository = entryRepository;
         this.eventPublisher = eventPublisher;
@@ -46,6 +49,8 @@ public class WithdrawAccount {
 
         Account account = accountRepository.findById(input.accountId())
                 .orElseThrow(() -> new NotFoundException("Conta não encontrada"));
+
+        limitChanges.applyDue(account, LocalDateTime.now(clock)); // aumento que completou 24h vale já neste saque
 
         Money withdrawnToday = entryRepository.sumByTypeSince(account.getId(), EntryType.WITHDRAWAL,
                 LocalDate.now(clock).atStartOfDay());

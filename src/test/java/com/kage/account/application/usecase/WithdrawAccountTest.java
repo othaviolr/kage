@@ -48,12 +48,15 @@ class WithdrawAccountTest {
     @Mock
     AccountEventPublisher eventPublisher;
 
+    @Mock
+    LimitChanges limitChanges;
+
     WithdrawAccount withdrawAccount;
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(NOW.atZone(ZONE).toInstant(), ZONE);
-        withdrawAccount = new WithdrawAccount(accountRepository, entryRepository, eventPublisher, clock);
+        withdrawAccount = new WithdrawAccount(accountRepository, entryRepository, eventPublisher, limitChanges, clock);
     }
 
     private Account accountWithBalance(String balance) {

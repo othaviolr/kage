@@ -61,6 +61,10 @@ public final class InboundEvents {
     public record PasswordChanged(UUID customerId, String reason) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record LimitIncreaseRequested(UUID requestId, UUID accountId, String limitLabel, BigDecimal requestedAmount,
+                                         java.time.LocalDateTime effectiveAt) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record DeviceTrusted(UUID customerId, String userAgent, Instant occurredAt) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

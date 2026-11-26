@@ -133,6 +133,12 @@ public class NotificationEventConsumer {
                 NotificationTemplates.passwordChanged("RESET".equals(e.reason())), null, messageId);
     }
 
+    @RabbitListener(queues = "notification.account.limit.increase.requested.queue")
+    public void onLimitIncreaseRequested(InboundEvents.LimitIncreaseRequested e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toAccountOwner(e.accountId(), NotificationType.LIMIT_INCREASE_REQUESTED, NotificationTemplates.limitIncreaseRequested(
+                e.limitLabel(), e.requestedAmount(), e.effectiveAt()), e.requestId(), messageId);
+    }
+
     @RabbitListener(queues = "notification.auth.device.trusted.queue")
     public void onDeviceTrusted(InboundEvents.DeviceTrusted e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         deliver(Optional.of(e.customerId()), "cliente " + e.customerId(), NotificationType.NEW_DEVICE_LOGIN,

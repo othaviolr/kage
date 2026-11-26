@@ -12,4 +12,8 @@ public interface AccountEventPublisher {
     void publishDepositMade(UUID accountId, BigDecimal amount, BigDecimal newBalance);
 
     void publishWithdrawalMade(UUID accountId, BigDecimal amount, BigDecimal newBalance);
+
+    /** Pedido de aumento de limite registrado (alerta ao cliente: se não foi ele, dá tempo de cancelar). */
+    void publishLimitIncreaseRequested(UUID requestId, UUID accountId, String limitLabel, BigDecimal requestedAmount,
+                                       java.time.LocalDateTime effectiveAt);
 }

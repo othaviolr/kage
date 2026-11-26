@@ -23,7 +23,7 @@ public class AccountController {
     private final BlockAccount blockAccount;
     private final UnblockAccount unblockAccount;
     private final CloseAccount closeAccount;
-    private final UpdateLimits updateLimits;
+    private final LimitChanges limitChanges;
     private final DepositAccount depositAccount;
     private final WithdrawAccount withdrawAccount;
     private final GetStatement getStatement;
@@ -31,7 +31,7 @@ public class AccountController {
 
     public AccountController(CreateAccount createAccount, GetAccount getAccount,
                              BlockAccount blockAccount, UnblockAccount unblockAccount,
-                             CloseAccount closeAccount, UpdateLimits updateLimits,
+                             CloseAccount closeAccount, LimitChanges limitChanges,
                              DepositAccount depositAccount, WithdrawAccount withdrawAccount,
                              GetStatement getStatement, AccessGuard accessGuard) {
         this.createAccount = createAccount;
@@ -39,7 +39,7 @@ public class AccountController {
         this.blockAccount = blockAccount;
         this.unblockAccount = unblockAccount;
         this.closeAccount = closeAccount;
-        this.updateLimits = updateLimits;
+        this.limitChanges = limitChanges;
         this.depositAccount = depositAccount;
         this.withdrawAccount = withdrawAccount;
         this.getStatement = getStatement;
@@ -99,13 +99,31 @@ public class AccountController {
         return ResponseEntity.ok(closeAccount.execute(new CloseAccount.Input(id)));
     }
 
-    @PatchMapping("/{id}/limits")
-    public ResponseEntity<UpdateLimits.Output> updateLimits(@PathVariable UUID id,
-                                                            @RequestBody LimitsRequest request) {
+    /** Limites que valem agora e os aumentos pendentes (com a hora em que entram em vigor). */
+    @GetMapping("/{id}/limits")
+    public ResponseEntity<LimitChanges.View> limits(@PathVariable UUID id) {
         accessGuard.checkAccount(id);
-        return ResponseEntity.ok(updateLimits.execute(new UpdateLimits.Input(
-                id, request.dailyTransferLimit(), request.monthlyTransferLimit(),
-                request.pixDailyLimit(), request.pixNightLimit(), request.dailyWithdrawalLimit())));
+        return ResponseEntity.ok(limitChanges.view(id));
+    }
+
+    /**
+     * Campos omitidos ficam como estão. Reduzir vale na hora; aumentar vira pedido que vale 24h depois
+     * (o cliente é avisado e pode cancelar).
+     */
+    @PatchMapping("/{id}/limits")
+    public ResponseEntity<LimitChanges.View> updateLimits(@PathVariable UUID id,
+                                                          @RequestBody LimitsRequest request) {
+        accessGuard.checkAccount(id);
+        return ResponseEntity.ok(limitChanges.change(new LimitChanges.Input(id, request.pixDailyLimit(),
+                request.pixNightLimit(), request.dailyWithdrawalLimit(), request.dailyTransferLimit(),
+                request.monthlyTransferLimit())));
+    }
+
+    /** Desiste de um aumento antes de ele valer. */
+    @DeleteMapping("/{id}/limits/requests/{requestId}")
+    public ResponseEntity<LimitChanges.View> cancelLimitIncrease(@PathVariable UUID id, @PathVariable UUID requestId) {
+        accessGuard.checkAccount(id);
+        return ResponseEntity.ok(limitChanges.cancel(id, requestId));
     }
 
     public record LimitsRequest(BigDecimal dailyTransferLimit, BigDecimal monthlyTransferLimit,

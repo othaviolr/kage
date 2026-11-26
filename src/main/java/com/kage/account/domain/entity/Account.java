@@ -147,6 +147,15 @@ public class Account {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * Aumento pedido 24h antes que chegou a hora de valer. Sem a checagem de status: o pedido foi
+     * aceito com a conta ativa, e conta bloqueada não movimenta de qualquer jeito.
+     */
+    public void applyScheduledLimits(Limits newLimits) {
+        this.limits = newLimits;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public UUID getId() { return id; }
     public UUID getCustomerId() { return customerId; }
     public String getAccountNumber() { return accountNumber; }
