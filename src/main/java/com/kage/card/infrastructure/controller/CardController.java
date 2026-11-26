@@ -31,6 +31,7 @@ public class CardController {
     private final SetAutoDebit setAutoDebit;
     private final FinanceInvoice financeInvoice;
     private final AnticipateInstallments anticipateInstallments;
+    private final DisputePurchase disputePurchase;
 
     /**
      * Emissão é do ADMIN: o limite de crédito é decisão da análise de crédito do banco, não do cliente.
@@ -42,8 +43,9 @@ public class CardController {
                           GetInvoice getInvoice, ListInvoices listInvoices,
                           CloseInvoice closeInvoice, CancelCard cancelCard, AccessGuard accessGuard,
                           PayInvoice payInvoice, SetAutoDebit setAutoDebit, FinanceInvoice financeInvoice,
-                          AnticipateInstallments anticipateInstallments) {
+                          AnticipateInstallments anticipateInstallments, DisputePurchase disputePurchase) {
         this.anticipateInstallments = anticipateInstallments;
+        this.disputePurchase = disputePurchase;
         this.financeInvoice = financeInvoice;
         this.accessGuard = accessGuard;
         this.payInvoice = payInvoice;
@@ -140,6 +142,44 @@ public class CardController {
         accessGuard.checkCard(id);
         if (request.installments() == null) throw new ValidationException("Informe quantas parcelas antecipar (installments)");
         return ResponseEntity.status(HttpStatus.CREATED).body(anticipateInstallments.execute(id, planId, request.installments()));
+    }
+
+    /**
+     * Contesta uma compra (até 120 dias depois dela): a cobrança fica suspensa durante a análise.
+     * Motivo NOT_RECOGNIZED bloqueia o cartão.
+     */
+    @PostMapping("/{id}/disputes")
+    public ResponseEntity<DisputePurchase.Output> openDispute(@PathVariable UUID id, @RequestBody DisputeRequest request) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.status(HttpStatus.CREATED).body(disputePurchase.open(
+                new DisputePurchase.Input(id, request.purchaseId(), request.reason(), request.details())));
+    }
+
+    @GetMapping("/{id}/disputes")
+    public ResponseEntity<List<DisputePurchase.Output>> listDisputes(@PathVariable UUID id) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(disputePurchase.list(id));
+    }
+
+    @GetMapping("/{id}/disputes/{disputeId}")
+    public ResponseEntity<DisputePurchase.Output> getDispute(@PathVariable UUID id, @PathVariable UUID disputeId) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(disputePurchase.get(id, disputeId));
+    }
+
+    /** Parecer do banco/bandeira (ADMIN no SecurityConfig). Negada, a compra volta a ser cobrada. */
+    @PatchMapping("/{id}/disputes/{disputeId}/resolve")
+    public ResponseEntity<DisputePurchase.Output> resolveDispute(@PathVariable UUID id, @PathVariable UUID disputeId,
+                                                                 @RequestBody ResolveDisputeRequest request) {
+        return ResponseEntity.ok(disputePurchase.resolve(id, disputeId, request.accepted(), request.note()));
+    }
+
+    /** @param reason NOT_RECOGNIZED, DUPLICATE_CHARGE, NOT_RECEIVED ou CANCELLED_PURCHASE */
+    public record DisputeRequest(UUID purchaseId, String reason, String details) {
+    }
+
+    /** @param note obrigatório quando negada: o cliente fica sabendo o motivo */
+    public record ResolveDisputeRequest(Boolean accepted, String note) {
     }
 
     @GetMapping("/{id}/invoices")

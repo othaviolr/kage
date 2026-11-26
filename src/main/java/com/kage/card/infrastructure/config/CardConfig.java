@@ -7,6 +7,7 @@ import com.kage.account.infrastructure.CardBillingAccountServiceImpl;
 import com.kage.card.domain.service.CardBillingAccountService;
 import com.kage.card.application.usecase.*;
 import com.kage.card.domain.repository.CardRepository;
+import com.kage.card.domain.repository.DisputeRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
 import com.kage.card.domain.service.CardAccountValidationService;
 import com.kage.card.domain.service.CardCustomerValidationService;
@@ -21,6 +22,7 @@ import org.springframework.amqp.core.TopicExchange;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Clock;
 
@@ -100,6 +102,17 @@ public class CardConfig {
     @Bean
     public AnticipateInstallments anticipateInstallments(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
         return new AnticipateInstallments(cardRepository, invoiceRepository);
+    }
+
+    @Bean
+    public DisputeRepository disputeRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcDisputeRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public DisputePurchase disputePurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                                           DisputeRepository disputeRepository, CardEventPublisher cardEventPublisher) {
+        return new DisputePurchase(cardRepository, invoiceRepository, disputeRepository, cardEventPublisher);
     }
 
     @Bean

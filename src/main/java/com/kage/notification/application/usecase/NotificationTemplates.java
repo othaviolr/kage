@@ -114,6 +114,30 @@ public final class NotificationTemplates {
                 + " Pagar o total evita novos juros.");
     }
 
+    public static Text disputeOpened(String description, BigDecimal amount, BigDecimal creditedAmount,
+                                     String creditMonth, boolean cardBlocked) {
+        StringBuilder body = new StringBuilder("Recebemos sua contestação de \"").append(description).append("\" (")
+                .append(money(amount)).append("). Enquanto analisamos, essa compra não é cobrada");
+        if (creditedAmount.signum() > 0 && creditMonth != null) {
+            body.append(": o que já tinha sido cobrado (").append(money(creditedAmount))
+                    .append(") volta como crédito na fatura de ").append(month(creditMonth));
+        }
+        body.append('.');
+        if (cardBlocked) body.append(" Por segurança, bloqueamos seu cartão.");
+        return new Text("Contestação aberta", body.toString());
+    }
+
+    public static Text disputeResolved(String description, BigDecimal amount, boolean accepted, String note,
+                                       String reversalMonth) {
+        if (accepted) {
+            return new Text("Contestação aceita", "Sua contestação de \"" + description + "\" foi aceita: o valor de "
+                    + money(amount) + " não será cobrado.");
+        }
+        String where = reversalMonth == null ? "" : " na fatura de " + month(reversalMonth);
+        return new Text("Contestação negada", "Sua contestação de \"" + description + "\" foi negada (" + note
+                + "). O valor de " + money(amount) + " volta a ser cobrado" + where + ".");
+    }
+
     public static Text invoiceFinanced(String referenceMonth, int installments, BigDecimal installmentAmount,
                                        BigDecimal total, boolean automatic) {
         String body = "A fatura de " + month(referenceMonth) + " foi parcelada em " + installments + "x de "

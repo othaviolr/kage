@@ -2,6 +2,7 @@ package com.kage.card.infrastructure.messaging;
 
 import com.kage.shared.domain.DomainTime;
 import com.kage.card.application.usecase.CardEventPublisher;
+import com.kage.card.domain.entity.Dispute;
 import com.kage.card.domain.entity.Invoice;
 import com.kage.shared.domain.valueobject.Money;
 import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
@@ -51,6 +52,20 @@ public class OutboxCardEventPublisher implements CardEventPublisher {
         outbox.publish(CardEvents.EXCHANGE, CardEvents.INVOICE_FINANCED, new CardEvents.InvoiceFinancedEvent(
                 invoice.getCardId(), invoice.getId(), invoice.getReferenceMonth().toString(), installments,
                 installmentAmount.amount(), total.amount(), automatic, DomainTime.instant()));
+    }
+
+    @Override
+    public void publishDisputeOpened(Dispute d) {
+        outbox.publish(CardEvents.EXCHANGE, CardEvents.DISPUTE_OPENED, new CardEvents.DisputeOpenedEvent(
+                d.cardId(), d.id(), d.description(), d.amount().amount(), d.creditedAmount().amount(), d.creditMonth(),
+                d.reason().name(), d.cardBlocked(), DomainTime.instant()));
+    }
+
+    @Override
+    public void publishDisputeResolved(Dispute d) {
+        outbox.publish(CardEvents.EXCHANGE, CardEvents.DISPUTE_RESOLVED, new CardEvents.DisputeResolvedEvent(
+                d.cardId(), d.id(), d.description(), d.amount().amount(), d.status().name(), d.resolutionNote(),
+                d.reversalMonth(), DomainTime.instant()));
     }
 
     @Override

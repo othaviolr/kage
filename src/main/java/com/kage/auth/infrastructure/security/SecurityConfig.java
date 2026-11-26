@@ -68,6 +68,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/accounts/*/deposit").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/cards/*/purchases").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/cards/*/invoices/*/close").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/cards/*/disputes/*/resolve").hasRole("ADMIN") // parecer da bandeira
 
                         // demais rotas da API: autenticado + dono do recurso (AccessGuard)
                         .requestMatchers("/api/**").authenticated()

@@ -117,6 +117,7 @@ public class Invoice {
     public void addCharge(InvoiceItemKind kind, UUID sourceInvoiceId, String description, Money amount, LocalDateTime at) {
         if (this.status != InvoiceStatus.OPEN) throw new BusinessRuleException("Fatura não está aberta para novos lançamentos");
         if (kind == InvoiceItemKind.PURCHASE) throw new ValidationException("Compra entra por addItem");
+        if (kind.isCredit()) throw new ValidationException("Crédito entra por addCredit");
         if (amount.isZero()) return;
 
         InvoiceItem charge = InvoiceItem.charge(kind, sourceInvoiceId, description, amount, at);
@@ -149,14 +150,71 @@ public class Invoice {
         this.updatedAt = DomainTime.now();
     }
 
+    /**
+     * Lança um crédito (compra contestada, saldo credor da fatura anterior). Idempotente pela origem.
+     * Valor zero não vira linha.
+     */
+    public void addCredit(InvoiceItemKind kind, UUID sourceId, String description, Money amount, LocalDateTime at) {
+        if (this.status != InvoiceStatus.OPEN) throw new BusinessRuleException("Fatura não está aberta para novos lançamentos");
+        if (amount.isZero()) return;
+        InvoiceItem credit = InvoiceItem.credit(kind, sourceId, description, amount, at);
+        if (items.stream().anyMatch(item -> item.purchaseId().equals(credit.purchaseId()))) return;
+        this.items.add(credit);
+        this.updatedAt = DomainTime.now();
+    }
+
+    /**
+     * Tira desta fatura a linha da compra {@code purchaseId} (contestação: a cobrança fica suspensa).
+     * Só fatura aberta — a de uma fatura fechada vira crédito na fatura atual.
+     */
+    public InvoiceItem removePurchase(UUID purchaseId) {
+        if (this.status != InvoiceStatus.OPEN) throw new BusinessRuleException("Só dá para tirar compra de fatura aberta");
+        InvoiceItem item = items.stream()
+                .filter(i -> i.purchaseId().equals(purchaseId) && i.isPurchase())
+                .findFirst()
+                .orElseThrow(() -> new BusinessRuleException("Compra não está nesta fatura"));
+        this.items.remove(item);
+        this.updatedAt = DomainTime.now();
+        return item;
+    }
+
     public boolean isEmpty() {
         return items.isEmpty();
     }
 
-    public Money total() {
+    /** Soma do que a fatura cobra (sem os créditos). */
+    public Money charges() {
         return items.stream()
+                .filter(item -> !item.isCredit())
                 .map(InvoiceItem::amount)
                 .reduce(Money.ZERO, Money::add);
+    }
+
+    /** Soma dos créditos lançados. */
+    public Money credits() {
+        return items.stream()
+                .filter(InvoiceItem::isCredit)
+                .map(InvoiceItem::amount)
+                .reduce(Money.ZERO, Money::add);
+    }
+
+    /** O que a fatura cobra, já abatidos os créditos. Nunca negativo: o que sobra é o {@link #creditBalance()}. */
+    public Money total() {
+        Money charges = charges();
+        Money credits = credits();
+        return credits.isGreaterThan(charges) ? Money.ZERO : charges.subtract(credits);
+    }
+
+    /** Crédito que passou do que a fatura cobra: no fechamento, vai para a fatura seguinte. */
+    public Money creditBalance() {
+        Money charges = charges();
+        Money credits = credits();
+        return credits.isGreaterThan(charges) ? credits.subtract(charges) : Money.ZERO;
+    }
+
+    /** Parte dos créditos que de fato abateu cobranças desta fatura. */
+    public Money absorbedCredits() {
+        return credits().subtract(creditBalance());
     }
 
     /** Quanto ainda falta pagar. */
