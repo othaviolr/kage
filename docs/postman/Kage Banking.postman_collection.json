@@ -2133,6 +2133,44 @@
               }
             }
           ]
+        },
+        {
+          "name": "2.24 Exportar o extrato em CSV (Excel em português)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{accountId}}/statement.csv",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{accountId}}",
+                "statement.csv"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('CSV para baixar', () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('text/csv'); pm.expect(pm.response.headers.get('Content-Disposition')).to.include('attachment; filename=\"extrato-kage-'); });",
+                  "const lines = pm.response.text().replace(/^\\uFEFF/, '').split('\\r\\n').filter(l => l);",
+                  "pm.test('Cabeçalho, saldo anterior e saldo final', () => {",
+                  "  pm.expect(lines[0]).to.eql('Data;Hora;Descrição;Valor (R$);Saldo (R$);Identificador');",
+                  "  pm.expect(lines[1]).to.include(';Saldo anterior;');",
+                  "  pm.expect(lines[lines.length - 1]).to.include(';Saldo final;');",
+                  "});",
+                  "pm.test('Vírgula decimal', () => pm.expect(lines[lines.length - 1]).to.match(/;\\d+,\\d{2};$/));"
+                ]
+              }
+            }
+          ]
         }
       ],
       "description": "Depósito/saque publicam evento no RabbitMQ: o broker precisa estar de pé. Limites default: transferência 5000/dia, saque 1000/dia, Pix 2000/dia."

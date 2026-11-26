@@ -17,4 +17,7 @@ public interface AccountEntryRepository {
 
     /** Lançamentos no intervalo [from, to), mais recentes primeiro. */
     List<AccountEntry> findByAccountIdBetween(UUID accountId, LocalDateTime from, LocalDateTime to);
+
+    /** Saldo depois do último lançamento antes de {@code moment}; vazio se a conta não tinha movimento. */
+    java.util.Optional<Money> balanceBefore(UUID accountId, LocalDateTime moment);
 }

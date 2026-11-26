@@ -62,4 +62,15 @@ public class AccountEntryRepositoryImpl implements AccountEntryRepository {
                         rs.getTimestamp("created_at").toLocalDateTime()),
                 accountId, Timestamp.valueOf(from), Timestamp.valueOf(to));
     }
+
+    @Override
+    public java.util.Optional<Money> balanceBefore(UUID accountId, LocalDateTime moment) {
+        return jdbcTemplate.query("""
+                        SELECT balance_after FROM account_entries
+                        WHERE account_id = ? AND created_at < ?
+                        ORDER BY created_at DESC LIMIT 1
+                        """,
+                (rs, rowNum) -> Money.of(rs.getBigDecimal("balance_after")),
+                accountId, Timestamp.valueOf(moment)).stream().findFirst();
+    }
 }
