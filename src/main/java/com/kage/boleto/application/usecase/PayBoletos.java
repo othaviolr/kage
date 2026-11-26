@@ -11,6 +11,7 @@ import com.kage.boleto.domain.valueobject.BoletoCode;
 import com.kage.shared.domain.exception.BusinessRuleException;
 import com.kage.shared.domain.exception.NotFoundException;
 import com.kage.shared.domain.exception.ValidationException;
+import com.kage.shared.domain.valueobject.DocumentMask;
 import com.kage.shared.domain.valueobject.Money;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.annotation.Transactional;
@@ -190,10 +191,7 @@ public class PayBoletos {
     }
 
     static String maskDocument(String document) {
-        if (document == null) return null;
-        String d = document.replaceAll("\\D", "");
-        if (d.length() == 11) return "***." + d.substring(3, 6) + "." + d.substring(6, 9) + "-**";
-        return d;
+        return DocumentMask.mask(document);
     }
 
     private static PaymentView view(Payment p) {

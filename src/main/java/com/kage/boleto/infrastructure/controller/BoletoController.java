@@ -1,6 +1,7 @@
 package com.kage.boleto.infrastructure.controller;
 
 import com.kage.auth.infrastructure.security.AccessGuard;
+import com.kage.boleto.application.usecase.BoletoReceipts;
 import com.kage.boleto.application.usecase.IssueBoletos;
 import com.kage.boleto.application.usecase.PayBoletos;
 import org.springframework.http.HttpStatus;
@@ -23,8 +24,11 @@ public class BoletoController {
     private final IssueBoletos issueBoletos;
     private final PayBoletos payBoletos;
     private final AccessGuard accessGuard;
+    private final BoletoReceipts boletoReceipts;
 
-    public BoletoController(IssueBoletos issueBoletos, PayBoletos payBoletos, AccessGuard accessGuard) {
+    public BoletoController(IssueBoletos issueBoletos, PayBoletos payBoletos, AccessGuard accessGuard,
+                            BoletoReceipts boletoReceipts) {
+        this.boletoReceipts = boletoReceipts;
         this.issueBoletos = issueBoletos;
         this.payBoletos = payBoletos;
         this.accessGuard = accessGuard;
@@ -70,5 +74,12 @@ public class BoletoController {
     public ResponseEntity<List<PayBoletos.PaymentView>> listPayments(@PathVariable UUID accountId) {
         accessGuard.checkAccount(accountId);
         return ResponseEntity.ok(payBoletos.listPayments(accountId));
+    }
+
+    /** Comprovante do pagamento: só quem pagou. */
+    @GetMapping("/api/boleto-payments/{paymentId}/receipt")
+    public ResponseEntity<BoletoReceipts.Receipt> receipt(@PathVariable UUID paymentId) {
+        accessGuard.checkBoletoPayment(paymentId);
+        return ResponseEntity.ok(boletoReceipts.of(paymentId));
     }
 }

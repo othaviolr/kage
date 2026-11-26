@@ -196,9 +196,10 @@ public class AuthConfig {
                                    SavingsBoxRepository savingsBoxRepository,
                                    BoletoRepository boletoRepository,
                                    PixRecurrenceRepository pixRecurrenceRepository,
-                                   PixAutomaticRepository pixAutomaticRepository) {
+                                   PixAutomaticRepository pixAutomaticRepository,
+                                   com.kage.boleto.domain.repository.BoletoPaymentRepository boletoPaymentRepository) {
         return new AccessGuard(accountRepository, cardRepository, pixKeyRepository, pixTransactionRepository,
                 pixRefundRepository, savingsBoxRepository, boletoRepository, pixRecurrenceRepository,
-                pixAutomaticRepository);
+                pixAutomaticRepository, boletoPaymentRepository);
     }
 }

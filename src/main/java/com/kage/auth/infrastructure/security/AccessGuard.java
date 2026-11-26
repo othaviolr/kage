@@ -11,6 +11,7 @@ import com.kage.payment.domain.repository.PixKeyRepository;
 import com.kage.payment.domain.repository.PixRecurrenceRepository;
 import com.kage.payment.domain.repository.PixRefundRepository;
 import com.kage.payment.domain.repository.PixTransactionRepository;
+import com.kage.boleto.domain.repository.BoletoPaymentRepository;
 import com.kage.boleto.domain.repository.BoletoRepository;
 import com.kage.savings.domain.repository.SavingsBoxRepository;
 import com.kage.shared.domain.exception.NotFoundException;
@@ -40,12 +41,14 @@ public class AccessGuard {
     private final BoletoRepository boletoRepository;
     private final PixRecurrenceRepository pixRecurrenceRepository;
     private final PixAutomaticRepository pixAutomaticRepository;
+    private final BoletoPaymentRepository boletoPaymentRepository;
 
     public AccessGuard(AccountRepository accountRepository, CardRepository cardRepository,
                        PixKeyRepository pixKeyRepository, PixTransactionRepository pixTransactionRepository,
                        PixRefundRepository pixRefundRepository, SavingsBoxRepository savingsBoxRepository,
                        BoletoRepository boletoRepository, PixRecurrenceRepository pixRecurrenceRepository,
-                       PixAutomaticRepository pixAutomaticRepository) {
+                       PixAutomaticRepository pixAutomaticRepository, BoletoPaymentRepository boletoPaymentRepository) {
+        this.boletoPaymentRepository = boletoPaymentRepository;
         this.pixAutomaticRepository = pixAutomaticRepository;
         this.pixRecurrenceRepository = pixRecurrenceRepository;
         this.savingsBoxRepository = savingsBoxRepository;
@@ -168,6 +171,16 @@ public class AccessGuard {
             throw new NotFoundException("Cobrança não encontrada");
         }
         checkPixAutomaticRole(authorizationId, required);
+    }
+
+    /** Comprovante de boleto: só quem pagou. */
+    public void checkBoletoPayment(UUID paymentId) {
+        AuthenticatedUser user = currentUser();
+        if (user.isAdmin()) return;
+        boolean denied = boletoPaymentRepository.findById(paymentId)
+                .map(p -> !ownsExistingAccount(user, p.payerAccountId()))
+                .orElse(false);
+        if (denied) throw new NotFoundException("Pagamento de boleto não encontrado");
     }
 
     public void checkPixRecurrence(UUID recurrenceId) {

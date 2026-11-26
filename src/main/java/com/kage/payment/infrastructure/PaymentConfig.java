@@ -153,6 +153,12 @@ public class PaymentConfig {
     }
 
     @Bean
+    public PixReceipts pixReceipts(PixTransactionRepository pixTransactionRepository, PixRefundRepository pixRefundRepository,
+                                   AccountHolderDirectory accountHolderDirectory) {
+        return new PixReceipts(pixTransactionRepository, pixRefundRepository, accountHolderDirectory);
+    }
+
+    @Bean
     public GetPixTransaction getPixTransaction(PixTransactionRepository pixTransactionRepository) {
         return new GetPixTransaction(pixTransactionRepository);
     }
