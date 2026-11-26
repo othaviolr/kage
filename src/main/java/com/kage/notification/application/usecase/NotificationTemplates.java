@@ -130,6 +130,22 @@ public final class NotificationTemplates {
         return new Text("Contestação aberta", body.toString());
     }
 
+    public static Text purchaseApproved(String description, BigDecimal amount, int installments,
+                                        BigDecimal installmentAmount, BigDecimal availableLimit, String virtualCardNickname) {
+        StringBuilder body = new StringBuilder(money(amount)).append(" em ").append(description);
+        if (installments > 1) body.append(", em ").append(installments).append("x de ").append(money(installmentAmount));
+        if (virtualCardNickname != null) body.append(", no cartão virtual \"").append(virtualCardNickname).append('"');
+        body.append(". Limite disponível: ").append(money(availableLimit))
+                .append(". Não reconhece? Bloqueie o cartão pelo app.");
+        return new Text("Compra aprovada", body.toString());
+    }
+
+    public static Text purchaseDeclined(String description, BigDecimal amount, String reason, String virtualCardNickname) {
+        String where = virtualCardNickname == null ? "" : " no cartão virtual \"" + virtualCardNickname + "\"";
+        return new Text("Compra recusada", "A compra de " + money(amount) + " em " + description + where
+                + " foi recusada: " + reason + ".");
+    }
+
     public static Text cardReissued(String lastDigits, boolean oldNumberCancelled) {
         String old = oldNumberCancelled
                 ? "O cartão antigo já foi cancelado; seus cartões virtuais continuam funcionando."

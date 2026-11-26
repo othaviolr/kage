@@ -91,8 +91,15 @@ public class CardConfig {
 
     @Bean
     public RegisterPurchase registerPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
-                                             VirtualCards virtualCards, CardPlastics cardPlastics) {
-        return new RegisterPurchase(cardRepository, invoiceRepository, virtualCards, cardPlastics);
+                                             VirtualCards virtualCards, CardPlastics cardPlastics,
+                                             CardEventPublisher cardEventPublisher) {
+        return new RegisterPurchase(cardRepository, invoiceRepository, virtualCards, cardPlastics, cardEventPublisher);
+    }
+
+    @Bean
+    public AuthorizePurchase authorizePurchase(RegisterPurchase registerPurchase, VirtualCards virtualCards,
+                                               CardEventPublisher cardEventPublisher) {
+        return new AuthorizePurchase(registerPurchase, virtualCards, cardEventPublisher);
     }
 
     @Bean

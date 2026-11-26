@@ -21,6 +21,16 @@ public final class CardEvents {
     public static final String DISPUTE_OPENED = "card.dispute.opened";
     public static final String DISPUTE_RESOLVED = "card.dispute.resolved";
     public static final String CARD_REISSUED = "card.reissued";
+    public static final String PURCHASE_APPROVED = "card.purchase.approved";
+    public static final String PURCHASE_DECLINED = "card.purchase.declined";
+
+    /** @param virtualCardNickname compra com cartão virtual: o nome dele; nulo = físico */
+    public record PurchaseApprovedEvent(UUID cardId, UUID purchaseId, String description, BigDecimal amount,
+                                        int installments, BigDecimal installmentAmount, BigDecimal availableLimit,
+                                        String virtualCardNickname, Instant occurredAt) {}
+
+    public record PurchaseDeclinedEvent(UUID cardId, String description, BigDecimal amount, String reason,
+                                        String virtualCardNickname, Instant occurredAt) {}
 
     /** @param oldNumberCancelled perda, roubo ou fraude: o plástico antigo já não funciona */
     public record CardReissuedEvent(UUID cardId, UUID plasticId, String lastDigits, String reason,

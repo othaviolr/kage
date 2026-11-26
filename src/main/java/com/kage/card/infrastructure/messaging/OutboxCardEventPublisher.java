@@ -76,6 +76,22 @@ public class OutboxCardEventPublisher implements CardEventPublisher {
     }
 
     @Override
+    public void publishPurchaseApproved(UUID cardId, UUID purchaseId, String description, Money amount, int installments,
+                                        Money installmentAmount, Money availableLimit, String virtualCardNickname) {
+        outbox.publish(CardEvents.EXCHANGE, CardEvents.PURCHASE_APPROVED, new CardEvents.PurchaseApprovedEvent(
+                cardId, purchaseId, description, amount.amount(), installments, installmentAmount.amount(),
+                availableLimit.amount(), virtualCardNickname, DomainTime.instant()));
+    }
+
+    @Override
+    @Transactional
+    public void publishPurchaseDeclined(UUID cardId, String description, Money amount, String reason,
+                                        String virtualCardNickname) {
+        outbox.publish(CardEvents.EXCHANGE, CardEvents.PURCHASE_DECLINED, new CardEvents.PurchaseDeclinedEvent(
+                cardId, description, amount.amount(), reason, virtualCardNickname, DomainTime.instant()));
+    }
+
+    @Override
     @Transactional
     public void publishAutoDebitFailed(UUID cardId, String referenceMonth, String reason) {
         outbox.publish(CardEvents.EXCHANGE, CardEvents.AUTO_DEBIT_FAILED,

@@ -2,6 +2,7 @@ package com.kage.card.application.usecase;
 
 import com.kage.card.domain.entity.Card;
 import com.kage.card.domain.entity.Invoice;
+import com.kage.card.domain.entity.VirtualCard;
 import com.kage.card.domain.enums.CardStatus;
 import com.kage.card.domain.enums.InvoiceStatus;
 import com.kage.card.domain.repository.CardRepository;
@@ -47,17 +48,19 @@ public class RegisterPurchase {
     private final InvoiceRepository invoiceRepository;
     private final VirtualCards virtualCards;
     private final CardPlastics plastics;
+    private final CardEventPublisher eventPublisher;
 
     public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
-        this(cardRepository, invoiceRepository, null, null);
+        this(cardRepository, invoiceRepository, null, null, null);
     }
 
     public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository, VirtualCards virtualCards,
-                            CardPlastics plastics) {
+                            CardPlastics plastics, CardEventPublisher eventPublisher) {
         this.cardRepository = cardRepository;
         this.invoiceRepository = invoiceRepository;
         this.virtualCards = virtualCards;
         this.plastics = plastics;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -76,9 +79,12 @@ public class RegisterPurchase {
 
         // o virtual precisa ser deste cartão e estar valendo; o físico (status, limite) é checado abaixo
         UUID virtualCardId = null;
+        String virtualNickname = null;
         if (input.virtualCardNumber() != null) {
             if (virtualCards == null) throw new IllegalStateException("Cartões virtuais não configurados");
-            virtualCardId = virtualCards.authorize(card.getId(), input.virtualCardNumber());
+            VirtualCard virtual = virtualCards.authorize(card.getId(), input.virtualCardNumber());
+            virtualCardId = virtual.id();
+            virtualNickname = virtual.nickname();
         } else if (plastics != null && card.getStatus() == CardStatus.ACTIVE) {
             // cartão bloqueado/cancelado: a recusa é a do cartão (authorizePurchase); ativo, falta checar o plástico
             plastics.requirePhysicalUsable(card.getId()); // 2ª via a caminho ou plástico cancelado
@@ -107,6 +113,10 @@ public class RegisterPurchase {
         }
 
         Card savedCard = cardRepository.save(card);
+        if (eventPublisher != null) {
+            eventPublisher.publishPurchaseApproved(savedCard.getId(), input.purchaseId(), input.description(), total,
+                    installments, parts.get(0), savedCard.availableLimit(), virtualNickname);
+        }
         return toOutput(savedCard, first, input.purchaseId(), false);
     }
 

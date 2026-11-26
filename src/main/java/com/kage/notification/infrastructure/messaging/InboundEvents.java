@@ -50,6 +50,14 @@ public final class InboundEvents {
                                 boolean virtualCardDeleted) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record PurchaseApproved(UUID cardId, UUID purchaseId, String description, BigDecimal amount, int installments,
+                                   BigDecimal installmentAmount, BigDecimal availableLimit, String virtualCardNickname) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record PurchaseDeclined(UUID cardId, String description, BigDecimal amount, String reason,
+                                   String virtualCardNickname) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record CardReissued(UUID cardId, UUID plasticId, String lastDigits, boolean oldNumberCancelled) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

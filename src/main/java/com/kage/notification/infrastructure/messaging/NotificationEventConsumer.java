@@ -123,6 +123,19 @@ public class NotificationEventConsumer {
                 e.disputeId(), messageId);
     }
 
+    @RabbitListener(queues = "notification.card.purchase.approved.queue")
+    public void onPurchaseApproved(InboundEvents.PurchaseApproved e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toCardOwner(e.cardId(), NotificationType.CARD_PURCHASE_APPROVED, NotificationTemplates.purchaseApproved(
+                e.description(), e.amount(), e.installments(), e.installmentAmount(), e.availableLimit(),
+                e.virtualCardNickname()), e.purchaseId(), messageId);
+    }
+
+    @RabbitListener(queues = "notification.card.purchase.declined.queue")
+    public void onPurchaseDeclined(InboundEvents.PurchaseDeclined e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toCardOwner(e.cardId(), NotificationType.CARD_PURCHASE_DECLINED, NotificationTemplates.purchaseDeclined(
+                e.description(), e.amount(), e.reason(), e.virtualCardNickname()), null, messageId);
+    }
+
     @RabbitListener(queues = "notification.card.reissued.queue")
     public void onCardReissued(InboundEvents.CardReissued e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toCardOwner(e.cardId(), NotificationType.CARD_REISSUED,
