@@ -2,6 +2,7 @@ package com.kage.card.infrastructure.messaging;
 
 import com.kage.shared.domain.DomainTime;
 import com.kage.card.application.usecase.CardEventPublisher;
+import com.kage.card.domain.entity.CardPlastic;
 import com.kage.card.domain.entity.Dispute;
 import com.kage.card.domain.entity.Invoice;
 import com.kage.shared.domain.valueobject.Money;
@@ -66,6 +67,12 @@ public class OutboxCardEventPublisher implements CardEventPublisher {
         outbox.publish(CardEvents.EXCHANGE, CardEvents.DISPUTE_RESOLVED, new CardEvents.DisputeResolvedEvent(
                 d.cardId(), d.id(), d.description(), d.amount().amount(), d.status().name(), d.resolutionNote(),
                 d.reversalMonth(), DomainTime.instant()));
+    }
+
+    @Override
+    public void publishCardReissued(CardPlastic p, boolean oldNumberCancelled) {
+        outbox.publish(CardEvents.EXCHANGE, CardEvents.CARD_REISSUED, new CardEvents.CardReissuedEvent(
+                p.cardId(), p.id(), p.lastDigits(), p.issueReason().name(), oldNumberCancelled, DomainTime.instant()));
     }
 
     @Override

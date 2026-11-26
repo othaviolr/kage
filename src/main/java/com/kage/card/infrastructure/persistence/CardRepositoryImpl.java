@@ -14,10 +14,14 @@ public class CardRepositoryImpl implements CardRepository {
         this.cardJpaRepository = cardJpaRepository;
     }
 
+    /**
+     * Com flush: plásticos, virtuais e contestações são gravados por JDBC na mesma transação e
+     * referenciam o cartão por FK — o INSERT do cartão precisa ter chegado ao banco antes.
+     */
     @Override
     public Card save(Card card) {
         CardJpaEntity entity = CardMapper.toJpaEntity(card);
-        CardJpaEntity saved = cardJpaRepository.save(entity);
+        CardJpaEntity saved = cardJpaRepository.saveAndFlush(entity);
         return CardMapper.toDomain(saved);
     }
 

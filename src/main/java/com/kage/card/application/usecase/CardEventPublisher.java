@@ -1,5 +1,6 @@
 package com.kage.card.application.usecase;
 
+import com.kage.card.domain.entity.CardPlastic;
 import com.kage.card.domain.entity.Dispute;
 import com.kage.card.domain.entity.Invoice;
 import com.kage.shared.domain.valueobject.Money;
@@ -38,4 +39,10 @@ public interface CardEventPublisher {
 
     /** Contestação procedente ou negada. Chamar dentro da transação da resolução. */
     void publishDisputeResolved(Dispute dispute);
+
+    /**
+     * 2ª via a caminho. {@code oldNumberCancelled}: perda, roubo ou fraude (o antigo já não funciona).
+     * Chamar dentro da transação do pedido.
+     */
+    void publishCardReissued(CardPlastic plastic, boolean oldNumberCancelled);
 }

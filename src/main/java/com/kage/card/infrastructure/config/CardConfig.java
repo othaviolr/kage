@@ -6,6 +6,7 @@ import com.kage.account.infrastructure.CardAccountValidationServiceImpl;
 import com.kage.account.infrastructure.CardBillingAccountServiceImpl;
 import com.kage.card.domain.service.CardBillingAccountService;
 import com.kage.card.application.usecase.*;
+import com.kage.card.domain.repository.CardPlasticRepository;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.DisputeRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
@@ -57,8 +58,20 @@ public class CardConfig {
     @Bean
     public IssueCard issueCard(CardRepository cardRepository,
                                CardCustomerValidationService cardCustomerValidationService,
-                               CardAccountValidationService cardAccountValidationService) {
-        return new IssueCard(cardRepository, cardCustomerValidationService, cardAccountValidationService);
+                               CardAccountValidationService cardAccountValidationService,
+                               CardPlastics cardPlastics) {
+        return new IssueCard(cardRepository, cardCustomerValidationService, cardAccountValidationService, cardPlastics);
+    }
+
+    @Bean
+    public CardPlasticRepository cardPlasticRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcCardPlasticRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public CardPlastics cardPlastics(CardRepository cardRepository, CardPlasticRepository cardPlasticRepository,
+                                     CardNumberService cardNumberService, CardEventPublisher cardEventPublisher) {
+        return new CardPlastics(cardRepository, cardPlasticRepository, cardNumberService, cardEventPublisher);
     }
 
     @Bean
@@ -78,8 +91,8 @@ public class CardConfig {
 
     @Bean
     public RegisterPurchase registerPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
-                                             VirtualCards virtualCards) {
-        return new RegisterPurchase(cardRepository, invoiceRepository, virtualCards);
+                                             VirtualCards virtualCards, CardPlastics cardPlastics) {
+        return new RegisterPurchase(cardRepository, invoiceRepository, virtualCards, cardPlastics);
     }
 
     @Bean
@@ -180,7 +193,7 @@ public class CardConfig {
     }
 
     @Bean
-    public CancelCard cancelCard(CardRepository cardRepository, VirtualCards virtualCards) {
-        return new CancelCard(cardRepository, virtualCards);
+    public CancelCard cancelCard(CardRepository cardRepository, VirtualCards virtualCards, CardPlastics cardPlastics) {
+        return new CancelCard(cardRepository, virtualCards, cardPlastics);
     }
 }

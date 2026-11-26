@@ -20,6 +20,11 @@ public final class CardEvents {
     public static final String INVOICE_FINANCED = "card.invoice.financed";
     public static final String DISPUTE_OPENED = "card.dispute.opened";
     public static final String DISPUTE_RESOLVED = "card.dispute.resolved";
+    public static final String CARD_REISSUED = "card.reissued";
+
+    /** @param oldNumberCancelled perda, roubo ou fraude: o plástico antigo já não funciona */
+    public record CardReissuedEvent(UUID cardId, UUID plasticId, String lastDigits, String reason,
+                                    boolean oldNumberCancelled, Instant occurredAt) {}
 
     /** @param creditMonth fatura que recebeu o crédito do que já tinha sido cobrado; nulo se nada tinha */
     public record DisputeOpenedEvent(UUID cardId, UUID disputeId, String description, BigDecimal amount,

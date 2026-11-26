@@ -6,6 +6,7 @@ import com.kage.card.domain.service.CardAccountValidationService;
 import com.kage.card.domain.service.CardCustomerValidationService;
 import com.kage.shared.domain.exception.ValidationException;
 import com.kage.shared.domain.valueobject.Money;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -18,15 +19,26 @@ public class IssueCard {
     private final CardRepository cardRepository;
     private final CardCustomerValidationService customerValidation;
     private final CardAccountValidationService accountValidation;
+    private final CardPlastics plastics;
 
     public IssueCard(CardRepository cardRepository,
                      CardCustomerValidationService customerValidation,
                      CardAccountValidationService accountValidation) {
+        this(cardRepository, customerValidation, accountValidation, null);
+    }
+
+    public IssueCard(CardRepository cardRepository,
+                     CardCustomerValidationService customerValidation,
+                     CardAccountValidationService accountValidation,
+                     CardPlastics plastics) {
         this.cardRepository = cardRepository;
         this.customerValidation = customerValidation;
         this.accountValidation = accountValidation;
+        this.plastics = plastics;
     }
 
+    /** Emite o cartão e o primeiro plástico, na mesma transação. */
+    @Transactional
     public Output execute(Input input) {
         if (input.customerId() == null) {
             throw new ValidationException("Cliente é obrigatório");
@@ -44,6 +56,7 @@ public class IssueCard {
         Card card = Card.create(input.customerId(), input.accountId(), new Money(input.creditLimit()),
                 input.closingDay(), input.dueDay());
         Card saved = cardRepository.save(card);
+        if (plastics != null) plastics.issueFirst(saved.getId());
 
         return new Output(saved.getId(), saved.getStatus().name(), saved.getCreditLimit().amount(),
                 saved.availableLimit().amount(), saved.getClosingDay(), saved.getDueDay());

@@ -122,6 +122,12 @@ public class NotificationEventConsumer {
                 e.disputeId(), messageId);
     }
 
+    @RabbitListener(queues = "notification.card.reissued.queue")
+    public void onCardReissued(InboundEvents.CardReissued e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toCardOwner(e.cardId(), NotificationType.CARD_REISSUED,
+                NotificationTemplates.cardReissued(e.lastDigits(), e.oldNumberCancelled()), e.plasticId(), messageId);
+    }
+
     @RabbitListener(queues = "notification.pix.scheduled.failed.queue")
     public void onScheduledPixFailed(InboundEvents.ScheduledPixFailed e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toAccountOwner(e.sourceAccountId(), NotificationType.PIX_SCHEDULED_FAILED,
