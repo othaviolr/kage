@@ -172,7 +172,8 @@ public final class NotificationTemplates {
 
     public static Text loanPaidOff(BigDecimal paid, BigDecimal discount) {
         String saving = discount != null && discount.signum() > 0 ? ", com " + money(discount) + " de desconto nos juros" : "";
-        return new Text("Empréstimo quitado", "Você quitou o empréstimo: " + money(paid) + saving + ".");
+        return new Text("Empréstimo quitado", "Você quitou o empréstimo: " + money(paid) + saving
+                + ". A carta de quitação já está disponível no app.");
     }
 
     public static Text loanRenegotiated(BigDecimal debt, BigDecimal downPayment, int installments,

@@ -94,7 +94,8 @@ class LoanNotificationIntegrationTest extends AbstractIntegrationTest {
         personalLoans.payOff(s.accountId(), loan.loanId());
         await(s.customerId(), "LOAN_PAID_OFF", 1);
         assertThat(inbox(s.customerId(), "LOAN_PAID_OFF").get(0).message())
-                .startsWith("Você quitou o empréstimo").contains("de desconto nos juros");
+                .startsWith("Você quitou o empréstimo").contains("de desconto nos juros")
+                .endsWith("A carta de quitação já está disponível no app.");
     }
 
     @Test

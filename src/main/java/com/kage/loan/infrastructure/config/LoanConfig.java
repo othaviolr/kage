@@ -3,7 +3,11 @@ package com.kage.loan.infrastructure.config;
 import com.kage.account.domain.repository.AccountEntryRepository;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.infrastructure.LoanAccountGatewayImpl;
+import com.kage.customer.domain.repository.CustomerRepository;
+import com.kage.customer.infrastructure.LoanHolderDirectoryImpl;
+import com.kage.loan.application.usecase.LoanDischargeLetters;
 import com.kage.loan.application.usecase.LoanEventPublisher;
+import com.kage.loan.infrastructure.export.PdfDischargeLetterRenderer;
 import com.kage.loan.application.usecase.PersonalLoans;
 import com.kage.loan.application.usecase.RunLoanDebits;
 import com.kage.loan.domain.repository.LoanRepository;
@@ -51,6 +55,12 @@ public class LoanConfig {
     public PersonalLoans personalLoans(LoanRepository loanRepository, LoanAccountGateway loanAccountGateway,
                                        LoanEventPublisher loanEventPublisher) {
         return new PersonalLoans(loanRepository, loanAccountGateway, loanEventPublisher);
+    }
+
+    @Bean
+    public LoanDischargeLetters loanDischargeLetters(LoanRepository loanRepository, CustomerRepository customerRepository) {
+        return new LoanDischargeLetters(loanRepository, new LoanHolderDirectoryImpl(customerRepository),
+                new PdfDischargeLetterRenderer());
     }
 
     @Bean
