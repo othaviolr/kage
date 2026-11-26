@@ -2,6 +2,7 @@ package com.kage.card.domain.entity;
 
 import com.kage.shared.domain.DomainTime;
 import com.kage.card.domain.enums.CardStatus;
+import com.kage.card.domain.enums.CashbackDestination;
 import com.kage.shared.domain.exception.BusinessRuleException;
 import com.kage.shared.domain.exception.ValidationException;
 import com.kage.shared.domain.valueobject.Money;
@@ -32,15 +33,18 @@ public class Card {
     private Money revolvingPrincipal;
     /** Juros e encargos do rotativo já cobrados sobre essa dívida. */
     private Money revolvingCharges;
+    /** Para onde vai o cashback: fatura seguinte (padrão) ou conta. */
+    private CashbackDestination cashbackDestination;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private final Long version;
 
     private Card(UUID id, UUID customerId, UUID accountId, Money creditLimit, Money approvedLimit,
                  Money usedLimit, int closingDay, int dueDay, CardStatus status, boolean autoDebit,
-                 Money revolvingPrincipal, Money revolvingCharges,
+                 Money revolvingPrincipal, Money revolvingCharges, CashbackDestination cashbackDestination,
                  LocalDateTime createdAt, LocalDateTime updatedAt, Long version) {
         this.approvedLimit = approvedLimit;
+        this.cashbackDestination = cashbackDestination;
         this.revolvingPrincipal = revolvingPrincipal;
         this.revolvingCharges = revolvingCharges;
         this.id = id;
@@ -66,15 +70,16 @@ public class Card {
 
         LocalDateTime now = DomainTime.now();
         return new Card(UUID.randomUUID(), customerId, accountId, creditLimit, creditLimit, Money.ZERO, closingDay, dueDay,
-                CardStatus.ACTIVE, false, Money.ZERO, Money.ZERO, now, now, null);
+                CardStatus.ACTIVE, false, Money.ZERO, Money.ZERO, CashbackDestination.INVOICE, now, now, null);
     }
 
     public static Card reconstitute(UUID id, UUID customerId, UUID accountId, Money creditLimit, Money approvedLimit,
                                     Money usedLimit, int closingDay, int dueDay, CardStatus status, boolean autoDebit,
                                     Money revolvingPrincipal, Money revolvingCharges,
+                                    CashbackDestination cashbackDestination,
                                     LocalDateTime createdAt, LocalDateTime updatedAt, Long version) {
-        return new Card(id, customerId, accountId, creditLimit, approvedLimit, usedLimit,
-                closingDay, dueDay, status, autoDebit, revolvingPrincipal, revolvingCharges, createdAt, updatedAt, version);
+        return new Card(id, customerId, accountId, creditLimit, approvedLimit, usedLimit, closingDay, dueDay, status,
+                autoDebit, revolvingPrincipal, revolvingCharges, cashbackDestination, createdAt, updatedAt, version);
     }
 
     /**
@@ -246,6 +251,14 @@ public class Card {
         this.updatedAt = DomainTime.now();
     }
 
+    /** O cliente escolhe para onde vai o cashback das próximas faturas pagas em dia. */
+    public void chooseCashbackDestination(CashbackDestination destination) {
+        if (destination == null) throw new ValidationException("Destino do cashback é obrigatório (INVOICE ou ACCOUNT)");
+        if (this.status == CardStatus.CANCELLED) throw new BusinessRuleException("Cartão cancelado");
+        this.cashbackDestination = destination;
+        this.updatedAt = DomainTime.now();
+    }
+
     private static void validateDay(int day, String field) {
         if (day < MIN_DAY || day > MAX_DAY) {
             throw new ValidationException(field + " deve estar entre " + MIN_DAY + " e " + MAX_DAY);
@@ -264,6 +277,7 @@ public class Card {
     public boolean isAutoDebit() { return autoDebit; }
     public Money getRevolvingPrincipal() { return revolvingPrincipal; }
     public Money getRevolvingCharges() { return revolvingCharges; }
+    public CashbackDestination getCashbackDestination() { return cashbackDestination; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public Long getVersion() { return version; }
