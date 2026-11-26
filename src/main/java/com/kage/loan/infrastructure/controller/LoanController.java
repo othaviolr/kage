@@ -1,8 +1,12 @@
 package com.kage.loan.infrastructure.controller;
 
 import com.kage.auth.infrastructure.security.AccessGuard;
+import com.kage.loan.application.usecase.LoanDischargeLetters;
 import com.kage.loan.application.usecase.PersonalLoans;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,10 +20,12 @@ import java.util.UUID;
 public class LoanController {
 
     private final PersonalLoans personalLoans;
+    private final LoanDischargeLetters dischargeLetters;
     private final AccessGuard accessGuard;
 
-    public LoanController(PersonalLoans personalLoans, AccessGuard accessGuard) {
+    public LoanController(PersonalLoans personalLoans, LoanDischargeLetters dischargeLetters, AccessGuard accessGuard) {
         this.personalLoans = personalLoans;
+        this.dischargeLetters = dischargeLetters;
         this.accessGuard = accessGuard;
     }
 
@@ -103,6 +109,18 @@ public class LoanController {
 
     /** @param downPayment entrada (opcional), debitada da conta na hora */
     public record RenegotiationRequest(Integer installments, Integer dueDay, BigDecimal downPayment) {
+    }
+
+    /** Carta de quitação em PDF: só de empréstimo (ou acordo) quitado. */
+    @GetMapping("/{loanId}/discharge-letter")
+    public ResponseEntity<byte[]> dischargeLetter(@PathVariable UUID accountId, @PathVariable UUID loanId) {
+        accessGuard.checkAccount(accountId);
+        LoanDischargeLetters.Document document = dischargeLetters.pdf(accountId, loanId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(document.fileName()).build().toString())
+                .body(document.content());
     }
 
     /** Arrependimento (CDC, art. 49): em até 7 dias, devolve o que recebeu, sem juros nem IOF. */

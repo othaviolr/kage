@@ -22537,6 +22537,105 @@
               }
             }
           ]
+        },
+        {
+          "name": "26.28 Carta de quitação do empréstimo quitado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/{{lnLoan2Id}}/discharge-letter",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "{{lnLoan2Id}}",
+                "discharge-letter"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('PDF', () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf'); pm.expect(pm.response.text().substring(0, 5)).to.eql('%PDF-'); });",
+                  "pm.test('Arquivo com a data da quitação', () => pm.expect(pm.response.headers.get('Content-Disposition')).to.match(/carta-de-quitacao-kage-[0-9]{4}-[0-9]{2}-[0-9]{2}[.]pdf/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.29 Carta de empréstimo cancelado -> 422",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/{{lnLoanId}}/discharge-letter",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "{{lnLoanId}}",
+                "discharge-letter"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Não houve dívida', () => pm.expect(pm.response.text()).to.include('não houve dívida'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.30 Carta de empréstimo inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/{{$guid}}/discharge-letter",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "{{$guid}}",
+                "discharge-letter"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
