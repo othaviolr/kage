@@ -4,7 +4,10 @@ import com.kage.shared.domain.DomainTime;
 import com.kage.card.application.usecase.*;
 import com.kage.auth.infrastructure.security.AccessGuard;
 import com.kage.shared.domain.exception.ValidationException;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,6 +38,7 @@ public class CardController {
     private final VirtualCards virtualCards;
     private final CardPlastics cardPlastics;
     private final AuthorizePurchase authorizePurchase;
+    private final InvoiceDocuments invoiceDocuments;
 
     /**
      * Emissão é do ADMIN: o limite de crédito é decisão da análise de crédito do banco, não do cliente.
@@ -47,7 +51,9 @@ public class CardController {
                           CloseInvoice closeInvoice, CancelCard cancelCard, AccessGuard accessGuard,
                           PayInvoice payInvoice, SetAutoDebit setAutoDebit, FinanceInvoice financeInvoice,
                           AnticipateInstallments anticipateInstallments, DisputePurchase disputePurchase,
-                          VirtualCards virtualCards, CardPlastics cardPlastics, AuthorizePurchase authorizePurchase) {
+                          VirtualCards virtualCards, CardPlastics cardPlastics, AuthorizePurchase authorizePurchase,
+                          InvoiceDocuments invoiceDocuments) {
+        this.invoiceDocuments = invoiceDocuments;
         this.authorizePurchase = authorizePurchase;
         this.virtualCards = virtualCards;
         this.cardPlastics = cardPlastics;
@@ -276,6 +282,18 @@ public class CardController {
     public ResponseEntity<GetInvoice.Output> getInvoice(@PathVariable UUID id, @PathVariable String referenceMonth) {
         accessGuard.checkCard(id);
         return ResponseEntity.ok(getInvoice.execute(new GetInvoice.Input(id, referenceMonth)));
+    }
+
+    /** Fatura fechada em PDF: lançamentos, total, mínimo, vencimento, limite e as taxas de juros. */
+    @GetMapping("/{id}/invoices/{referenceMonth}/pdf")
+    public ResponseEntity<byte[]> invoicePdf(@PathVariable UUID id, @PathVariable String referenceMonth) {
+        accessGuard.checkCard(id);
+        InvoiceDocuments.Document document = invoiceDocuments.pdf(id, referenceMonth);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(document.fileName()).build().toString())
+                .body(document.content());
     }
 
     /** Liga/desliga o pagamento automático da fatura no vencimento, com o saldo da conta vinculada. */

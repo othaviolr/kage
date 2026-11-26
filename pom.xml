@@ -168,6 +168,13 @@
             <version>1.21.4</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- fatura em PDF (Apache 2.0, Java puro, sem dependência nativa) -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.3</version>
+        </dependency>
     </dependencies>
 
     <build>

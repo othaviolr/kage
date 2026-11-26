@@ -18,7 +18,10 @@ import com.kage.card.domain.service.CardAccountValidationService;
 import com.kage.card.domain.service.CardCustomerValidationService;
 import com.kage.card.infrastructure.persistence.*;
 import com.kage.customer.domain.repository.CustomerRepository;
+import com.kage.customer.infrastructure.CardHolderDirectoryImpl;
 import com.kage.customer.infrastructure.CustomerValidationServiceImpl;
+import com.kage.card.domain.service.CardHolderDirectory;
+import com.kage.card.infrastructure.export.PdfInvoiceRenderer;
 import com.kage.card.infrastructure.messaging.CardEvents;
 import com.kage.card.infrastructure.messaging.OutboxCardEventPublisher;
 import com.kage.card.infrastructure.scheduling.BillingScheduler;
@@ -61,6 +64,20 @@ public class CardConfig {
                                CardAccountValidationService cardAccountValidationService,
                                CardPlastics cardPlastics) {
         return new IssueCard(cardRepository, cardCustomerValidationService, cardAccountValidationService, cardPlastics);
+    }
+
+    @Bean
+    public CardHolderDirectory cardHolderDirectory(CustomerRepository customerRepository) {
+        return new CardHolderDirectoryImpl(customerRepository);
+    }
+
+    @Bean
+    public InvoiceDocuments invoiceDocuments(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                                             CardPlasticRepository cardPlasticRepository,
+                                             VirtualCardRepository virtualCardRepository,
+                                             CardHolderDirectory cardHolderDirectory) {
+        return new InvoiceDocuments(cardRepository, invoiceRepository, cardPlasticRepository, virtualCardRepository,
+                cardHolderDirectory, new PdfInvoiceRenderer());
     }
 
     @Bean
