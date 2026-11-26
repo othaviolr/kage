@@ -30,12 +30,12 @@ public class OutboxAccountEventPublisher implements AccountEventPublisher {
     }
 
     @Override
-    public void publishLimitIncreaseRequested(UUID requestId, UUID accountId, String limitLabel, BigDecimal requestedAmount,
-                                              LocalDateTime effectiveAt) {
-        outbox.publish("account.exchange", "account.limit.increase.requested",
-                new LimitIncreaseRequestedEvent(requestId, accountId, limitLabel, requestedAmount, effectiveAt, DomainTime.instant()));
+    public void publishLimitIncreaseRequested(UUID requestId, UUID accountId, String limitType, String limitLabel,
+                                              BigDecimal requestedAmount, LocalDateTime effectiveAt) {
+        outbox.publish("account.exchange", "account.limit.increase.requested", new LimitIncreaseRequestedEvent(requestId,
+                accountId, limitType, limitLabel, requestedAmount, effectiveAt, DomainTime.instant()));
     }
 
-    public record LimitIncreaseRequestedEvent(UUID requestId, UUID accountId, String limitLabel, BigDecimal requestedAmount,
-                                              LocalDateTime effectiveAt, Instant occurredAt) {}
+    public record LimitIncreaseRequestedEvent(UUID requestId, UUID accountId, String limitType, String limitLabel,
+                                              BigDecimal requestedAmount, LocalDateTime effectiveAt, Instant occurredAt) {}
 }

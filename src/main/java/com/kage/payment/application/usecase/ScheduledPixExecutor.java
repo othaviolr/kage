@@ -62,7 +62,8 @@ public class ScheduledPixExecutor {
             }
 
             accountValidationService.validateBalanceAndLimits(transaction.getSourceAccountId(), transaction.getAmount(),
-                    () -> new PixLimitCalculator(pixTransactionRepository, clock).usageOf(transaction.getSourceAccountId()));
+                    nightStartHour -> new PixLimitCalculator(pixTransactionRepository, clock)
+                            .usageOf(transaction.getSourceAccountId(), nightStartHour));
 
             transaction.startProcessing(targetKey.getAccountId());
             PixTransaction saved = pixTransactionRepository.save(transaction);

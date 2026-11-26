@@ -11,7 +11,7 @@ import com.kage.shared.domain.valueobject.Money;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import java.util.function.Supplier;
+import java.util.function.IntFunction;
 
 public class AccountValidationServiceImpl implements AccountValidationService {
 
@@ -26,7 +26,7 @@ public class AccountValidationServiceImpl implements AccountValidationService {
     }
 
     @Override
-    public void validateBalanceAndLimits(UUID accountId, Money amount, Supplier<PixLimitUsage> usage) {
+    public void validateBalanceAndLimits(UUID accountId, Money amount, IntFunction<PixLimitUsage> usage) {
         // trava primeiro, soma depois: ver contrato em AccountValidationService
         Account account = accountRepository.findByIdForUpdate(accountId)
                 .orElseThrow(() -> new NotFoundException("Conta não encontrada"));
@@ -36,7 +36,7 @@ public class AccountValidationServiceImpl implements AccountValidationService {
             account = accountRepository.save(account);
         }
 
-        PixLimitUsage used = usage.get();
+        PixLimitUsage used = usage.apply(account.getLimits().pixNightStartHour());
         account.checkPixLimits(amount, used.sentToday(), used.sentTonight(), used.nightTime());
     }
 }

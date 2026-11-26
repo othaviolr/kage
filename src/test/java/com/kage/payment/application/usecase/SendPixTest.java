@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Supplier;
+import java.util.function.IntFunction;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -65,11 +65,16 @@ class SendPixTest {
         sendPix = sendPixAt(LocalDateTime.of(2026, 11, 25, 14, 0));
     }
 
-    @SuppressWarnings("unchecked")
     private PixLimitUsage capturedUsage() {
-        ArgumentCaptor<Supplier<PixLimitUsage>> usage = ArgumentCaptor.forClass(Supplier.class);
+        return capturedUsage(20);
+    }
+
+    /** O uso que a validação calcularia para uma conta com a janela noturna começando em {@code nightStartHour}. */
+    @SuppressWarnings("unchecked")
+    private PixLimitUsage capturedUsage(int nightStartHour) {
+        ArgumentCaptor<IntFunction<PixLimitUsage>> usage = ArgumentCaptor.forClass(IntFunction.class);
         verify(accountValidationService).validateBalanceAndLimits(eq(sourceAccountId), any(), usage.capture());
-        return usage.getValue().get();
+        return usage.getValue().apply(nightStartHour);
     }
 
     @Test
@@ -103,6 +108,33 @@ class SendPixTest {
         assertThat(usage.nightTime()).isTrue();
         assertThat(usage.sentToday()).isEqualTo(Money.of("100.00"));
         assertThat(usage.sentTonight()).isEqualTo(Money.of("400.00"));
+    }
+
+    @Test
+    void execute_janelaQueComecaAs22h_as21hAindaEDia_eDepoisSomaDesdeAs22h() {
+        SendPix nove = sendPixAt(LocalDateTime.of(2026, 11, 25, 21, 0));
+        when(pixKeyRepository.findByKeyValue("chave-destino")).thenReturn(Optional.of(targetKey));
+        when(pixTransactionRepository.save(any(PixTransaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        nove.execute(new SendPix.Input(sourceAccountId, "chave-destino", Money.of("10.00"), null));
+
+        assertThat(capturedUsage(20).nightTime()).isTrue();   // padrão: já é noite às 21h
+        assertThat(capturedUsage(22).nightTime()).isFalse();  // começando às 22h: ainda vale o limite diurno
+    }
+
+    @Test
+    void execute_janelaQueComecaAs22h_deMadrugadaSomaDesdeAs22hDeOntem() {
+        SendPix madrugada = sendPixAt(LocalDateTime.of(2026, 11, 25, 2, 30));
+        when(pixKeyRepository.findByKeyValue("chave-destino")).thenReturn(Optional.of(targetKey));
+        when(pixTransactionRepository.save(any(PixTransaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(pixTransactionRepository.sumAmountSentSince(sourceAccountId, LocalDateTime.of(2026, 11, 25, 0, 0)))
+                .thenReturn(Money.of("50.00"));
+        when(pixTransactionRepository.sumAmountSentSince(sourceAccountId, LocalDateTime.of(2026, 11, 24, 22, 0)))
+                .thenReturn(Money.of("150.00"));
+
+        madrugada.execute(new SendPix.Input(sourceAccountId, "chave-destino", Money.of("10.00"), null));
+
+        assertThat(capturedUsage(22).sentTonight()).isEqualTo(Money.of("150.00"));
     }
 
     @Test

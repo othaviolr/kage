@@ -137,10 +137,16 @@ public final class NotificationTemplates {
                         + " Se não foi você, fale com o atendimento agora.");
     }
 
-    public static Text limitIncreaseRequested(String limitLabel, BigDecimal requestedAmount, java.time.LocalDateTime effectiveAt) {
+    public static Text limitIncreaseRequested(String limitType, String limitLabel, BigDecimal requestedAmount,
+                                              java.time.LocalDateTime effectiveAt) {
+        String when = effectiveAt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm"));
+        if ("PIX_NIGHT_START".equals(limitType)) {
+            return new Text("Pedido para mudar a janela noturna do PIX", "Recebemos o pedido para a janela noturna do PIX"
+                    + " começar às " + requestedAmount.intValue() + "h. Por segurança, isso passa a valer em " + when
+                    + ". Se não foi você, cancele o pedido no app e troque a senha.");
+        }
         return new Text("Pedido de aumento de limite", "Recebemos o pedido para aumentar o seu " + limitLabel + " para "
-                + money(requestedAmount) + ". Por segurança, ele passa a valer em "
-                + effectiveAt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm"))
+                + money(requestedAmount) + ". Por segurança, ele passa a valer em " + when
                 + ". Se não foi você, cancele o pedido no app e troque a senha.");
     }
 

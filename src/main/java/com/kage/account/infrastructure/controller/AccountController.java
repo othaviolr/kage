@@ -137,7 +137,7 @@ public class AccountController {
         accessGuard.checkAccount(id);
         return ResponseEntity.ok(limitChanges.change(new LimitChanges.Input(id, request.pixDailyLimit(),
                 request.pixNightLimit(), request.dailyWithdrawalLimit(), request.dailyTransferLimit(),
-                request.monthlyTransferLimit())));
+                request.monthlyTransferLimit(), request.pixNightStartHour())));
     }
 
     /** Desiste de um aumento antes de ele valer. */
@@ -147,7 +147,9 @@ public class AccountController {
         return ResponseEntity.ok(limitChanges.cancel(id, requestId));
     }
 
+    /** @param pixNightStartHour hora em que a janela noturna do PIX começa (20 a 22) */
     public record LimitsRequest(BigDecimal dailyTransferLimit, BigDecimal monthlyTransferLimit,
-                                BigDecimal pixDailyLimit, BigDecimal pixNightLimit, BigDecimal dailyWithdrawalLimit) {
+                                BigDecimal pixDailyLimit, BigDecimal pixNightLimit, BigDecimal dailyWithdrawalLimit,
+                                Integer pixNightStartHour) {
     }
 }

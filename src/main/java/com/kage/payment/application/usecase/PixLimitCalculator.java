@@ -9,7 +9,10 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/** Quanto do limite de PIX a conta já consumiu agora (dia e janela noturna). Usado pelo envio imediato e pelo agendado. */
+/**
+ * Quanto do limite de PIX a conta já consumiu agora (dia e janela noturna da conta). Usado pelo envio
+ * imediato e pelo agendado.
+ */
 class PixLimitCalculator {
 
     private final PixTransactionRepository pixTransactionRepository;
@@ -20,13 +23,14 @@ class PixLimitCalculator {
         this.clock = clock;
     }
 
-    PixLimitUsage usageOf(UUID sourceAccountId) {
+    /** @param nightStartHour início da janela noturna escolhido pelo cliente (20h a 22h) */
+    PixLimitUsage usageOf(UUID sourceAccountId, int nightStartHour) {
         LocalDateTime now = LocalDateTime.now(clock);
         Money sentToday = pixTransactionRepository.sumAmountSentSince(sourceAccountId, now.toLocalDate().atStartOfDay());
 
-        boolean night = PixNightWindow.isNight(now);
+        boolean night = PixNightWindow.isNight(now, nightStartHour);
         Money sentTonight = night
-                ? pixTransactionRepository.sumAmountSentSince(sourceAccountId, PixNightWindow.startOfCurrentNight(now))
+                ? pixTransactionRepository.sumAmountSentSince(sourceAccountId, PixNightWindow.startOfCurrentNight(now, nightStartHour))
                 : Money.ZERO;
 
         return new PixLimitUsage(sentToday, sentTonight, night);

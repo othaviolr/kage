@@ -53,6 +53,12 @@ public class AccountJpaEntity {
     @Column(name = "daily_withdrawal_limit", nullable = false)
     private BigDecimal dailyWithdrawalLimit;
 
+    @Column(name = "pix_night_start_hour", nullable = false)
+    private int pixNightStartHour = 20;
+
+    public int getPixNightStartHour() { return pixNightStartHour; }
+    public void setPixNightStartHour(int pixNightStartHour) { this.pixNightStartHour = pixNightStartHour; }
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AccountStatus status;

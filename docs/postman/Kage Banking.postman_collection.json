@@ -15811,6 +15811,98 @@
               }
             }
           ]
+        },
+        {
+          "name": "17.13 Começar a janela noturna às 22h: vira pedido de 24h",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lmAccountId}}/limits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lmAccountId}}",
+                "limits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pixNightStartHour\": 22\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Ainda começa às 20h', () => pm.expect(j.pixNightStartHour).to.eql(20));",
+                  "pm.test('Pedido pendente para as 22h', () => { const p = j.pending.find(x => x.type === 'PIX_NIGHT_START'); pm.expect(p.requestedAmount).to.eql(22); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.14 Janela noturna às 23h -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lmAccountId}}/limits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lmAccountId}}",
+                "limits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pixNightStartHour\": 23\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Das 20h às 22h', () => pm.expect(pm.response.json().message).to.include('das 20h às 22h'));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
