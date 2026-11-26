@@ -2,11 +2,15 @@ package com.kage.account.infrastructure.controller;
 
 import com.kage.account.application.usecase.*;
 import com.kage.auth.infrastructure.security.AccessGuard;
+import com.kage.account.infrastructure.export.StatementCsv;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -64,6 +68,23 @@ public class AccountController {
                                                          @RequestParam(required = false) LocalDate to) {
         accessGuard.checkAccount(id);
         return ResponseEntity.ok(getStatement.execute(new GetStatement.Input(id, from, to)));
+    }
+
+    /**
+     * Extrato em CSV (até 1 ano), para abrir no Excel em português: ';', vírgula decimal, BOM UTF-8,
+     * saldo anterior e final. Sem datas, os últimos 30 dias.
+     */
+    @GetMapping("/{id}/statement.csv")
+    public ResponseEntity<byte[]> statementCsv(@PathVariable UUID id,
+                                               @RequestParam(required = false) LocalDate from,
+                                               @RequestParam(required = false) LocalDate to) {
+        accessGuard.checkAccount(id);
+        GetStatement.Output statement = getStatement.forExport(new GetStatement.Input(id, from, to));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, StatementCsv.CONTENT_TYPE)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(StatementCsv.fileName(statement)).build().toString())
+                .body(StatementCsv.write(statement).getBytes(StandardCharsets.UTF_8));
     }
 
     @PostMapping("/{id}/deposit")

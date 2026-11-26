@@ -71,6 +71,39 @@ class GetStatementTest {
                 .usingElementComparator(java.math.BigDecimal::compareTo)
                 .containsExactly(new java.math.BigDecimal("-30.00"), new java.math.BigDecimal("100.00"));
         assertThat(output.entries().get(0).referenceId()).isEqualTo(pixId);
+        assertThat(output.entries().get(0).description()).isEqualTo("PIX enviado");
+        // conta sem movimento antes do período: começa do zero e termina no saldo do último lançamento
+        assertThat(output.openingBalance()).isEqualByComparingTo("0.00");
+        assertThat(output.closingBalance()).isEqualByComparingTo("70.00");
+    }
+
+    @Test
+    void execute_saldoInicial_eODoUltimoLancamentoAntesDoPeriodo() {
+        when(accountRepository.findById(account.getId())).thenReturn(Optional.of(account));
+        LocalDate from = TODAY.minusDays(5);
+        when(entryRepository.balanceBefore(account.getId(), from.atStartOfDay())).thenReturn(Optional.of(Money.of("250.00")));
+        when(entryRepository.findByAccountIdBetween(account.getId(), from.atStartOfDay(), TODAY.plusDays(1).atStartOfDay()))
+                .thenReturn(List.of());
+
+        GetStatement.Output output = getStatement.execute(new GetStatement.Input(account.getId(), from, TODAY));
+
+        assertThat(output.openingBalance()).isEqualByComparingTo("250.00");
+        assertThat(output.closingBalance()).isEqualByComparingTo("250.00"); // sem movimento no período
+    }
+
+    @Test
+    void exportar_aceitaUmAnoInteiro_masNaoMais() {
+        when(accountRepository.findById(account.getId())).thenReturn(Optional.of(account));
+        LocalDate from = LocalDate.of(2026, 1, 1);
+        LocalDate to = LocalDate.of(2026, 12, 31);
+        when(entryRepository.findByAccountIdBetween(account.getId(), from.atStartOfDay(), to.plusDays(1).atStartOfDay()))
+                .thenReturn(List.of());
+
+        assertThat(getStatement.forExport(new GetStatement.Input(account.getId(), from, to)).entries()).isEmpty();
+        assertThatThrownBy(() -> getStatement.forExport(new GetStatement.Input(account.getId(), from, to.plusDays(2))))
+                .isInstanceOf(ValidationException.class).hasMessageContaining("366 dias");
+        assertThatThrownBy(() -> getStatement.execute(new GetStatement.Input(account.getId(), from, to)))
+                .hasMessageContaining("90 dias"); // na tela continua 90
     }
 
     @Test
