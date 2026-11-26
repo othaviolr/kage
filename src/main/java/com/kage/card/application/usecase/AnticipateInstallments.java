@@ -1,5 +1,6 @@
 package com.kage.card.application.usecase;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.card.domain.entity.Card;
 import com.kage.card.domain.entity.Invoice;
 import com.kage.card.domain.enums.InvoiceItemKind;
@@ -16,7 +17,6 @@ import com.kage.shared.domain.valueobject.Money;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -109,7 +109,7 @@ public class AnticipateInstallments {
                 : output.fromNumber() + " a " + output.toNumber() + "/" + context.installmentCount();
         context.current().addAnticipation(InvoiceItem.anticipation(planId, output.fromNumber(),
                 "Antecipação: " + context.description() + " (" + numbers + ")", Money.of(output.amount()),
-                LocalDateTime.now()));
+                DomainTime.now()));
         invoiceRepository.save(context.current());
 
         card.discountFinancedInterest(Money.of(output.discount()));

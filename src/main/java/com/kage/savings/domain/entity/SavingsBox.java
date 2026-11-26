@@ -1,5 +1,6 @@
 package com.kage.savings.domain.entity;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.savings.domain.service.SavingsTaxPolicy;
 import com.kage.savings.domain.valueobject.CdiSchedule;
 import com.kage.shared.domain.exception.BusinessRuleException;
@@ -75,7 +76,7 @@ public class SavingsBox {
         if (name == null || name.isBlank()) throw new ValidationException("Dê um nome para a caixinha");
         if (name.strip().length() > MAX_NAME_LENGTH) throw new ValidationException("Nome com no máximo " + MAX_NAME_LENGTH + " caracteres");
         if (goalAmount != null && goalAmount.isZero()) throw new ValidationException("Meta deve ser maior que zero");
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DomainTime.now();
         return new SavingsBox(UUID.randomUUID(), customerId, accountId, name.strip(), goalAmount, List.of(),
                 Money.ZERO, Status.ACTIVE, today, null, now, now, null, null);
     }
@@ -93,7 +94,7 @@ public class SavingsBox {
         requireActive();
         requirePositive(amount);
         lots.add(SavingsLot.open(amount.amount(), today));
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
         return checkGoal();
     }
 
@@ -112,7 +113,7 @@ public class SavingsBox {
         Withdrawal withdrawal = previewWithdrawal(gross, today);
         plan(gross.amount(), today, true);
         lots.removeIf(SavingsLot::isEmpty);
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
         return withdrawal;
     }
 
@@ -159,7 +160,7 @@ public class SavingsBox {
         this.lastYieldDate = upTo;
         if (credited.signum() > 0) {
             this.totalYield = this.totalYield.add(Money.of(credited));
-            this.updatedAt = LocalDateTime.now();
+            this.updatedAt = DomainTime.now();
         }
         checkGoal();
         return Money.of(credited);
@@ -170,13 +171,13 @@ public class SavingsBox {
         requireActive();
         if (!getBalance().isZero()) throw new BusinessRuleException("Resgate o saldo antes de encerrar a caixinha");
         this.status = Status.CLOSED;
-        this.closedAt = LocalDateTime.now();
+        this.closedAt = DomainTime.now();
         this.updatedAt = this.closedAt;
     }
 
     private boolean checkGoal() {
         if (goalAmount == null || goalReachedAt != null || getBalance().isLessThan(goalAmount)) return false;
-        this.goalReachedAt = LocalDateTime.now();
+        this.goalReachedAt = DomainTime.now();
         return true;
     }
 

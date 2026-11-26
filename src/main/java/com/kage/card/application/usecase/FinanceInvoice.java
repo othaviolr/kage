@@ -1,5 +1,6 @@
 package com.kage.card.application.usecase;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.card.domain.entity.Card;
 import com.kage.card.domain.entity.Invoice;
 import com.kage.card.domain.enums.InvoiceStatus;
@@ -12,7 +13,6 @@ import com.kage.shared.domain.valueobject.Money;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -81,7 +81,7 @@ public class FinanceInvoice {
         Money principal = invoice.remaining();
         InstallmentPolicy.Quote quote = cappedQuote(card, principal, installments);
 
-        invoice.finance(LocalDateTime.now());
+        invoice.finance(DomainTime.now());
         Money interestApplied = card.applyRevolvingCharges(principal, quote.interest());
         if (interestApplied.isLessThan(quote.interest())) {
             quote = InstallmentPolicy.capInterest(quote, interestApplied); // corrida com outra virada: respeita o teto
@@ -94,7 +94,7 @@ public class FinanceInvoice {
                     ? firstInvoiceInMemory
                     : openInvoiceFrom(card, month);
             target.addInvoiceInstallment(invoice.getId(), "Parcelamento da fatura de " + source + " (" + number + "/" + installments + ")",
-                    quote.amounts().get(number - 1), LocalDateTime.now(), number, installments);
+                    quote.amounts().get(number - 1), DomainTime.now(), number, installments);
             if (target != firstInvoiceInMemory) invoiceRepository.save(target);
             month = target.getReferenceMonth().plusMonths(1);
         }

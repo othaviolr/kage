@@ -1,5 +1,6 @@
 package com.kage.card.application.usecase;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.card.domain.entity.Card;
 import com.kage.card.domain.entity.Invoice;
 import com.kage.card.domain.enums.InvoiceStatus;
@@ -66,7 +67,7 @@ public class PayInvoice {
             invoice.pay();
         } else {
             amount = Money.of(input.amount());
-            invoice.registerPayment(amount, LocalDateTime.now());
+            invoice.registerPayment(amount, DomainTime.now());
         }
 
         if (!amount.isZero()) {

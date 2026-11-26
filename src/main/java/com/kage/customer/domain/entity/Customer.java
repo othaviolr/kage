@@ -1,5 +1,6 @@
 package com.kage.customer.domain.entity;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.customer.domain.enums.CustomerStatus;
 import com.kage.customer.domain.enums.KycStatus;
 import com.kage.customer.domain.valueobject.Address;
@@ -25,8 +26,8 @@ public class Customer {
         this.address = address;
         this.kycStatus = KycStatus.PENDING;
         this.status = CustomerStatus.INACTIVE;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        this.createdAt = DomainTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     private Customer(UUID id, PersonalInfo personalInfo, Address address,
@@ -60,7 +61,7 @@ public class Customer {
         if (this.status != CustomerStatus.BLOCKED) {
             this.status = CustomerStatus.ACTIVE;
         }
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public void rejectKyc() {
@@ -68,7 +69,7 @@ public class Customer {
             throw new DomainException("Não é possível rejeitar um KYC já aprovado");
         }
         this.kycStatus = KycStatus.REJECTED;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public void block() {
@@ -76,7 +77,7 @@ public class Customer {
             throw new DomainException("Cliente já está bloqueado");
         }
         this.status = CustomerStatus.BLOCKED;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public void unblock() {
@@ -85,19 +86,19 @@ public class Customer {
         }
         // desbloquear não pode "aprovar" o cliente: sem KYC aprovado ele volta a INACTIVE
         this.status = isKycApproved() ? CustomerStatus.ACTIVE : CustomerStatus.INACTIVE;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public void updateAddress(Address newAddress) {
         if (newAddress == null) throw new DomainException("Endereço não pode ser nulo");
         this.address = newAddress;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public void updatePersonalInfo(PersonalInfo newInfo) {
         if (newInfo == null) throw new DomainException("Informações pessoais não podem ser nulas");
         this.personalInfo = newInfo;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public boolean isActive() {

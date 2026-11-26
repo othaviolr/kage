@@ -1,5 +1,6 @@
 package com.kage.account.domain.entity;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.account.domain.enums.EntryType;
 import com.kage.shared.domain.exception.ValidationException;
 import com.kage.shared.domain.valueobject.Money;
@@ -29,6 +30,6 @@ public record AccountEntry(UUID id, UUID accountId, EntryType type, Money amount
     /** Registra a movimentação que acabou de ser aplicada na conta (o saldo já é o pós-operação). */
     public static AccountEntry of(Account account, EntryType type, Money amount, UUID referenceId) {
         return new AccountEntry(UUID.randomUUID(), account.getId(), type, amount, account.getBalance(),
-                referenceId, LocalDateTime.now());
+                referenceId, DomainTime.now());
     }
 }

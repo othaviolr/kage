@@ -1,5 +1,6 @@
 package com.kage.payment.infrastructure.messaging;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.payment.application.usecase.PixEventPublisher;
 import com.kage.payment.application.usecase.SendPix;
 import com.kage.payment.domain.entity.PixAutomaticAuthorization;
@@ -37,14 +38,14 @@ public class OutboxPixEventPublisher implements PixEventPublisher {
     public void publishScheduledPixFailed(PixTransaction transaction, String reason) {
         outbox.publish("pix.exchange", "pix.scheduled.failed", new ScheduledPixFailedEvent(transaction.getTransactionId(),
                 transaction.getSourceAccountId(), transaction.getAmount().amount(),
-                transaction.getScheduledDate().toLocalDate(), reason, java.time.Instant.now()));
+                transaction.getScheduledDate().toLocalDate(), reason, DomainTime.instant()));
     }
 
     @Override
     public void publishPixAutomaticRequested(PixAutomaticAuthorization a) {
         outbox.publish("pix.exchange", "pix.automatic.requested", new PixAutomaticRequestedEvent(a.getId(),
                 a.getPayerAccountId(), a.getReceiverName(), a.getDescription(), a.getFrequency().name(),
-                a.getFixedAmount() == null ? null : a.getFixedAmount().amount(), a.getStartDate(), java.time.Instant.now()));
+                a.getFixedAmount() == null ? null : a.getFixedAmount().amount(), a.getStartDate(), DomainTime.instant()));
     }
 
     @Override
@@ -52,7 +53,7 @@ public class OutboxPixEventPublisher implements PixEventPublisher {
                                                    java.time.LocalDate scheduledDate) {
         outbox.publish("pix.exchange", "pix.automatic.charge.scheduled", new PixAutomaticChargeScheduledEvent(c.id(),
                 a.getId(), a.getPayerAccountId(), a.getReceiverName(), a.getDescription(), c.amount().amount(), scheduledDate,
-                attempt, java.time.Instant.now()));
+                attempt, DomainTime.instant()));
     }
 
     public record PixAutomaticRequestedEvent(java.util.UUID authorizationId, java.util.UUID payerAccountId,

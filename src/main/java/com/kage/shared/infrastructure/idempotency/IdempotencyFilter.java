@@ -1,5 +1,6 @@
 package com.kage.shared.infrastructure.idempotency;
 
+import com.kage.shared.domain.DomainTime;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -158,7 +159,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.getWriter().write("{\"status\":" + status.value() + ",\"error\":\"" + status.getReasonPhrase()
                 + "\",\"message\":\"" + message.replace("\"", "\\\"") + "\",\"path\":\"" + request.getRequestURI()
-                + "\",\"timestamp\":\"" + LocalDateTime.now() + "\",\"fieldErrors\":[]}");
+                + "\",\"timestamp\":\"" + DomainTime.now() + "\",\"fieldErrors\":[]}");
     }
 
     private static String sha256(byte[] body) {

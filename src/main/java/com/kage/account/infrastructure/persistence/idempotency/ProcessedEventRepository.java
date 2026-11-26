@@ -1,11 +1,11 @@
 package com.kage.account.infrastructure.persistence.idempotency;
 
+import com.kage.shared.domain.DomainTime;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.UUID;
 
 @Repository
@@ -26,7 +26,7 @@ public class ProcessedEventRepository {
         try {
             jdbcTemplate.update(
                     "INSERT INTO account_processed_events (event_id, processed_at) VALUES (?, ?)",
-                    eventId, Timestamp.from(Instant.now())
+                    eventId, Timestamp.from(DomainTime.instant())
             );
             return true;
         } catch (DataIntegrityViolationException e) {

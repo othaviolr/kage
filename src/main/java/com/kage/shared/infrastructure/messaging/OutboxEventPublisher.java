@@ -1,5 +1,6 @@
 package com.kage.shared.infrastructure.messaging;
 
+import com.kage.shared.domain.DomainTime;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -9,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -39,7 +39,7 @@ public class OutboxEventPublisher {
         jdbcTemplate.update(
                 "INSERT INTO outbox_events (id, exchange, routing_key, payload, created_at) VALUES (?, ?, ?, ?, ?)",
                 UUID.randomUUID(), exchange, routingKey, new String(body, StandardCharsets.UTF_8),
-                Timestamp.from(Instant.now())
+                Timestamp.from(DomainTime.instant())
         );
     }
 }

@@ -1,5 +1,6 @@
 package com.kage.auth.infrastructure.security;
 
+import com.kage.shared.domain.DomainTime;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -11,7 +12,6 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
 
 /**
  * 401/403 barrados pelo filtro de segurança, antes de chegar a um controller (e portanto ao
@@ -41,7 +41,7 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
                 + ",\"error\":\"" + json(status.getReasonPhrase())
                 + "\",\"message\":\"" + json(message)
                 + "\",\"path\":\"" + json(request.getRequestURI())
-                + "\",\"timestamp\":\"" + LocalDateTime.now()
+                + "\",\"timestamp\":\"" + DomainTime.now()
                 + "\",\"fieldErrors\":[]}");
     }
 

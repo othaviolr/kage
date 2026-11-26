@@ -1,5 +1,6 @@
 package com.kage.shared.infrastructure.messaging;
 
+import com.kage.shared.domain.DomainTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
@@ -12,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -63,7 +63,7 @@ public class OutboxRelay {
             try {
                 rabbitTemplate.send(row.exchange(), row.routingKey(), toMessage(row));
                 jdbcTemplate.update("UPDATE outbox_events SET published_at = ? WHERE id = ?",
-                        Timestamp.from(Instant.now()), row.id());
+                        Timestamp.from(DomainTime.instant()), row.id());
             } catch (Exception e) {
                 // para no primeiro erro para não furar a ordem; o resto do lote sai na próxima rodada
                 logger.warn("Falha ao publicar evento do outbox (id={}), tentando novamente na próxima execução", row.id(), e);

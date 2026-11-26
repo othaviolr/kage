@@ -1,5 +1,6 @@
 package com.kage.card.infrastructure.controller;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.card.application.usecase.*;
 import com.kage.auth.infrastructure.security.AccessGuard;
 import com.kage.shared.domain.exception.ValidationException;
@@ -90,7 +91,7 @@ public class CardController {
     @PostMapping("/{id}/purchases")
     public ResponseEntity<RegisterPurchase.Output> registerPurchase(@PathVariable UUID id,
                                                                      @RequestBody PurchaseRequest request) {
-        LocalDateTime purchasedAt = request.purchasedAt() != null ? request.purchasedAt() : LocalDateTime.now();
+        LocalDateTime purchasedAt = request.purchasedAt() != null ? request.purchasedAt() : DomainTime.now();
         RegisterPurchase.Output output = registerPurchase.execute(new RegisterPurchase.Input(
                 id, request.purchaseId(), request.description(), request.amount(), purchasedAt, request.installments()));
         return ResponseEntity.status(HttpStatus.CREATED).body(output);

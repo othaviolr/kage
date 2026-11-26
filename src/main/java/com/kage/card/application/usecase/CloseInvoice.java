@@ -1,5 +1,6 @@
 package com.kage.card.application.usecase;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.card.domain.entity.Card;
 import com.kage.card.domain.entity.Invoice;
 import com.kage.card.domain.enums.InvoiceItemKind;
@@ -87,7 +88,7 @@ public class CloseInvoice {
     }
 
     private void rollInto(Invoice previous, Invoice target, Card card) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DomainTime.now();
         Money paid = previous.getPaidAmount();
         Money minimum = previous.minimumPayment();
         Money carried = previous.rollOver(now);

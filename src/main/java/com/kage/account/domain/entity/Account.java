@@ -1,5 +1,6 @@
 package com.kage.account.domain.entity;
 
+import com.kage.shared.domain.DomainTime;
 import com.kage.account.domain.enums.AccountStatus;
 import com.kage.account.domain.enums.AccountType;
 import com.kage.account.domain.valueobject.Limits;
@@ -50,7 +51,7 @@ public class Account {
     public static Account create(UUID customerId, AccountType type, String accountNumber, String accountDigit) {
         return new Account(UUID.randomUUID(), customerId, accountNumber, accountDigit, "0001", type,
                 Money.ZERO, Money.ZERO, Limits.defaultLimits(), AccountStatus.ACTIVE,
-                LocalDateTime.now(), null, LocalDateTime.now(), null);
+                DomainTime.now(), null, DomainTime.now(), null);
     }
 
     public static Account reconstitute(UUID id, UUID customerId, String accountNumber, String accountDigit,
@@ -65,7 +66,7 @@ public class Account {
         if (this.status != AccountStatus.ACTIVE) throw new BusinessRuleException("Não é possível creditar em uma conta que não está ativa");
         this.balance = this.balance.add(amount);
         this.availableBalance = this.availableBalance.add(amount);
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     /**
@@ -78,7 +79,7 @@ public class Account {
         if (amount.isGreaterThan(this.availableBalance)) throw new BusinessRuleException("Saldo disponível insuficiente");
         this.balance = this.balance.subtract(amount);
         this.availableBalance = this.availableBalance.subtract(amount);
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     /**
@@ -93,7 +94,7 @@ public class Account {
         }
         this.balance = this.balance.subtract(amount);
         this.availableBalance = this.availableBalance.subtract(amount);
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     /**
@@ -124,27 +125,27 @@ public class Account {
         if (this.status == AccountStatus.CLOSED) throw new BusinessRuleException("Conta já está encerrada");
         if (this.status == AccountStatus.BLOCKED) throw new BusinessRuleException("Conta já está bloqueada");
         this.status = AccountStatus.BLOCKED;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public void unblock() {
         if (this.status != AccountStatus.BLOCKED) throw new BusinessRuleException("Conta não está bloqueada");
         this.status = AccountStatus.ACTIVE;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public void close() {
         if (this.status == AccountStatus.CLOSED) throw new BusinessRuleException("Conta já está encerrada");
         if (!this.balance.isZero()) throw new BusinessRuleException("Não é possível encerrar uma conta com saldo");
         this.status = AccountStatus.CLOSED;
-        this.closedAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        this.closedAt = DomainTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public void updateLimits(Limits newLimits) {
         if (this.status != AccountStatus.ACTIVE) throw new BusinessRuleException("Somente contas ativas podem ter limites alterados");
         this.limits = newLimits;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     /**
@@ -153,7 +154,7 @@ public class Account {
      */
     public void applyScheduledLimits(Limits newLimits) {
         this.limits = newLimits;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DomainTime.now();
     }
 
     public UUID getId() { return id; }
