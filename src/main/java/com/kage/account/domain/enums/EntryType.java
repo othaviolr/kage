@@ -15,7 +15,13 @@ public enum EntryType {
     /** Pagou um boleto. */
     BOLETO_PAYMENT(false, "Pagamento de boleto"),
     /** Recebeu o pagamento de um boleto que emitiu. */
-    BOLETO_RECEIVED(true, "Boleto recebido");
+    BOLETO_RECEIVED(true, "Boleto recebido"),
+    /** Empréstimo pessoal liberado na conta. */
+    LOAN_DISBURSEMENT(true, "Empréstimo pessoal"),
+    /** Parcela (ou quitação) do empréstimo. */
+    LOAN_PAYMENT(false, "Parcela do empréstimo"),
+    /** Arrependimento: devolveu o empréstimo em até 7 dias. */
+    LOAN_RETURN(false, "Devolução do empréstimo (arrependimento)");
 
     private final boolean credit;
     private final String label;

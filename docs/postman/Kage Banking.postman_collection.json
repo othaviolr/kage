@@ -21350,10 +21350,820 @@
       ]
     },
     {
-      "name": "26. Estorno de juros na contestação",
+      "name": "26. Empréstimo pessoal",
       "item": [
         {
           "name": "26.1.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Empréstimo\",\n  \"cpf\": \"{{lnCpf}}\",\n  \"email\": \"{{lnEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('lnCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('lnEmail', `kage.ln+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('lnCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.1.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{lnCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{lnCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.1.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{lnCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('lnAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.1.4 Depositar 6000 (renda estimada: 2000/mês)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 6000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.2 Oferta pela movimentação da conta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/offer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "offer"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const o = pm.response.json();",
+                  "pm.test('Renda 2000, parcela de até 600 (30%)', () => { pm.expect(o.monthlyIncome).to.eql(2000); pm.expect(o.maxInstallment).to.eql(600); });",
+                  "pm.test('Valor máximo em 24x', () => { pm.expect(o.maxAmount).to.be.above(0); pm.expect(o.maxInstallments).to.eql(24); });",
+                  "pm.test('Sem empréstimo ativo', () => pm.expect(o.hasActiveLoan).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.3 Simular 5000 em 12x, vencimento dia 10",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/simulation?amount=5000&installments=12&dueDay=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "simulation"
+              ],
+              "query": [
+                {
+                  "key": "amount",
+                  "value": "5000"
+                },
+                {
+                  "key": "installments",
+                  "value": "12"
+                },
+                {
+                  "key": "dueDay",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json();",
+                  "pm.test('IOF financiado: recebe 5000, financia 5000 + IOF', () => { pm.expect(s.released).to.eql(5000); pm.expect(s.iof).to.be.above(0); pm.expect(s.financed).to.eql(Math.round((s.released + s.iof) * 100) / 100); });",
+                  "pm.test('CET acima dos 3,99% a.m. de juros', () => pm.expect(s.cetMonthly).to.be.above(0.0399));",
+                  "pm.test('Parcela cabe nos 30%', () => pm.expect(s.installmentAmount).to.be.at.most(600));",
+                  "pm.test('12 parcelas', () => pm.expect(s.schedule).to.have.length(12));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.4 Parcela acima de 30% da renda -> 422",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/simulation?amount=10000&installments=12",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "simulation"
+              ],
+              "query": [
+                {
+                  "key": "amount",
+                  "value": "10000"
+                },
+                {
+                  "key": "installments",
+                  "value": "12"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.5 Valor abaixo do mínimo -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/simulation?amount=100&installments=12",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "simulation"
+              ],
+              "query": [
+                {
+                  "key": "amount",
+                  "value": "100"
+                },
+                {
+                  "key": "installments",
+                  "value": "12"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.6 Contratar 5000 em 12x",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5000,\n  \"installments\": 12,\n  \"dueDay\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const l = pm.response.json();",
+                  "pm.collectionVariables.set('lnLoanId', l.loanId);",
+                  "pm.test('Ativo, 12 parcelas', () => { pm.expect(l.status).to.eql('ACTIVE'); pm.expect(l.installments).to.have.length(12); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.7 O dinheiro caiu na conta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Saldo 11000', () => pm.expect(pm.response.json().balance).to.eql(11000));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.8 Outro empréstimo com um ativo -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000,\n  \"installments\": 6\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.9 Arrependimento (até 7 dias): devolve só o que recebeu",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/{{lnLoanId}}/withdrawal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "{{lnLoanId}}",
+                "withdrawal"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test('Cancelado, devolveu 5000 (sem juros nem IOF)', () => { pm.expect(p.status).to.eql('CANCELLED'); pm.expect(p.amount).to.eql(5000); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.10 Saldo de volta a 6000",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Saldo 6000', () => pm.expect(pm.response.json().balance).to.eql(6000));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.11 Contratar 3000 em 6x",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 3000,\n  \"installments\": 6,\n  \"dueDay\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const l = pm.response.json();",
+                  "pm.collectionVariables.set('lnLoan2Id', l.loanId);",
+                  "pm.collectionVariables.set('lnInstallment', l.installments[0].amount);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.12 Pagar a 1ª parcela agora (antecipada, com desconto dos juros)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/{{lnLoan2Id}}/installments/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "{{lnLoan2Id}}",
+                "installments",
+                "pay"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test('Parcela 1, com desconto', () => { pm.expect(p.installment).to.eql(1); pm.expect(p.discount).to.be.above(0); pm.expect(p.amount).to.be.below(Number(pm.collectionVariables.get('lnInstallment'))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.13 Simular a quitação",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/{{lnLoan2Id}}/payoff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "{{lnLoan2Id}}",
+                "payoff"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.collectionVariables.set('lnPayoff', p.amount);",
+                  "pm.test('Valor presente das 5 restantes', () => { pm.expect(p.status).to.eql('SIMULATION'); pm.expect(p.discount).to.be.above(0); pm.expect(p.amount).to.be.below(5 * Number(pm.collectionVariables.get('lnInstallment'))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.14 Quitar",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/{{lnLoan2Id}}/payoff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "{{lnLoan2Id}}",
+                "payoff"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test('Quitado pelo valor simulado', () => { pm.expect(p.status).to.eql('PAID'); pm.expect(p.amount).to.eql(Number(pm.collectionVariables.get('lnPayoff'))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.15 Pagar parcela de empréstimo quitado -> 422",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/{{lnLoan2Id}}/installments/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "{{lnLoan2Id}}",
+                "installments",
+                "pay"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.16 Empréstimos da conta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json();",
+                  "pm.test('Um quitado e um cancelado', () => pm.expect(list.map(l => l.status).sort()).to.eql(['CANCELLED', 'PAID']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.17 Rodar o débito automático do dia (backoffice)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/loans/debits/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "loans",
+                "debits",
+                "run"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.18 Empréstimo inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/{{$guid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "{{$guid}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "27. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "27.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -21410,7 +22220,7 @@
           ]
         },
         {
-          "name": "26.1.2 Aprovar KYC",
+          "name": "27.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -21441,7 +22251,7 @@
           ]
         },
         {
-          "name": "26.1.3 Abrir conta",
+          "name": "27.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -21484,7 +22294,7 @@
           ]
         },
         {
-          "name": "26.1.4 Depositar 3000",
+          "name": "27.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -21528,7 +22338,7 @@
           ]
         },
         {
-          "name": "26.2 Emitir cartão",
+          "name": "27.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -21571,7 +22381,7 @@
           ]
         },
         {
-          "name": "26.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "27.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -21624,7 +22434,7 @@
           ]
         },
         {
-          "name": "26.4 Outras compras: 600",
+          "name": "27.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -21668,7 +22478,7 @@
           ]
         },
         {
-          "name": "26.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "27.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -21704,7 +22514,7 @@
           ]
         },
         {
-          "name": "26.6 Paga só 400 de 1000",
+          "name": "27.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -21751,7 +22561,7 @@
           ]
         },
         {
-          "name": "26.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "27.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -21787,7 +22597,7 @@
           ]
         },
         {
-          "name": "26.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "27.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -21820,7 +22630,7 @@
           ]
         },
         {
-          "name": "26.9 Contestar a compra de 400",
+          "name": "27.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -21868,7 +22678,7 @@
           ]
         },
         {
-          "name": "26.10 Procedente: devolve os juros que a compra gerou",
+          "name": "27.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -21917,7 +22727,7 @@
           ]
         },
         {
-          "name": "26.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "27.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],
