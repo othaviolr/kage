@@ -2,6 +2,7 @@ package com.kage.card.application.usecase;
 
 import com.kage.card.domain.entity.Card;
 import com.kage.card.domain.entity.Invoice;
+import com.kage.card.domain.enums.CardStatus;
 import com.kage.card.domain.enums.InvoiceStatus;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
@@ -45,15 +46,18 @@ public class RegisterPurchase {
     private final CardRepository cardRepository;
     private final InvoiceRepository invoiceRepository;
     private final VirtualCards virtualCards;
+    private final CardPlastics plastics;
 
     public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
-        this(cardRepository, invoiceRepository, null);
+        this(cardRepository, invoiceRepository, null, null);
     }
 
-    public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository, VirtualCards virtualCards) {
+    public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository, VirtualCards virtualCards,
+                            CardPlastics plastics) {
         this.cardRepository = cardRepository;
         this.invoiceRepository = invoiceRepository;
         this.virtualCards = virtualCards;
+        this.plastics = plastics;
     }
 
     @Transactional
@@ -75,6 +79,9 @@ public class RegisterPurchase {
         if (input.virtualCardNumber() != null) {
             if (virtualCards == null) throw new IllegalStateException("Cartões virtuais não configurados");
             virtualCardId = virtualCards.authorize(card.getId(), input.virtualCardNumber());
+        } else if (plastics != null && card.getStatus() == CardStatus.ACTIVE) {
+            // cartão bloqueado/cancelado: a recusa é a do cartão (authorizePurchase); ativo, falta checar o plástico
+            plastics.requirePhysicalUsable(card.getId()); // 2ª via a caminho ou plástico cancelado
         }
 
         int installments = input.installments() == null ? 1 : input.installments();

@@ -33,6 +33,7 @@ public class CardController {
     private final AnticipateInstallments anticipateInstallments;
     private final DisputePurchase disputePurchase;
     private final VirtualCards virtualCards;
+    private final CardPlastics cardPlastics;
 
     /**
      * Emissão é do ADMIN: o limite de crédito é decisão da análise de crédito do banco, não do cliente.
@@ -45,8 +46,9 @@ public class CardController {
                           CloseInvoice closeInvoice, CancelCard cancelCard, AccessGuard accessGuard,
                           PayInvoice payInvoice, SetAutoDebit setAutoDebit, FinanceInvoice financeInvoice,
                           AnticipateInstallments anticipateInstallments, DisputePurchase disputePurchase,
-                          VirtualCards virtualCards) {
+                          VirtualCards virtualCards, CardPlastics cardPlastics) {
         this.virtualCards = virtualCards;
+        this.cardPlastics = cardPlastics;
         this.anticipateInstallments = anticipateInstallments;
         this.disputePurchase = disputePurchase;
         this.financeInvoice = financeInvoice;
@@ -184,6 +186,37 @@ public class CardController {
 
     /** @param note obrigatório quando negada: o cliente fica sabendo o motivo */
     public record ResolveDisputeRequest(Boolean accepted, String note) {
+    }
+
+    /**
+     * 2ª via do cartão físico: LOST, STOLEN ou FRAUD cancelam o plástico atual na hora; DAMAGED o mantém
+     * até o novo ser desbloqueado. Limite e faturas não mudam.
+     */
+    @PostMapping("/{id}/reissue")
+    public ResponseEntity<CardPlastics.ReissueOutput> reissue(@PathVariable UUID id, @RequestBody ReissueRequest request) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.status(HttpStatus.CREATED).body(cardPlastics.reissue(id, request.reason()));
+    }
+
+    /** Desbloqueia o cartão novo com os 4 últimos dígitos impressos nele. */
+    @PostMapping("/{id}/plastics/activate")
+    public ResponseEntity<CardPlastics.Output> activatePlastic(@PathVariable UUID id, @RequestBody ActivatePlasticRequest request) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(cardPlastics.activate(id, request.lastDigits()));
+    }
+
+    /** Histórico dos plásticos (vias) do cartão, da mais nova para a mais antiga. */
+    @GetMapping("/{id}/plastics")
+    public ResponseEntity<List<CardPlastics.Output>> listPlastics(@PathVariable UUID id) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(cardPlastics.list(id));
+    }
+
+    /** @param reason LOST, STOLEN, FRAUD ou DAMAGED */
+    public record ReissueRequest(String reason) {
+    }
+
+    public record ActivatePlasticRequest(String lastDigits) {
     }
 
     /** Cria um cartão virtual (PERMANENT, o padrão, ou TEMPORARY de 24h). A resposta já traz número e CVV. */

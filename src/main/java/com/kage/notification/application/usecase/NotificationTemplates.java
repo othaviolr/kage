@@ -130,6 +130,14 @@ public final class NotificationTemplates {
         return new Text("Contestação aberta", body.toString());
     }
 
+    public static Text cardReissued(String lastDigits, boolean oldNumberCancelled) {
+        String old = oldNumberCancelled
+                ? "O cartão antigo já foi cancelado; seus cartões virtuais continuam funcionando."
+                : "O cartão antigo continua funcionando até você desbloquear o novo.";
+        return new Text("Seu cartão novo está a caminho", "Enviamos a 2ª via do seu cartão (final " + lastDigits
+                + "). Quando chegar, desbloqueie pelo app com os 4 últimos dígitos. " + old + " Limite e faturas não mudam.");
+    }
+
     public static Text disputeResolved(String description, BigDecimal amount, boolean accepted, String note,
                                        String reversalMonth) {
         if (accepted) {

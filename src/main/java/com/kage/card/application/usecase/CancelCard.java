@@ -7,7 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-/** Cancela o cartão físico; os cartões virtuais dele são apagados junto, na mesma transação. */
+/** Cancela o cartão; os plásticos e os cartões virtuais dele morrem junto, na mesma transação. */
 public class CancelCard {
 
     public record Input(UUID cardId) {}
@@ -15,14 +15,16 @@ public class CancelCard {
 
     private final CardRepository cardRepository;
     private final VirtualCards virtualCards;
+    private final CardPlastics plastics;
 
     public CancelCard(CardRepository cardRepository) {
-        this(cardRepository, null);
+        this(cardRepository, null, null);
     }
 
-    public CancelCard(CardRepository cardRepository, VirtualCards virtualCards) {
+    public CancelCard(CardRepository cardRepository, VirtualCards virtualCards, CardPlastics plastics) {
         this.cardRepository = cardRepository;
         this.virtualCards = virtualCards;
+        this.plastics = plastics;
     }
 
     @Transactional
@@ -33,6 +35,7 @@ public class CancelCard {
         card.cancel();
         Card saved = cardRepository.save(card);
         if (virtualCards != null) virtualCards.deleteAllOf(saved.getId());
+        if (plastics != null) plastics.cancelAllOf(saved.getId());
 
         return new Output(saved.getId(), saved.getStatus().name());
     }
