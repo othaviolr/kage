@@ -5,6 +5,8 @@ import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.domain.service.AccountSavingsCheck;
 import com.kage.account.infrastructure.SavingsAccountGatewayImpl;
 import com.kage.savings.application.usecase.GetIncomeReport;
+import com.kage.savings.application.usecase.IncomeReportDocuments;
+import com.kage.savings.infrastructure.report.PdfIncomeReportRenderer;
 import com.kage.savings.application.usecase.RunSavingsYield;
 import com.kage.savings.infrastructure.report.JdbcIncomeReportSource;
 import com.kage.savings.application.usecase.SavingsBoxes;
@@ -99,6 +101,11 @@ public class SavingsConfig {
     @Bean
     public GetIncomeReport getIncomeReport(JdbcTemplate jdbcTemplate, Clock clock) {
         return new GetIncomeReport(new JdbcIncomeReportSource(jdbcTemplate), clock);
+    }
+
+    @Bean
+    public IncomeReportDocuments incomeReportDocuments(GetIncomeReport getIncomeReport) {
+        return new IncomeReportDocuments(getIncomeReport, new PdfIncomeReportRenderer());
     }
 
     @Bean

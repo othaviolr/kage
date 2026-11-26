@@ -22259,6 +22259,45 @@
               }
             }
           ]
+        },
+        {
+          "name": "26.21 Informe do ano em PDF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{lnCustomerId}}/income-report/pdf?year={{lnYear}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{lnCustomerId}}",
+                "income-report",
+                "pdf"
+              ],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "{{lnYear}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('PDF', () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf'); pm.expect(pm.response.text().substring(0, 5)).to.eql('%PDF-'); });",
+                  "pm.test('Arquivo do ano, marcado como parcial', () => pm.expect(pm.response.headers.get('Content-Disposition')).to.include('informe-de-rendimentos-kage-' + pm.collectionVariables.get('lnYear') + '-parcial.pdf'));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

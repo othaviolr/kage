@@ -108,8 +108,8 @@ public class GetIncomeReport {
                         + "no grupo 04 (Aplicações e investimentos), código 02 (renda fixa), informando o saldo em 31/12 "
                         + "de cada ano. Instituição: Kage.",
                 "Rendimentos Sujeitos à Tributação Exclusiva/Definitiva, item 06 (Rendimentos de aplicações "
-                        + "financeiras): R$ " + totals.exclusiveTaxationIncome().toPlainString()
-                        + ". O IR já foi retido na fonte (R$ " + totals.incomeTaxWithheld().toPlainString()
+                        + "financeiras): " + brl(totals.exclusiveTaxationIncome())
+                        + ". O IR já foi retido na fonte (" + brl(totals.incomeTaxWithheld())
                         + "): não há imposto a pagar sobre esse valor.",
                 debtsGuide(debts));
 
