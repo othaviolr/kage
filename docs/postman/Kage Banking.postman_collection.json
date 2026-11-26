@@ -12660,7 +12660,9 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "pm.test('6x de 222,85', () => pm.expect(pm.response.json().schedule[5].amount).to.eql(222.85));"
+                  "pm.test('6x de 222,85', () => pm.expect(pm.response.json().schedule[5].amount).to.eql(222.85));",
+                  "pm.test('IOF de 13,19 (0,38% + 0,0082% ao dia sobre cada amortização)', () => pm.expect(pm.response.json().iof).to.eql(13.19));",
+                  "pm.test('CET acima dos juros sozinhos (inclui o IOF)', () => { pm.expect(pm.response.json().cetMonthly).to.be.above(0.0899); pm.expect(pm.response.json().cetYearly).to.be.above(1.8094); });"
                 ]
               }
             }
@@ -12780,7 +12782,7 @@
                 "exec": [
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const j = pm.response.json();",
-                  "pm.test('O desconto volta para o limite', () => { pm.expect(j.discount).to.eql(247.22); pm.expect(j.availableLimit).to.eql(3910.12); });"
+                  "pm.test('O desconto volta para o limite', () => { pm.expect(j.discount).to.eql(247.22); pm.expect(j.availableLimit).to.eql(3896.93); });"
                 ]
               }
             }
@@ -12811,7 +12813,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Total 1089,88', () => pm.expect(pm.response.json().total).to.eql(1089.88));"
+                  "pm.test('Total 1103,07 (parcela 1 + IOF de 13,19 + antecipação)', () => pm.expect(pm.response.json().total).to.eql(1103.07));"
                 ]
               }
             }
@@ -21810,7 +21812,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Juros de 84 (14% de 600)', () => pm.expect(pm.response.json().items.filter(i => i.kind === 'REVOLVING_INTEREST').reduce((s, i) => s + i.amount, 0)).to.eql(84));"
+                  "pm.test('Juros de 84 (14% de 600)', () => pm.expect(pm.response.json().items.filter(i => i.kind === 'REVOLVING_INTEREST').reduce((s, i) => s + i.amount, 0)).to.eql(84));",
+                  "pm.test('IOF do rotativo de 3,81 (0,38% + 0,0082% × 31 dias sobre 600)', () => pm.expect(pm.response.json().items.filter(i => i.kind === 'IOF').reduce((s, i) => s + i.amount, 0)).to.eql(3.81));"
                 ]
               }
             }
@@ -21907,7 +21910,7 @@
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json();",
                   "pm.test('ACCEPTED', () => pm.expect(d.status).to.eql('ACCEPTED'));",
-                  "pm.test('Estorno de 33,60 (84 × 400/1000)', () => pm.expect(d.interestRefunded).to.eql(33.6));"
+                  "pm.test('Estorno de 35,12 (400/1000 de 84 de juros + 3,81 de IOF)', () => pm.expect(d.interestRefunded).to.eql(35.12));"
                 ]
               }
             }
@@ -21940,7 +21943,7 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "pm.test('Crédito de 400', () => pm.expect(pm.response.json().items.filter(i => i.kind === 'DISPUTE_CREDIT').reduce((s, i) => s + i.amount, 0)).to.eql(400));",
-                  "pm.test('Estorno de 33,60', () => pm.expect(pm.response.json().items.filter(i => i.kind === 'DISPUTE_INTEREST_REFUND').reduce((s, i) => s + i.amount, 0)).to.eql(33.6));"
+                  "pm.test('Estorno de 35,12 (juros e IOF)', () => pm.expect(pm.response.json().items.filter(i => i.kind === 'DISPUTE_INTEREST_REFUND').reduce((s, i) => s + i.amount, 0)).to.eql(35.12));"
                 ]
               }
             }

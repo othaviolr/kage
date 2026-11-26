@@ -105,11 +105,12 @@ public class PdfInvoiceRenderer implements InvoiceDocuments.Renderer {
             w.textRight(bold, 10, RIGHT, "Total  " + money(s.total()));
             w.down(24);
 
-            w.ensureSpace(140);
+            w.ensureSpace(200);
             w.section("Taxas de juros e encargos");
             for (InvoiceDocuments.Rate rate : s.rates()) {
                 w.text(regular, 9, MARGIN, rate.name());
-                String value = percent(rate.monthly()) + (rate.yearly() == null ? "" : " ao mês  •  " + percent(rate.yearly()) + " ao ano");
+                String value = rate.display() != null ? rate.display()
+                        : percent(rate.monthly()) + (rate.yearly() == null ? "" : " ao mês  •  " + percent(rate.yearly()) + " ao ano");
                 w.textRight(regular, 9, RIGHT, value);
                 w.down(LINE);
             }
@@ -117,7 +118,8 @@ public class PdfInvoiceRenderer implements InvoiceDocuments.Renderer {
             for (String note : new String[]{
                     "Pagando menos que o total, o saldo vai para o rotativo na próxima fatura, com os juros acima.",
                     "O rotativo vale por um ciclo: depois, o saldo é parcelado (Res. CMN 4.549/2017).",
-                    "Juros e encargos nunca passam de 100% da dívida original (Lei 14.690/2023)."}) {
+                    "Juros e encargos nunca passam de 100% da dívida original (Lei 14.690/2023); o IOF é imposto e fica fora.",
+                    "CET: custo efetivo total, com juros e IOF (Res. CMN 3.517/2007). Valores de referência: R$ 1.000,00."}) {
                 w.ensureSpace(LINE);
                 w.text(regular, 8, MARGIN, note);
                 w.down(12);

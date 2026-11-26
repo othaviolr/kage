@@ -55,7 +55,11 @@ class InvoicePdfIntegrationTest extends AbstractIntegrationTest {
                     .contains("R$ 73,49")           // mínimo: 15%
                     .contains("20/04/2033")
                     .contains("Assinatura (virtual Streaming)")
-                    .contains("Juros do rotativo");
+                    .contains("Juros do rotativo")
+                    .contains("IOF (rotativo e parcelamento)")
+                    .contains("0,38% + 0,0082% ao dia")
+                    .contains("CET do rotativo (30 dias)")
+                    .contains("CET do parcelamento em 12x");
         }
 
         // mesma fatura, mesmo código de autenticação

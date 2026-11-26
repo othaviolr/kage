@@ -14,14 +14,18 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Quanto dos juros e encargos cobrados no cartão veio de uma compra contestada procedente — o que o
- * banco devolve, já que a compra nunca deveria ter sido cobrada.
+ * Quanto dos juros, encargos e IOF cobrados no cartão veio de uma compra contestada procedente — o
+ * que o banco devolve, já que a compra nunca deveria ter sido cobrada.
  *
  * A compra entra numa fatura fechada. Se ela foi quitada, não houve encargo. Se o saldo foi para o
- * rotativo, a fatura seguinte trouxe "Saldo anterior" com juros, multa e mora; se foi parcelada, os
- * juros estão nas parcelas. A parte da compra é proporcional: valor dela ÷ tudo o que a fatura
- * cobrava (o pagamento parcial abate cada linha na mesma proporção). E a conta segue a corrente: a
- * parte da compra que foi para a fatura seguinte (com os encargos dela) pode ter girado de novo.
+ * rotativo, a fatura seguinte trouxe "Saldo anterior" com juros, multa, mora e IOF; se foi parcelada,
+ * os juros estão nas parcelas e o IOF numa linha própria. A parte da compra é proporcional: valor
+ * dela ÷ tudo o que a fatura cobrava (o pagamento parcial abate cada linha na mesma proporção). E a
+ * conta segue a corrente: a parte da compra que foi para a fatura seguinte (com os encargos dela) pode
+ * ter girado de novo.
+ *
+ * O IOF vem separado: ele é imposto e não conta no teto da Lei 14.690/2023, então o estorno dele não
+ * mexe naquela conta.
  */
 public final class DisputeInterestPolicy {
 
@@ -31,47 +35,66 @@ public final class DisputeInterestPolicy {
     /** Uma fatura não gira mais que isso numa corrente real (o Bacen parcela depois de um ciclo). */
     private static final int MAX_DEPTH = 24;
 
+    /** @param charges juros e encargos do banco; @param iof o imposto */
+    public record Refund(Money charges, Money iof) {
+        public Money total() {
+            return charges.add(iof);
+        }
+    }
+
     private DisputeInterestPolicy() {
     }
 
-    /** Encargos atribuíveis à compra {@code purchaseId}, somando todas as faturas fechadas em que ela foi cobrada. */
-    public static Money refundFor(List<Invoice> invoices, UUID purchaseId) {
-        BigDecimal total = BigDecimal.ZERO;
+    /** Encargos e IOF atribuíveis à compra {@code purchaseId}, em todas as faturas fechadas em que ela foi cobrada. */
+    public static Refund refundFor(List<Invoice> invoices, UUID purchaseId) {
+        Accumulator total = new Accumulator();
         for (Invoice invoice : invoices) {
             if (invoice.getStatus() == InvoiceStatus.OPEN) continue;
             for (InvoiceItem item : invoice.getItems()) {
                 if (item.isPurchase() && item.purchaseId().equals(purchaseId)) {
-                    total = total.add(chargesAttributable(invoices, invoice, item.amount().amount(), 0));
+                    attribute(invoices, invoice, item.amount().amount(), 0, total);
                 }
             }
         }
-        return Money.of(total.setScale(2, RoundingMode.HALF_UP));
+        return new Refund(Money.of(total.charges.setScale(2, RoundingMode.HALF_UP)),
+                Money.of(total.iof.setScale(2, RoundingMode.HALF_UP)));
     }
 
-    /** Encargos que {@code share} (parte da compra cobrada em {@code invoice}) gerou dali em diante. */
-    private static BigDecimal chargesAttributable(List<Invoice> invoices, Invoice invoice, BigDecimal share, int depth) {
-        if (depth >= MAX_DEPTH || share.signum() <= 0) return BigDecimal.ZERO;
+    private static final class Accumulator {
+        BigDecimal charges = BigDecimal.ZERO;
+        BigDecimal iof = BigDecimal.ZERO;
+    }
+
+    /** Soma em {@code acc} os encargos e o IOF que {@code share} (parte da compra em {@code invoice}) gerou dali em diante. */
+    private static void attribute(List<Invoice> invoices, Invoice invoice, BigDecimal share, int depth, Accumulator acc) {
+        if (depth >= MAX_DEPTH || share.signum() <= 0) return;
         BigDecimal charges = invoice.charges().amount();
-        if (charges.signum() <= 0) return BigDecimal.ZERO;
+        if (charges.signum() <= 0) return;
         BigDecimal ratio = share.min(charges).divide(charges, RATIO);
 
         if (invoice.getStatus() == InvoiceStatus.ROLLED_OVER) {
-            Optional<Invoice> next = invoiceWith(invoices, InvoiceItem.chargeId(InvoiceItemKind.PREVIOUS_BALANCE, invoice.getId()));
-            if (next.isEmpty()) return BigDecimal.ZERO;
-            BigDecimal carried = lineAmount(next.get(), InvoiceItem.chargeId(InvoiceItemKind.PREVIOUS_BALANCE, invoice.getId()));
+            UUID balanceLine = InvoiceItem.chargeId(InvoiceItemKind.PREVIOUS_BALANCE, invoice.getId());
+            Optional<Invoice> next = invoiceWith(invoices, balanceLine);
+            if (next.isEmpty()) return;
+            BigDecimal carried = lineAmount(next.get(), balanceLine);
             BigDecimal levied = BigDecimal.ZERO;
             for (InvoiceItemKind kind : CHARGES) {
                 levied = levied.add(lineAmount(next.get(), InvoiceItem.chargeId(kind, invoice.getId())));
             }
             BigDecimal mine = levied.multiply(ratio);
-            BigDecimal carriedShare = carried.multiply(ratio).add(mine);
-            return mine.add(chargesAttributable(invoices, next.get(), carriedShare, depth + 1));
+            BigDecimal myIof = lineAmount(next.get(), InvoiceItem.chargeId(InvoiceItemKind.IOF, invoice.getId())).multiply(ratio);
+            acc.charges = acc.charges.add(mine);
+            acc.iof = acc.iof.add(myIof);
+            attribute(invoices, next.get(), carried.multiply(ratio).add(mine).add(myIof), depth + 1, acc);
+            return;
         }
 
         if (invoice.getStatus() == InvoiceStatus.FINANCED) {
-            return financedInterest(invoices, invoice).multiply(ratio);
+            acc.charges = acc.charges.add(financedInterest(invoices, invoice).multiply(ratio));
+            UUID iofLine = InvoiceItem.chargeId(InvoiceItemKind.IOF, invoice.getId());
+            invoiceWith(invoices, iofLine).ifPresent(i -> acc.iof = acc.iof.add(lineAmount(i, iofLine).multiply(ratio)));
         }
-        return BigDecimal.ZERO; // quitada (ou fechada ainda no prazo): sem encargo
+        // quitada (ou fechada ainda no prazo): sem encargo
     }
 
     /**

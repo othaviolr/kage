@@ -99,7 +99,7 @@ class AnticipationIntegrationTest extends AbstractIntegrationTest {
                 LocalDateTime.of(2035, 6, 5, 10, 0)));
         closeInvoice.execute(new CloseInvoice.Input(cardId, "2035-06"));
         financeInvoice.execute(cardId, "2035-06", 6); // 6x de 222,85 de jul a dez
-        assertThat(availableLimit(cardId)).isEqualByComparingTo("3662.90"); // 5000 - 1000 - 337,10 de juros
+        assertThat(availableLimit(cardId)).isEqualByComparingTo("3649.71"); // 5000 - 1000 - 337,10 de juros - 13,19 de IOF
 
         var plan = anticipateInstallments.listPlans(cardId).get(0);
         assertThat(plan.kind()).isEqualTo("INVOICE_INSTALLMENT");
@@ -115,16 +115,17 @@ class AnticipationIntegrationTest extends AbstractIntegrationTest {
         assertThat(last.fromNumber()).isEqualTo(6);
         assertThat(last.amount()).isEqualByComparingTo("144.90");
         assertThat(last.discount()).isEqualByComparingTo("77.95");
-        assertThat(last.availableLimit()).isEqualByComparingTo("3740.85");
+        assertThat(last.availableLimit()).isEqualByComparingTo("3727.66");
 
         // depois as outras quatro: 204,47 + 187,60 + 172,13 + 157,93
         AnticipateInstallments.Output rest = anticipateInstallments.execute(cardId, plan.planId(), 4);
         assertThat(rest.amount()).isEqualByComparingTo("722.13");
         assertThat(rest.discount()).isEqualByComparingTo("169.27");
 
-        // julho: a parcela 1 + as duas antecipações; o desconto total (247,22) voltou para o limite
-        assertThat(total(cardId, "2035-07")).isEqualByComparingTo("1089.88");
-        assertThat(availableLimit(cardId)).isEqualByComparingTo("3910.12");
+        // julho: a parcela 1 + o IOF + as duas antecipações; o desconto total (247,22) voltou para o limite.
+        // O IOF já pago não é restituído na liquidação antecipada.
+        assertThat(total(cardId, "2035-07")).isEqualByComparingTo("1103.07");
+        assertThat(availableLimit(cardId)).isEqualByComparingTo("3896.93");
         assertThat(anticipateInstallments.listPlans(cardId)).isEmpty();
     }
 
