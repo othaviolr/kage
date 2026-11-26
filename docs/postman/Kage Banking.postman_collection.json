@@ -22206,6 +22206,59 @@
               }
             }
           ]
+        },
+        {
+          "name": "26.20 Informe do ano: o quitado em Dívidas, o cancelado fora",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{lnCustomerId}}/income-report?year={{lnYear}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{lnCustomerId}}",
+                "income-report"
+              ],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "{{lnYear}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('lnYear', String(new Date().getFullYear()));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Só o quitado (o cancelado por arrependimento não entra)', () => { pm.expect(j.debts).to.have.length(1); pm.expect(j.debts[0].loanId).to.eql(pm.collectionVariables.get('lnLoan2Id')); pm.expect(j.debts[0].status).to.eql('PAID'); });",
+                  "const d = j.debts[0];",
+                  "pm.test('Contratado e quitado no ano: saldo zero nos dois cortes', () => { pm.expect(d.balancePreviousYearEnd).to.eql(0); pm.expect(d.balanceYearEnd).to.eql(0); });",
+                  "pm.test('Pago no ano: a 1ª parcela + a quitação', () => pm.expect(d.paidInYear).to.be.above(Number(pm.collectionVariables.get('lnPayoff'))));",
+                  "pm.test('Discriminação pronta', () => { pm.expect(d.description).to.include('Empréstimo pessoal contratado no Kage'); pm.expect(d.description).to.include('em 6 parcelas'); pm.expect(d.description).to.include('Quitado.'); });",
+                  "pm.test('Não precisa declarar (até 5 mil)', () => { pm.expect(d.mustDeclare).to.eql(false); pm.expect(j.guide.debts).to.include('Nenhum dos seus empréstimos precisa ser declarado'); });",
+                  "pm.test('Totais', () => { pm.expect(j.totals.debtYearEnd).to.eql(0); pm.expect(j.totals.debtPaidInYear).to.eql(d.paidInYear); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

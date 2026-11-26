@@ -11,7 +11,8 @@ import java.util.UUID;
 
 /**
  * Consultas do informe direto nas tabelas (read model). Saldos históricos saem do balance_after do
- * último lançamento antes de cada corte — o ledger da conta e o extrato da caixinha já guardam isso.
+ * último lançamento antes de cada corte — o ledger da conta e o extrato da caixinha já guardam isso. O
+ * saldo devedor do empréstimo sai das parcelas: as pagas guardam quando foram pagas.
  */
 public class JdbcIncomeReportSource implements IncomeReportSource {
 
@@ -69,6 +70,31 @@ public class JdbcIncomeReportSource implements IncomeReportSource {
                         rs.getBigDecimal("before_balance"), rs.getBigDecimal("cutoff_balance"), rs.getBigDecimal("gain"),
                         rs.getBigDecimal("iof"), rs.getBigDecimal("income_tax")),
                 ts(from), ts(to), ts(from), ts(to), customerId, ts(to), ts(from));
+    }
+
+    @Override
+    public List<LoanFigures> loans(UUID customerId, LocalDateTime from, LocalDateTime to) {
+        return jdbcTemplate.query("""
+                        SELECT l.id, l.contract_date, l.status, l.financed,
+                               COUNT(i.number) AS installments,
+                               MIN(i.amount) FILTER (WHERE i.number = 1) AS installment_amount,
+                               CASE WHEN l.contracted_at < ?
+                                    THEN COALESCE(SUM(i.principal) FILTER (WHERE NOT i.paid OR i.paid_at >= ?), 0)
+                                    ELSE 0 END AS before_balance,
+                               COALESCE(SUM(i.principal) FILTER (WHERE NOT i.paid OR i.paid_at >= ?), 0) AS cutoff_balance,
+                               COALESCE(SUM(i.paid_amount) FILTER (WHERE i.paid_at >= ? AND i.paid_at < ?), 0) AS paid
+                        FROM loans l
+                        JOIN loan_installments i ON i.loan_id = l.id
+                        WHERE l.customer_id = ? AND l.status <> 'CANCELLED'
+                          AND l.contracted_at < ? AND (l.closed_at IS NULL OR l.closed_at >= ?)
+                        GROUP BY l.id
+                        ORDER BY l.contracted_at
+                        """,
+                (rs, n) -> new LoanFigures(rs.getObject("id", UUID.class), rs.getDate("contract_date").toLocalDate(),
+                        rs.getString("status"), rs.getBigDecimal("financed"), rs.getInt("installments"),
+                        rs.getBigDecimal("installment_amount"), rs.getBigDecimal("before_balance"),
+                        rs.getBigDecimal("cutoff_balance"), rs.getBigDecimal("paid")),
+                ts(from), ts(from), ts(to), ts(from), ts(to), customerId, ts(to), ts(from));
     }
 
     private static Timestamp ts(LocalDateTime value) {

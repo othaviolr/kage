@@ -149,7 +149,9 @@ class IncomeReportIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(get("/api/customers/" + leo.id() + "/income-report").header("Authorization", "Bearer " + leo.token()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.year").value(LocalDate.now().getYear() - 1))
-                .andExpect(jsonPath("$.accounts.length()").value(0)); // a conta foi aberta este ano
+                .andExpect(jsonPath("$.accounts.length()").value(0)) // a conta foi aberta este ano
+                .andExpect(jsonPath("$.debts.length()").value(0))
+                .andExpect(jsonPath("$.guide.debts").value(org.hamcrest.Matchers.containsString("nada a informar")));
     }
 
     @Test
