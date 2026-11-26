@@ -221,6 +221,42 @@ class CardTest {
                 .hasMessageContaining("fatura em aberto");
     }
 
+    // ---------- limite ----------
+
+    @Test
+    void limiteAprovado_nasceIgualAoLimite() {
+        assertThat(card.getApprovedLimit()).isEqualTo(card.getCreditLimit());
+    }
+
+    @Test
+    void ajustarLimite_paraBaixoNaHora_paraCimaAteOAprovado() {
+        card.authorizePurchase(Money.of("300.00"));
+
+        card.adjustLimit(Money.of("400.00"));
+        assertThat(card.getCreditLimit().amount()).isEqualByComparingTo("400.00");
+        assertThat(card.availableLimit().amount()).isEqualByComparingTo("100.00");
+
+        card.adjustLimit(card.getApprovedLimit()); // volta ao aprovado
+        assertThat(card.getCreditLimit()).isEqualTo(card.getApprovedLimit());
+
+        assertThatThrownBy(() -> card.adjustLimit(card.getApprovedLimit().add(Money.of("0.01"))))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("aprovado");
+        assertThatThrownBy(() -> card.adjustLimit(Money.of("299.99")))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("em uso");
+        assertThatThrownBy(() -> card.adjustLimit(Money.of("49.99"))).isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void aumentoAceito_sobeOAprovadoEOLimite() {
+        card.adjustLimit(Money.of("500.00"));
+
+        card.raiseApprovedLimit(Money.of("1250.00"));
+
+        assertThat(card.getApprovedLimit().amount()).isEqualByComparingTo("1250.00");
+        assertThat(card.getCreditLimit().amount()).isEqualByComparingTo("1250.00");
+        assertThatThrownBy(() -> card.raiseApprovedLimit(Money.of("1250.00"))).isInstanceOf(BusinessRuleException.class);
+    }
+
     // ---------- contestação ----------
 
     @Test

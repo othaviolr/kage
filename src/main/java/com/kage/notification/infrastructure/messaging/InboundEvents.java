@@ -58,6 +58,9 @@ public final class InboundEvents {
                                    String virtualCardNickname) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record LimitOffered(UUID cardId, UUID offerId, BigDecimal offeredLimit, java.time.LocalDateTime expiresAt) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record CardReissued(UUID cardId, UUID plasticId, String lastDigits, boolean oldNumberCancelled) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

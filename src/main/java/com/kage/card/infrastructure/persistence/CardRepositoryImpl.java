@@ -3,6 +3,7 @@ package com.kage.card.infrastructure.persistence;
 import com.kage.card.domain.entity.Card;
 import com.kage.card.domain.repository.CardRepository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,6 +24,11 @@ public class CardRepositoryImpl implements CardRepository {
         CardJpaEntity entity = CardMapper.toJpaEntity(card);
         CardJpaEntity saved = cardJpaRepository.saveAndFlush(entity);
         return CardMapper.toDomain(saved);
+    }
+
+    @Override
+    public List<UUID> findActiveIds() {
+        return cardJpaRepository.findActiveIds();
     }
 
     @Override

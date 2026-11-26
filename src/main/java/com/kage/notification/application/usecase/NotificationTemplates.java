@@ -146,6 +146,12 @@ public final class NotificationTemplates {
                 + " foi recusada: " + reason + ".");
     }
 
+    public static Text limitOffered(BigDecimal offeredLimit, java.time.LocalDateTime expiresAt) {
+        return new Text("Seu limite pode aumentar", "Pelo seu histórico de pagamentos em dia, o limite do seu cartão "
+                + "pode ir para " + money(offeredLimit) + ". Aceite pelo app até "
+                + expiresAt.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")) + ".");
+    }
+
     public static Text cardReissued(String lastDigits, boolean oldNumberCancelled) {
         String old = oldNumberCancelled
                 ? "O cartão antigo já foi cancelado; seus cartões virtuais continuam funcionando."

@@ -23,6 +23,10 @@ public final class CardEvents {
     public static final String CARD_REISSUED = "card.reissued";
     public static final String PURCHASE_APPROVED = "card.purchase.approved";
     public static final String PURCHASE_DECLINED = "card.purchase.declined";
+    public static final String LIMIT_OFFERED = "card.limit.offered";
+
+    public record LimitOfferedEvent(UUID cardId, UUID offerId, BigDecimal offeredLimit, java.time.LocalDateTime expiresAt,
+                                    Instant occurredAt) {}
 
     /** @param virtualCardNickname compra com cartão virtual: o nome dele; nulo = físico */
     public record PurchaseApprovedEvent(UUID cardId, UUID purchaseId, String description, BigDecimal amount,

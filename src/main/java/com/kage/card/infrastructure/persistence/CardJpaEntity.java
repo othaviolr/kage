@@ -24,6 +24,9 @@ public class CardJpaEntity {
     @Column(name = "credit_limit", nullable = false, precision = 19, scale = 2)
     private BigDecimal creditLimit;
 
+    @Column(name = "approved_limit", nullable = false, precision = 19, scale = 2)
+    private BigDecimal approvedLimit;
+
     @Column(name = "used_limit", nullable = false, precision = 19, scale = 2)
     private BigDecimal usedLimit;
 
@@ -64,6 +67,8 @@ public class CardJpaEntity {
     public void setCustomerId(UUID customerId) { this.customerId = customerId; }
     public UUID getAccountId() { return accountId; }
     public void setAccountId(UUID accountId) { this.accountId = accountId; }
+    public BigDecimal getApprovedLimit() { return approvedLimit; }
+    public void setApprovedLimit(BigDecimal approvedLimit) { this.approvedLimit = approvedLimit; }
     public BigDecimal getCreditLimit() { return creditLimit; }
     public void setCreditLimit(BigDecimal creditLimit) { this.creditLimit = creditLimit; }
     public BigDecimal getUsedLimit() { return usedLimit; }
