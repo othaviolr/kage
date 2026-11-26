@@ -43,9 +43,14 @@ public class PixAutomaticAuthorization {
 
     public enum Party { PAYER, RECEIVER, ADMIN }
 
+    /** Se quem recebe pode tentar de novo uma cobrança recusada por falta de saldo. O pagador vê ao autorizar. */
+    public enum RetryPolicy { NONE, THREE_IN_SEVEN_DAYS }
+
     public static final int MIN_DAYS_AHEAD = 2;
     public static final int MAX_DAYS_AHEAD = 10;
     public static final int MAX_START_DAYS = 365;
+    public static final int MAX_RETRIES = 3;
+    public static final int RETRY_WINDOW_DAYS = 7;
 
     private final UUID id;
     private final UUID payerAccountId;
@@ -56,6 +61,7 @@ public class PixAutomaticAuthorization {
     private final String contractReference;
     private final Frequency frequency;
     private final Money fixedAmount;
+    private final RetryPolicy retryPolicy;
     private Money maxAmount;
     private final LocalDate startDate;
     private final LocalDate endDate;
@@ -67,9 +73,10 @@ public class PixAutomaticAuthorization {
 
     private PixAutomaticAuthorization(UUID id, UUID payerAccountId, UUID receiverAccountId, String receiverPixKey,
                                       String receiverName, String description, String contractReference,
-                                      Frequency frequency, Money fixedAmount, Money maxAmount, LocalDate startDate,
-                                      LocalDate endDate, Status status, Party cancelledBy, LocalDateTime createdAt,
-                                      LocalDateTime updatedAt, long version) {
+                                      Frequency frequency, Money fixedAmount, RetryPolicy retryPolicy, Money maxAmount,
+                                      LocalDate startDate, LocalDate endDate, Status status, Party cancelledBy,
+                                      LocalDateTime createdAt, LocalDateTime updatedAt, long version) {
+        this.retryPolicy = retryPolicy == null ? RetryPolicy.NONE : retryPolicy;
         this.id = id;
         this.payerAccountId = payerAccountId;
         this.receiverAccountId = receiverAccountId;
@@ -92,8 +99,9 @@ public class PixAutomaticAuthorization {
     /** Pedido de quem recebe: fica PENDING até o pagador responder (no máximo até a data de início). */
     public static PixAutomaticAuthorization request(UUID payerAccountId, UUID receiverAccountId, String receiverPixKey,
                                                     String receiverName, String description, String contractReference,
-                                                    Frequency frequency, Money fixedAmount, LocalDate startDate,
-                                                    LocalDate endDate, LocalDate today, LocalDateTime now) {
+                                                    Frequency frequency, Money fixedAmount, RetryPolicy retryPolicy,
+                                                    LocalDate startDate, LocalDate endDate, LocalDate today,
+                                                    LocalDateTime now) {
         if (payerAccountId.equals(receiverAccountId)) throw new BusinessRuleException("Pagador e recebedor são a mesma conta");
         if (description == null || description.isBlank()) throw new ValidationException("Descrição é obrigatória (o que está sendo cobrado)");
         if (frequency == null) throw new ValidationException("Frequência é obrigatória");
@@ -104,19 +112,47 @@ public class PixAutomaticAuthorization {
         }
         if (endDate != null && endDate.isBefore(startDate)) throw new DomainException("A data de fim é anterior à de início");
         return new PixAutomaticAuthorization(UUID.randomUUID(), payerAccountId, receiverAccountId, receiverPixKey,
-                receiverName, description.trim(), contractReference, frequency, fixedAmount, null, startDate, endDate,
-                Status.PENDING, null, now, now, 0);
+                receiverName, description.trim(), contractReference, frequency, fixedAmount, retryPolicy, null, startDate,
+                endDate, Status.PENDING, null, now, now, 0);
     }
 
     public static PixAutomaticAuthorization reconstitute(UUID id, UUID payerAccountId, UUID receiverAccountId,
                                                          String receiverPixKey, String receiverName, String description,
                                                          String contractReference, Frequency frequency, Money fixedAmount,
-                                                         Money maxAmount, LocalDate startDate, LocalDate endDate,
-                                                         Status status, Party cancelledBy, LocalDateTime createdAt,
-                                                         LocalDateTime updatedAt, long version) {
+                                                         RetryPolicy retryPolicy, Money maxAmount, LocalDate startDate,
+                                                         LocalDate endDate, Status status, Party cancelledBy,
+                                                         LocalDateTime createdAt, LocalDateTime updatedAt, long version) {
         return new PixAutomaticAuthorization(id, payerAccountId, receiverAccountId, receiverPixKey, receiverName,
-                description, contractReference, frequency, fixedAmount, maxAmount, startDate, endDate, status,
+                description, contractReference, frequency, fixedAmount, retryPolicy, maxAmount, startDate, endDate, status,
                 cancelledBy, createdAt, updatedAt, version);
+    }
+
+    /**
+     * Confere uma nova tentativa de uma cobrança recusada. Regra do arranjo: só se a autorização
+     * previr; no máximo {@value #MAX_RETRIES}; uma por dia, sempre depois da anterior e a partir de
+     * amanhã; até {@value #RETRY_WINDOW_DAYS} dias depois do vencimento.
+     *
+     * @param attemptsSoFar tentativas já feitas, contando a original
+     */
+    public void checkRetry(LocalDate dueDate, LocalDate lastAttemptDate, int attemptsSoFar, LocalDate retryDate,
+                           LocalDate today) {
+        if (retryPolicy == RetryPolicy.NONE) {
+            throw new BusinessRuleException("Esta autorização não permite novas tentativas");
+        }
+        if (status != Status.ACTIVE) throw new BusinessRuleException("Autorização não está ativa");
+        if (attemptsSoFar - 1 >= MAX_RETRIES) {
+            throw new BusinessRuleException("As " + MAX_RETRIES + " novas tentativas permitidas já foram feitas");
+        }
+        if (retryDate == null || !retryDate.isAfter(today)) {
+            throw new BusinessRuleException("A nova tentativa precisa ser a partir de amanhã");
+        }
+        if (!retryDate.isAfter(lastAttemptDate)) {
+            throw new BusinessRuleException("Uma tentativa por dia, depois da anterior (" + lastAttemptDate + ")");
+        }
+        if (retryDate.isAfter(dueDate.plusDays(RETRY_WINDOW_DAYS))) {
+            throw new BusinessRuleException("Novas tentativas só até " + RETRY_WINDOW_DAYS + " dias depois do vencimento ("
+                    + dueDate.plusDays(RETRY_WINDOW_DAYS) + ")");
+        }
     }
 
     /**
@@ -213,6 +249,7 @@ public class PixAutomaticAuthorization {
     public String getContractReference() { return contractReference; }
     public Frequency getFrequency() { return frequency; }
     public Money getFixedAmount() { return fixedAmount; }
+    public RetryPolicy getRetryPolicy() { return retryPolicy; }
     public Money getMaxAmount() { return maxAmount; }
     public LocalDate getStartDate() { return startDate; }
     public LocalDate getEndDate() { return endDate; }

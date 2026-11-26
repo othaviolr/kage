@@ -48,10 +48,11 @@ public class OutboxPixEventPublisher implements PixEventPublisher {
     }
 
     @Override
-    public void publishPixAutomaticChargeScheduled(PixAutomaticAuthorization a, PixAutomaticCharge c) {
+    public void publishPixAutomaticChargeScheduled(PixAutomaticAuthorization a, PixAutomaticCharge c, int attempt,
+                                                   java.time.LocalDate scheduledDate) {
         outbox.publish("pix.exchange", "pix.automatic.charge.scheduled", new PixAutomaticChargeScheduledEvent(c.id(),
-                a.getId(), a.getPayerAccountId(), a.getReceiverName(), a.getDescription(), c.amount().amount(), c.dueDate(),
-                java.time.Instant.now()));
+                a.getId(), a.getPayerAccountId(), a.getReceiverName(), a.getDescription(), c.amount().amount(), scheduledDate,
+                attempt, java.time.Instant.now()));
     }
 
     public record PixAutomaticRequestedEvent(java.util.UUID authorizationId, java.util.UUID payerAccountId,
@@ -62,7 +63,7 @@ public class OutboxPixEventPublisher implements PixEventPublisher {
     public record PixAutomaticChargeScheduledEvent(java.util.UUID chargeId, java.util.UUID authorizationId,
                                                    java.util.UUID payerAccountId, String receiverName, String description,
                                                    java.math.BigDecimal amount, java.time.LocalDate dueDate,
-                                                   java.time.Instant occurredAt) {}
+                                                   int attempt, java.time.Instant occurredAt) {}
 
     public record ScheduledPixFailedEvent(java.util.UUID transactionId, java.util.UUID sourceAccountId,
                                           java.math.BigDecimal amount, java.time.LocalDate scheduledDate,

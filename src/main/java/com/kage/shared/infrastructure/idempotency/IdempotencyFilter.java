@@ -56,7 +56,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
     /** Rotas que movem (ou comprometem) dinheiro. */
     static final List<PathPattern> PROTECTED = List.of(
             "/api/pix/send", "/api/pix/scheduled", "/api/pix/recurring", "/api/pix/automatic/authorizations",
-            "/api/pix/automatic/authorizations/*/charges","/api/pix/refunds",
+            "/api/pix/automatic/authorizations/*/charges", "/api/pix/automatic/charges/*/retry", "/api/pix/refunds",
             "/api/accounts/*/withdraw", "/api/accounts/*/deposit",
             "/api/cards/*/purchases", "/api/cards/*/invoices/*/pay", "/api/cards/*/invoices/*/installment-plan",
             "/api/cards/*/installment-plans/*/anticipation",

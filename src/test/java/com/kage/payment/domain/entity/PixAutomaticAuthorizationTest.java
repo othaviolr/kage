@@ -3,6 +3,7 @@ package com.kage.payment.domain.entity;
 import com.kage.payment.domain.entity.PixAutomaticAuthorization.DisplayStatus;
 import com.kage.payment.domain.entity.PixAutomaticAuthorization.Frequency;
 import com.kage.payment.domain.entity.PixAutomaticAuthorization.Party;
+import com.kage.payment.domain.entity.PixAutomaticAuthorization.RetryPolicy;
 import com.kage.shared.domain.exception.BusinessRuleException;
 import com.kage.shared.domain.exception.DomainException;
 import com.kage.shared.domain.exception.ValidationException;
@@ -22,8 +23,13 @@ class PixAutomaticAuthorizationTest {
     private static final LocalDateTime NOW = TODAY.atTime(10, 0);
 
     private PixAutomaticAuthorization request(Frequency frequency, Money fixed, LocalDate start, LocalDate end) {
+        return request(frequency, fixed, RetryPolicy.NONE, start, end);
+    }
+
+    private PixAutomaticAuthorization request(Frequency frequency, Money fixed, RetryPolicy retry, LocalDate start,
+                                              LocalDate end) {
         return PixAutomaticAuthorization.request(UUID.randomUUID(), UUID.randomUUID(), "chave-academia", "Academia Forte",
-                "Mensalidade", "contrato 42", frequency, fixed, start, end, TODAY, NOW);
+                "Mensalidade", "contrato 42", frequency, fixed, retry, start, end, TODAY, NOW);
     }
 
     private PixAutomaticAuthorization active(Frequency frequency, Money fixed, Money max, LocalDate start) {
@@ -36,14 +42,14 @@ class PixAutomaticAuthorizationTest {
     void pedido_deveValidarPartesPeriodoEDescricao() {
         UUID same = UUID.randomUUID();
         assertThatThrownBy(() -> PixAutomaticAuthorization.request(same, same, "k", "X", "Mensalidade", null,
-                Frequency.MONTHLY, null, TODAY.plusDays(5), null, TODAY, NOW))
+                Frequency.MONTHLY, null, RetryPolicy.NONE, TODAY.plusDays(5), null, TODAY, NOW))
                 .isInstanceOf(BusinessRuleException.class).hasMessageContaining("mesma conta");
         assertThatThrownBy(() -> request(Frequency.MONTHLY, null, TODAY, null))
                 .isInstanceOf(DomainException.class).hasMessageContaining("futura");
         assertThatThrownBy(() -> request(Frequency.MONTHLY, null, TODAY.plusDays(10), TODAY.plusDays(5)))
                 .isInstanceOf(DomainException.class).hasMessageContaining("fim");
         assertThatThrownBy(() -> PixAutomaticAuthorization.request(UUID.randomUUID(), UUID.randomUUID(), "k", "X", " ",
-                null, Frequency.MONTHLY, null, TODAY.plusDays(5), null, TODAY, NOW))
+                null, Frequency.MONTHLY, null, RetryPolicy.NONE, TODAY.plusDays(5), null, TODAY, NOW))
                 .isInstanceOf(ValidationException.class);
 
         assertThat(request(Frequency.MONTHLY, Money.of("49.90"), TODAY.plusDays(5), null).getStatus())
@@ -125,5 +131,30 @@ class PixAutomaticAuthorizationTest {
         bounded.approve(null, TODAY, NOW);
         assertThat(bounded.displayStatus(TODAY.plusMonths(3))).isEqualTo(DisplayStatus.ACTIVE);
         assertThat(bounded.displayStatus(TODAY.plusMonths(3).plusDays(1))).isEqualTo(DisplayStatus.FINISHED);
+    }
+
+    @Test
+    void novaTentativa_soSePrevista_ate3_umaPorDia_ate7DiasDepoisDoVencimento() {
+        LocalDate due = TODAY.plusDays(5);
+        PixAutomaticAuthorization noRetry = active(Frequency.MONTHLY, null, null, TODAY.plusDays(1));
+        assertThatThrownBy(() -> noRetry.checkRetry(due, due, 1, due.plusDays(1), due))
+                .hasMessageContaining("não permite novas tentativas");
+
+        PixAutomaticAuthorization a = request(Frequency.MONTHLY, null, RetryPolicy.THREE_IN_SEVEN_DAYS, TODAY.plusDays(1), null);
+        a.approve(null, TODAY, NOW);
+
+        a.checkRetry(due, due, 1, due.plusDays(1), due);              // dia seguinte ao vencimento
+        a.checkRetry(due, due.plusDays(3), 3, due.plusDays(7), due);  // 3ª nova tentativa, no 7º dia
+        assertThatThrownBy(() -> a.checkRetry(due, due.plusDays(5), 4, due.plusDays(6), due))
+                .hasMessageContaining("3 novas tentativas");
+        assertThatThrownBy(() -> a.checkRetry(due, due, 1, due.plusDays(8), due))
+                .hasMessageContaining("7 dias depois do vencimento");
+        assertThatThrownBy(() -> a.checkRetry(due, due.plusDays(2), 2, due.plusDays(2), due.plusDays(1)))
+                .hasMessageContaining("Uma tentativa por dia");
+        assertThatThrownBy(() -> a.checkRetry(due, due, 1, due, due))
+                .hasMessageContaining("a partir de amanhã");
+
+        a.cancel(Party.PAYER, NOW);
+        assertThatThrownBy(() -> a.checkRetry(due, due, 1, due.plusDays(1), due)).hasMessageContaining("não está ativa");
     }
 }

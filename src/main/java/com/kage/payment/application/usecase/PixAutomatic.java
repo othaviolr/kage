@@ -3,6 +3,7 @@ package com.kage.payment.application.usecase;
 import com.kage.payment.domain.entity.PixAutomaticAuthorization;
 import com.kage.payment.domain.entity.PixAutomaticAuthorization.Frequency;
 import com.kage.payment.domain.entity.PixAutomaticAuthorization.Party;
+import com.kage.payment.domain.entity.PixAutomaticAuthorization.RetryPolicy;
 import com.kage.payment.domain.entity.PixAutomaticCharge;
 import com.kage.payment.domain.entity.PixKey;
 import com.kage.payment.domain.entity.PixTransaction;
@@ -39,15 +40,25 @@ public class PixAutomatic {
 
     public record RequestInput(UUID receiverAccountId, String receiverPixKey, String payerPixKey, String description,
                                String contractReference, Frequency frequency, Money fixedAmount, LocalDate startDate,
-                               LocalDate endDate) {}
+                               LocalDate endDate, RetryPolicy retryPolicy) {}
 
+    public record AttemptView(int number, LocalDate date, String status, String failureReason, UUID transactionId) {}
+
+    /** Situação, motivo e transação são os da tentativa mais recente. */
     public record ChargeView(UUID id, int cycle, LocalDate dueDate, BigDecimal amount, String status,
-                             String failureReason, UUID transactionId) {}
+                             String failureReason, UUID transactionId, List<AttemptView> attempts) {}
 
     public record View(UUID id, UUID payerAccountId, UUID receiverAccountId, String receiverName, String description,
                        String contractReference, String frequency, BigDecimal fixedAmount, BigDecimal maxAmount,
-                       LocalDate startDate, LocalDate endDate, String status, String cancelledBy,
+                       String retryPolicy, LocalDate startDate, LocalDate endDate, String status, String cancelledBy,
                        List<ChargeView> charges) {}
+
+    /** Só falta de dinheiro (saldo ou limite) justifica tentar de novo; chave removida, por exemplo, não. */
+    private static boolean retryable(PixTransaction attempt) {
+        String reason = attempt.getFailureReason();
+        return attempt.getStatus() == PixTransactionStatus.FAILED && reason != null
+                && (reason.contains("Saldo insuficiente") || reason.contains("limite"));
+    }
 
     private final PixAutomaticRepository repository;
     private final PixKeyRepository pixKeyRepository;
@@ -81,8 +92,8 @@ public class PixAutomatic {
 
         PixAutomaticAuthorization authorization = PixAutomaticAuthorization.request(payerKey.getAccountId(),
                 input.receiverAccountId(), input.receiverPixKey(), receiver.name(), input.description(),
-                input.contractReference(), input.frequency(), input.fixedAmount(), input.startDate(), input.endDate(),
-                today(), now());
+                input.contractReference(), input.frequency(), input.fixedAmount(), input.retryPolicy(), input.startDate(),
+                input.endDate(), today(), now());
         repository.insert(authorization);
         eventPublisher.publishPixAutomaticRequested(authorization);
         return view(authorization);
@@ -101,14 +112,44 @@ public class PixAutomatic {
                 authorization.getReceiverPixKey(), amount, "PIX Automático: " + authorization.getDescription(),
                 dueDate, today());
         PixTransaction saved = pixTransactionRepository.save(scheduled);
-        PixAutomaticCharge charge = PixAutomaticCharge.of(authorization, cycle, amount, dueDate, saved.getTransactionId(), now());
+        PixAutomaticCharge charge = PixAutomaticCharge.of(authorization, cycle, amount, dueDate, now());
         try {
             repository.insertCharge(charge);
         } catch (DuplicateKeyException e) { // corrida: duas cobranças do mesmo ciclo ao mesmo tempo
             throw new BusinessRuleException("Já existe cobrança para o ciclo deste vencimento");
         }
-        eventPublisher.publishPixAutomaticChargeScheduled(authorization, charge);
-        return chargeView(charge, saved);
+        repository.insertAttempt(PixAutomaticCharge.Attempt.of(charge, 1, dueDate, saved.getTransactionId(), now()));
+        eventPublisher.publishPixAutomaticChargeScheduled(authorization, charge, 1, dueDate);
+        return chargeView(charge);
+    }
+
+    /**
+     * Nova tentativa de uma cobrança recusada por falta de saldo ou de limite: só se a autorização
+     * previr, no máximo 3, uma por dia, até 7 dias depois do vencimento. Vira outro PIX agendado, e o
+     * pagador é avisado como na cobrança original (pode cancelar até a véspera).
+     */
+    @Transactional
+    public ChargeView retryCharge(UUID chargeId, LocalDate date) {
+        PixAutomaticCharge charge = findCharge(chargeId);
+        PixAutomaticAuthorization authorization = find(charge.authorizationId());
+        List<PixAutomaticCharge.Attempt> attempts = repository.findAttempts(chargeId);
+        PixAutomaticCharge.Attempt last = attempts.get(attempts.size() - 1);
+        if (!retryable(transactionOf(last))) {
+            throw new BusinessRuleException("Só dá para tentar de novo uma cobrança recusada por falta de saldo ou de limite");
+        }
+        authorization.checkRetry(charge.dueDate(), last.scheduledDate(), attempts.size(), date, today());
+
+        int number = attempts.size() + 1;
+        PixTransaction scheduled = pixTransactionRepository.save(PixTransaction.schedule(authorization.getPayerAccountId(),
+                authorization.getReceiverPixKey(), charge.amount(), "PIX Automático: " + authorization.getDescription()
+                        + " (nova tentativa " + (number - 1) + ")", date, today()));
+        try {
+            repository.insertAttempt(PixAutomaticCharge.Attempt.of(charge, number, date, scheduled.getTransactionId(), now()));
+        } catch (DuplicateKeyException e) { // corrida: duas novas tentativas ao mesmo tempo
+            throw new BusinessRuleException("Já existe uma tentativa agendada para esta cobrança");
+        }
+        eventPublisher.publishPixAutomaticChargeScheduled(authorization, charge, number, date);
+        return chargeView(charge);
     }
 
     // ---------- pagador ----------
@@ -129,17 +170,22 @@ public class PixAutomatic {
         return get(authorizationId);
     }
 
-    /** O pagador cancela uma cobrança até a véspera do vencimento; as próximas seguem. */
+    /**
+     * O pagador cancela a tentativa agendada (a original ou uma nova) até a véspera dela; cancelada,
+     * a cobrança não tem mais novas tentativas. As próximas cobranças seguem.
+     */
     @Transactional
     public ChargeView cancelCharge(UUID chargeId) {
-        PixAutomaticCharge charge = repository.findChargeById(chargeId)
-                .orElseThrow(() -> new NotFoundException("Cobrança não encontrada"));
-        if (!today().isBefore(charge.dueDate())) {
-            throw new BusinessRuleException("A cobrança só pode ser cancelada até a véspera do vencimento");
+        PixAutomaticCharge charge = findCharge(chargeId);
+        List<PixAutomaticCharge.Attempt> attempts = repository.findAttempts(chargeId);
+        PixAutomaticCharge.Attempt last = attempts.get(attempts.size() - 1);
+        if (!today().isBefore(last.scheduledDate())) {
+            throw new BusinessRuleException("A cobrança só pode ser cancelada até a véspera do pagamento agendado");
         }
-        PixTransaction transaction = pixTransactionRepository.findById(charge.pixTransactionId()).orElseThrow();
+        PixTransaction transaction = transactionOf(last);
         transaction.cancel(); // só PENDING
-        return chargeView(charge, pixTransactionRepository.save(transaction));
+        pixTransactionRepository.save(transaction);
+        return chargeView(charge);
     }
 
     // ---------- os dois ----------
@@ -151,12 +197,13 @@ public class PixAutomatic {
         authorization.cancel(by, now());
         repository.update(authorization);
         for (PixAutomaticCharge charge : repository.findCharges(authorizationId)) {
-            pixTransactionRepository.findById(charge.pixTransactionId())
-                    .filter(t -> t.getStatus() == PixTransactionStatus.PENDING)
-                    .ifPresent(t -> {
-                        t.cancel();
-                        pixTransactionRepository.save(t);
-                    });
+            for (PixAutomaticCharge.Attempt attempt : repository.findAttempts(charge.id())) {
+                PixTransaction t = transactionOf(attempt);
+                if (t.getStatus() == PixTransactionStatus.PENDING) {
+                    t.cancel();
+                    pixTransactionRepository.save(t);
+                }
+            }
         }
         return get(authorizationId);
     }
@@ -170,25 +217,40 @@ public class PixAutomatic {
     }
 
     private View view(PixAutomaticAuthorization a) {
-        List<ChargeView> charges = repository.findCharges(a.getId()).stream()
-                .map(c -> chargeView(c, pixTransactionRepository.findById(c.pixTransactionId()).orElseThrow()))
-                .toList();
+        List<ChargeView> charges = repository.findCharges(a.getId()).stream().map(this::chargeView).toList();
         return new View(a.getId(), a.getPayerAccountId(), a.getReceiverAccountId(), a.getReceiverName(), a.getDescription(),
                 a.getContractReference(), a.getFrequency().name(), amount(a.getFixedAmount()), amount(a.getMaxAmount()),
-                a.getStartDate(), a.getEndDate(), a.displayStatus(today()).name(),
+                a.getRetryPolicy().name(), a.getStartDate(), a.getEndDate(), a.displayStatus(today()).name(),
                 a.getCancelledBy() == null ? null : a.getCancelledBy().name(), charges);
     }
 
-    private static ChargeView chargeView(PixAutomaticCharge c, PixTransaction t) {
-        String status = switch (t.getStatus()) {
+    private ChargeView chargeView(PixAutomaticCharge c) {
+        List<AttemptView> attempts = repository.findAttempts(c.id()).stream().map(attempt -> {
+            PixTransaction t = transactionOf(attempt);
+            return new AttemptView(attempt.number(), attempt.scheduledDate(), statusOf(t), t.getFailureReason(),
+                    t.getTransactionId());
+        }).toList();
+        AttemptView last = attempts.get(attempts.size() - 1);
+        return new ChargeView(c.id(), c.cycle(), c.dueDate(), c.amount().amount(), last.status(), last.failureReason(),
+                last.transactionId(), attempts);
+    }
+
+    private static String statusOf(PixTransaction t) {
+        return switch (t.getStatus()) {
             case PENDING -> "SCHEDULED";
             case PROCESSING -> "PROCESSING";
             case COMPLETED -> "PAID";
             case FAILED -> "FAILED";
             case CANCELLED -> "CANCELLED";
         };
-        return new ChargeView(c.id(), c.cycle(), c.dueDate(), c.amount().amount(), status, t.getFailureReason(),
-                t.getTransactionId());
+    }
+
+    private PixTransaction transactionOf(PixAutomaticCharge.Attempt attempt) {
+        return pixTransactionRepository.findById(attempt.pixTransactionId()).orElseThrow();
+    }
+
+    private PixAutomaticCharge findCharge(UUID chargeId) {
+        return repository.findChargeById(chargeId).orElseThrow(() -> new NotFoundException("Cobrança não encontrada"));
     }
 
     private PixKey activeKey(String keyValue, String notFound) {

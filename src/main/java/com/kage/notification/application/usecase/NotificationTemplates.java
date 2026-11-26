@@ -54,7 +54,12 @@ public final class NotificationTemplates {
     }
 
     public static Text pixAutomaticChargeScheduled(String receiverName, String description, BigDecimal amount,
-                                                   LocalDate dueDate) {
+                                                   LocalDate dueDate, int attempt) {
+        if (attempt > 1) {
+            return new Text("Nova tentativa do PIX Automático", "A cobrança de " + money(amount) + " de " + receiverName
+                    + " (" + description + ") não foi paga por falta de saldo ou de limite. Ela será tentada de novo em "
+                    + dueDate.format(DATE) + " (tentativa " + attempt + "). Se quiser, cancele até a véspera.");
+        }
         return new Text("PIX Automático agendado", receiverName + " vai cobrar " + money(amount) + " em "
                 + dueDate.format(DATE) + " (" + description + "). Se quiser, cancele esta cobrança até a véspera.");
     }

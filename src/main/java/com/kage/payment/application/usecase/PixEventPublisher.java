@@ -19,6 +19,10 @@ public interface PixEventPublisher {
     /** Quem recebe pediu uma autorização de PIX Automático (aviso ao pagador para responder). */
     void publishPixAutomaticRequested(PixAutomaticAuthorization authorization);
 
-    /** Chegou a cobrança de um ciclo e ela foi agendada (aviso ao pagador, que pode cancelar até a véspera). */
-    void publishPixAutomaticChargeScheduled(PixAutomaticAuthorization authorization, PixAutomaticCharge charge);
+    /**
+     * Uma tentativa de pagamento de uma cobrança foi agendada (aviso ao pagador, que pode cancelar até a
+     * véspera). {@code attempt} 1 é a do vencimento; maior que 1, uma nova tentativa depois de recusada.
+     */
+    void publishPixAutomaticChargeScheduled(PixAutomaticAuthorization authorization, PixAutomaticCharge charge,
+                                            int attempt, java.time.LocalDate scheduledDate);
 }
