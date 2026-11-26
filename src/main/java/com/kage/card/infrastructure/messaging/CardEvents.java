@@ -24,6 +24,10 @@ public final class CardEvents {
     public static final String PURCHASE_APPROVED = "card.purchase.approved";
     public static final String PURCHASE_DECLINED = "card.purchase.declined";
     public static final String LIMIT_OFFERED = "card.limit.offered";
+    public static final String CASHBACK_EARNED = "card.cashback.earned";
+
+    /** @param referenceMonth fatura que rendeu o cashback (ele entra na seguinte) */
+    public record CashbackEarnedEvent(UUID cardId, String referenceMonth, BigDecimal amount, Instant occurredAt) {}
 
     public record LimitOfferedEvent(UUID cardId, UUID offerId, BigDecimal offeredLimit, java.time.LocalDateTime expiresAt,
                                     Instant occurredAt) {}

@@ -23162,10 +23162,632 @@
       ]
     },
     {
-      "name": "28. Estorno de juros na contestação",
+      "name": "28. Cashback",
       "item": [
         {
           "name": "28.1.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Cashback\",\n  \"cpf\": \"{{cbCpf}}\",\n  \"email\": \"{{cbEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('cbCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('cbEmail', `kage.cb+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('cbCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.1.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{cbCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{cbCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.1.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{cbCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('cbAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.1.4 Depositar 2000",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{cbAccountId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{cbAccountId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 2000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.2 Emitir cartão",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{cbCustomerId}}\",\n  \"accountId\": \"{{cbAccountId}}\",\n  \"creditLimit\": 5000,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('cbCardId', pm.response.json().cardId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.3 Mercado: 600 (maio/2036)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Mercado\",\n  \"amount\": 600,\n  \"purchasedAt\": \"2036-05-05T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.4 Loja: 400 (maio/2036)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{cbStorePurchaseId}}\",\n  \"description\": \"Loja\",\n  \"amount\": 400,\n  \"purchasedAt\": \"2036-05-06T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('cbStorePurchaseId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.5 Fechar maio (backoffice)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/invoices/2036-05/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "invoices",
+                "2036-05",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.6 Pagar maio inteira, antes do vencimento",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/invoices/2036-05/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "invoices",
+                "2036-05",
+                "pay"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('PAID', () => pm.expect(pm.response.json().status).to.eql('PAID'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.7 Junho: cashback de 1% abatendo a fatura",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/invoices/2036-06",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "invoices",
+                "2036-06"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cashback de 10,00 (1% de 1000)', () => pm.expect(pm.response.json().items.filter(i => i.kind === 'CASHBACK').reduce((s, i) => s + i.amount, 0)).to.eql(10));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.8 Resumo do cashback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/cashback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "cashback"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json();",
+                  "pm.test('Ganhou 10, de maio, creditado em junho', () => {",
+                  "  pm.expect(s.rate).to.eql(0.01);",
+                  "  pm.expect(s.earned).to.eql(10);",
+                  "  pm.expect(s.invoices[0].referenceMonth).to.eql('2036-05');",
+                  "  pm.expect(s.invoices[0].creditedIn).to.eql('2036-06');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.9 Contestar a compra da loja",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/disputes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "disputes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{cbStorePurchaseId}}\",\n  \"reason\": \"NOT_RECEIVED\",\n  \"details\": \"Paguei e não chegou\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('cbDisputeId', pm.response.json().disputeId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.10 Procedente: o cashback dos 400 volta",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/disputes/{{cbDisputeId}}/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "disputes",
+                "{{cbDisputeId}}",
+                "resolve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accepted\": true,\n  \"note\": \"Estabelecimento não comprovou\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.11 Resumo: 4,00 estornados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/cashback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "cashback"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json();",
+                  "pm.test('Ganhou 10, estornou 4, líquido 6', () => { pm.expect(s.earned).to.eql(10); pm.expect(s.reversed).to.eql(4); pm.expect(s.net).to.eql(6); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.12 Aviso de cashback na caixa de entrada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{cbCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{cbCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const n = pm.response.json().notifications.find(x => x.type === 'CARD_CASHBACK_EARNED');",
+                  "pm.test('Você ganhou cashback', () => { pm.expect(n, 'chega pelo RabbitMQ; se falhar, rode de novo').to.exist; pm.expect(n.message).to.include('R$ 10,00 de cashback'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "29. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "29.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -23222,7 +23844,7 @@
           ]
         },
         {
-          "name": "28.1.2 Aprovar KYC",
+          "name": "29.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -23253,7 +23875,7 @@
           ]
         },
         {
-          "name": "28.1.3 Abrir conta",
+          "name": "29.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -23296,7 +23918,7 @@
           ]
         },
         {
-          "name": "28.1.4 Depositar 3000",
+          "name": "29.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -23340,7 +23962,7 @@
           ]
         },
         {
-          "name": "28.2 Emitir cartão",
+          "name": "29.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -23383,7 +24005,7 @@
           ]
         },
         {
-          "name": "28.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "29.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -23436,7 +24058,7 @@
           ]
         },
         {
-          "name": "28.4 Outras compras: 600",
+          "name": "29.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -23480,7 +24102,7 @@
           ]
         },
         {
-          "name": "28.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "29.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -23516,7 +24138,7 @@
           ]
         },
         {
-          "name": "28.6 Paga só 400 de 1000",
+          "name": "29.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -23563,7 +24185,7 @@
           ]
         },
         {
-          "name": "28.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "29.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -23599,7 +24221,7 @@
           ]
         },
         {
-          "name": "28.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "29.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -23632,7 +24254,7 @@
           ]
         },
         {
-          "name": "28.9 Contestar a compra de 400",
+          "name": "29.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -23680,7 +24302,7 @@
           ]
         },
         {
-          "name": "28.10 Procedente: devolve os juros que a compra gerou",
+          "name": "29.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -23729,7 +24351,7 @@
           ]
         },
         {
-          "name": "28.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "29.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],

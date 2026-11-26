@@ -208,8 +208,9 @@ public class CardConfig {
     @Bean
     public DisputePurchase disputePurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
                                            DisputeRepository disputeRepository, CardEventPublisher cardEventPublisher,
-                                           VirtualCards virtualCards) {
-        return new DisputePurchase(cardRepository, invoiceRepository, disputeRepository, cardEventPublisher, virtualCards);
+                                           VirtualCards virtualCards, Cashbacks cashbacks) {
+        return new DisputePurchase(cardRepository, invoiceRepository, disputeRepository, cardEventPublisher, virtualCards,
+                cashbacks);
     }
 
     @Bean
@@ -229,10 +230,16 @@ public class CardConfig {
     }
 
     @Bean
+    public Cashbacks cashbacks(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                               DisputeRepository disputeRepository, CardEventPublisher cardEventPublisher) {
+        return new Cashbacks(cardRepository, invoiceRepository, disputeRepository, cardEventPublisher);
+    }
+
+    @Bean
     public PayInvoice payInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository,
                                  CardBillingAccountService cardBillingAccountService,
-                                 CardEventPublisher cardEventPublisher) {
-        return new PayInvoice(cardRepository, invoiceRepository, cardBillingAccountService, cardEventPublisher);
+                                 CardEventPublisher cardEventPublisher, Cashbacks cashbacks) {
+        return new PayInvoice(cardRepository, invoiceRepository, cardBillingAccountService, cardEventPublisher, cashbacks);
     }
 
     @Bean

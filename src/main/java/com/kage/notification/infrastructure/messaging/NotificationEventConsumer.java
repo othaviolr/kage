@@ -189,6 +189,12 @@ public class NotificationEventConsumer {
                 e.number(), e.installments(), e.amount(), e.dueDate()), e.loanId(), messageId);
     }
 
+    @RabbitListener(queues = "notification.card.cashback.earned.queue")
+    public void onCashbackEarned(InboundEvents.CashbackEarned e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toCardOwner(e.cardId(), NotificationType.CARD_CASHBACK_EARNED,
+                NotificationTemplates.cashbackEarned(e.referenceMonth(), e.amount()), null, messageId);
+    }
+
     @RabbitListener(queues = "notification.card.limit.offered.queue")
     public void onLimitOffered(InboundEvents.LimitOffered e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toCardOwner(e.cardId(), NotificationType.CARD_LIMIT_OFFERED,

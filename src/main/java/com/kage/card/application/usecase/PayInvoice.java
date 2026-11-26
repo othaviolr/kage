@@ -42,13 +42,20 @@ public class PayInvoice {
     private final InvoiceRepository invoiceRepository;
     private final CardBillingAccountService billingAccount;
     private final CardEventPublisher eventPublisher;
+    private final Cashbacks cashbacks;
 
     public PayInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository,
                       CardBillingAccountService billingAccount, CardEventPublisher eventPublisher) {
+        this(cardRepository, invoiceRepository, billingAccount, eventPublisher, null);
+    }
+
+    public PayInvoice(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                      CardBillingAccountService billingAccount, CardEventPublisher eventPublisher, Cashbacks cashbacks) {
         this.cardRepository = cardRepository;
         this.invoiceRepository = invoiceRepository;
         this.billingAccount = billingAccount;
         this.eventPublisher = eventPublisher;
+        this.cashbacks = cashbacks;
     }
 
     @Transactional
@@ -83,6 +90,7 @@ public class PayInvoice {
         Invoice savedInvoice = invoiceRepository.save(invoice);
         if (savedInvoice.getStatus() == InvoiceStatus.PAID) {
             eventPublisher.publishInvoicePaid(savedInvoice);
+            if (cashbacks != null) cashbacks.creditFor(savedCard, invoice); // paga em dia: cashback na seguinte
         } else {
             eventPublisher.publishInvoicePartiallyPaid(savedInvoice, amount);
         }

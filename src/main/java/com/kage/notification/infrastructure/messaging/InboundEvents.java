@@ -80,6 +80,9 @@ public final class InboundEvents {
                                          LocalDate dueDate) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record CashbackEarned(UUID cardId, String referenceMonth, BigDecimal amount) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record LimitOffered(UUID cardId, UUID offerId, BigDecimal offeredLimit, java.time.LocalDateTime expiresAt) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
