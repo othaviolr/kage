@@ -175,6 +175,15 @@ public final class NotificationTemplates {
         return new Text("Empréstimo quitado", "Você quitou o empréstimo: " + money(paid) + saving + ".");
     }
 
+    public static Text loanRenegotiated(BigDecimal debt, BigDecimal downPayment, int installments,
+                                        BigDecimal installmentAmount, java.time.LocalDate firstDueDate) {
+        String entry = downPayment != null && downPayment.signum() > 0 ? "entrada de " + money(downPayment) + " e " : "";
+        return new Text("Acordo fechado", "Sua dívida de " + money(debt) + " foi renegociada: " + entry + installments
+                + " parcelas de " + money(installmentAmount) + ", a 1ª em "
+                + firstDueDate.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                + ". As parcelas atrasadas do contrato anterior foram encerradas.");
+    }
+
     public static Text loanWithdrawn(BigDecimal returned) {
         return new Text("Desistência confirmada", "Cancelamos o empréstimo: " + money(returned)
                 + " voltaram para o Kage, sem juros nem IOF.");

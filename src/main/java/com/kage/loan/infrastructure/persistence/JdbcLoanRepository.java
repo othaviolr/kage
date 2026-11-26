@@ -20,7 +20,8 @@ import java.util.UUID;
 public class JdbcLoanRepository implements LoanRepository {
 
     private static final String COLUMNS = "id, account_id, customer_id, released, iof, financed, monthly_rate, due_day, "
-            + "cet_monthly, cet_yearly, status, contract_date, contracted_at, closed_at, version";
+            + "cet_monthly, cet_yearly, status, contract_date, contracted_at, closed_at, origin, renegotiated_from, down_payment, "
+            + "version";
     private static final String INSTALLMENT_COLUMNS = "number, due_date, amount, principal, interest, paid, paid_at, "
             + "paid_amount, late_charges, discount";
 
@@ -32,11 +33,11 @@ public class JdbcLoanRepository implements LoanRepository {
 
     @Override
     public void insert(Loan l) {
-        jdbcTemplate.update("INSERT INTO loans (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
+        jdbcTemplate.update("INSERT INTO loans (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
                 l.getId(), l.getAccountId(), l.getCustomerId(), l.getReleased().amount(), l.getIof().amount(),
                 l.getFinanced().amount(), l.getMonthlyRate(), l.getDueDay(), l.getCetMonthly(), l.getCetYearly(),
                 l.getStatus().name(), Date.valueOf(l.getContractDate()), Timestamp.valueOf(l.getContractedAt()),
-                ts(l.getClosedAt()));
+                ts(l.getClosedAt()), l.getOrigin().name(), l.getRenegotiatedFrom(), amount(l.getDownPayment()));
         for (Loan.Installment i : l.getInstallments()) {
             jdbcTemplate.update("INSERT INTO loan_installments (loan_id, " + INSTALLMENT_COLUMNS + ") "
                             + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -115,7 +116,8 @@ public class JdbcLoanRepository implements LoanRepository {
                 Money.of(rs.getBigDecimal("financed")), rs.getBigDecimal("monthly_rate"), rs.getInt("due_day"),
                 rs.getBigDecimal("cet_monthly"), rs.getBigDecimal("cet_yearly"), Loan.Status.valueOf(rs.getString("status")),
                 rs.getDate("contract_date").toLocalDate(), rs.getTimestamp("contracted_at").toLocalDateTime(),
-                local(rs.getTimestamp("closed_at")), installments, rs.getLong("version"));
+                local(rs.getTimestamp("closed_at")), installments, Loan.Origin.valueOf(rs.getString("origin")),
+                rs.getObject("renegotiated_from", UUID.class), money(rs.getBigDecimal("down_payment")), rs.getLong("version"));
     }
 
     private static Timestamp ts(LocalDateTime value) {

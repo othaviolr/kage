@@ -82,4 +82,41 @@ class LoanPolicyTest {
         assertThat(LoanPolicy.presentValue(Money.of("500.00"), LoanPolicy.MONTHLY_RATE, LocalDate.of(2026, 3, 1),
                 LocalDate.of(2026, 3, 1)).amount()).isEqualByComparingTo("500.00");
     }
+    @Test
+    void renegociacao_soOIofDiarioComplementar_conferidoAMao() {
+        // dívida de 1000 em 3x (as mesmas amortizações da cotação acima: 320,38 / 333,16 / 346,46),
+        // contrato original de 01/11/2025: as parcelas novas vencem a 96, 124 e 155 dias dele
+        LocalDate original = LocalDate.of(2025, 11, 1);
+        LoanPolicy.Quote q = LoanPolicy.renegotiation(Money.of("1000.00"), 3, 5, CONTRACT, LoanPolicy.MONTHLY_RATE,
+                original, Money.of("1000.00"), 100);
+
+        // o IOF já cobriu 100 dias: complementa 0, 24 e 55 dias; sem os 0,38% de novo
+        // 0,0082% × (333,16×24 + 346,46×55) = 2,22
+        assertThat(q.iof().amount()).isEqualByComparingTo("2.22");
+        assertThat(q.released().amount()).isEqualByComparingTo("1000.00");
+        assertThat(q.financed().amount()).isEqualByComparingTo("1002.22");
+        assertThat(q.monthlyRate()).isEqualByComparingTo(LoanPolicy.MONTHLY_RATE);
+        assertThat(q.schedule().stream().map(i -> i.principal().amount()).reduce(BigDecimal.ZERO, BigDecimal::add))
+                .isEqualByComparingTo("1002.22");
+
+        // metade da dívida é encargo (não foi tributado no contrato): IOF só sobre a parte do principal
+        assertThat(LoanPolicy.renegotiation(Money.of("1000.00"), 3, 5, CONTRACT, LoanPolicy.MONTHLY_RATE, original,
+                Money.of("500.00"), 100).iof().amount()).isEqualByComparingTo("1.11");
+        // o contrato já tinha cobrado os 365 dias: nada a complementar
+        LoanPolicy.Quote covered = LoanPolicy.renegotiation(Money.of("1000.00"), 3, 5, CONTRACT, LoanPolicy.MONTHLY_RATE,
+                original, Money.of("1000.00"), 365);
+        assertThat(covered.iof().amount()).isEqualByComparingTo("0.00");
+        assertThat(covered.financed().amount()).isEqualByComparingTo("1000.00");
+    }
+
+    @Test
+    void renegociacao_validaParcelasDiaESaldo() {
+        LocalDate original = LocalDate.of(2025, 11, 1);
+        assertThatThrownBy(() -> LoanPolicy.renegotiation(Money.of("1000.00"), 2, 5, CONTRACT, LoanPolicy.MONTHLY_RATE,
+                original, Money.ZERO, 0)).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> LoanPolicy.renegotiation(Money.of("1000.00"), 6, 29, CONTRACT, LoanPolicy.MONTHLY_RATE,
+                original, Money.ZERO, 0)).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> LoanPolicy.renegotiation(Money.ZERO, 6, 5, CONTRACT, LoanPolicy.MONTHLY_RATE,
+                original, Money.ZERO, 0)).isInstanceOf(ValidationException.class);
+    }
 }

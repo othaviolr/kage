@@ -58,10 +58,10 @@ public final class LoanPolicy {
         List<Long> days = CetPolicy.days(contractDate, dueDates);
 
         // IOF sobre o liberado, com a amortização que ele teria; depois ele é financiado junto
-        List<Installment> base = price(released, installments, dueDates);
+        List<Installment> base = price(released, installments, dueDates, MONTHLY_RATE);
         Money iof = IofPolicy.installments(released, base.stream().map(Installment::principal).toList(), days);
         Money financed = released.add(iof);
-        List<Installment> schedule = price(financed, installments, dueDates);
+        List<Installment> schedule = price(financed, installments, dueDates, MONTHLY_RATE);
 
         Money total = schedule.stream().map(Installment::amount).reduce(Money.ZERO, Money::add);
         CetPolicy.Cet cet = CetPolicy.of(released, contractDate,
@@ -71,8 +71,8 @@ public final class LoanPolicy {
     }
 
     /** Price: parcela fixa; a última acerta os centavos para o principal fechar. */
-    static List<Installment> price(Money principal, int n, List<LocalDate> dueDates) {
-        BigDecimal i = MONTHLY_RATE;
+    static List<Installment> price(Money principal, int n, List<LocalDate> dueDates, BigDecimal monthlyRate) {
+        BigDecimal i = monthlyRate;
         BigDecimal factor = BigDecimal.ONE.add(i).pow(n, MC);
         BigDecimal pmt = principal.amount().multiply(i).multiply(factor)
                 .divide(factor.subtract(BigDecimal.ONE), 2, RoundingMode.HALF_UP);
@@ -86,6 +86,46 @@ public final class LoanPolicy {
             balance = balance.subtract(amortization);
         }
         return result;
+    }
+
+    /**
+     * Acordo de renegociação: {@code debt} (o que se deve hoje, já sem a entrada) em parcelas Price à taxa
+     * do contrato original — sem dinheiro novo, sem juros maiores. O IOF é só o complementar (Decreto
+     * 6.306/2007, art. 7º, §7º): a parte diária sobre o principal que o contrato original já tributou,
+     * pelos dias que o acordo estende além do que já foi cobrado, até 365 dias contados da operação
+     * original; a alíquota adicional de 0,38% não é cobrada de novo.
+     *
+     * @param taxedPrincipal principal ainda não pago do contrato original (a base que já pagou IOF)
+     * @param coveredDays    dias de IOF já cobrados sobre esse principal (média ponderada das parcelas)
+     */
+    public static Quote renegotiation(Money debt, int installments, int dueDay, LocalDate today, BigDecimal monthlyRate,
+                                      LocalDate originalContractDate, Money taxedPrincipal, long coveredDays) {
+        if (installments < MIN_INSTALLMENTS || installments > MAX_INSTALLMENTS) {
+            throw new ValidationException("Parcelas: de " + MIN_INSTALLMENTS + " a " + MAX_INSTALLMENTS);
+        }
+        if (dueDay < 1 || dueDay > 28) throw new ValidationException("Dia de vencimento: de 1 a 28");
+        if (!debt.isGreaterThan(Money.ZERO)) throw new ValidationException("Não há saldo para renegociar");
+        List<LocalDate> dueDates = dueDates(today, dueDay, installments);
+
+        List<Installment> base = price(debt, installments, dueDates, monthlyRate);
+        BigDecimal taxedShare = taxedPrincipal.amount().compareTo(debt.amount()) >= 0 ? BigDecimal.ONE
+                : taxedPrincipal.amount().divide(debt.amount(), MC);
+        BigDecimal iofValue = BigDecimal.ZERO;
+        for (Installment k : base) {
+            long total = Math.min(IofPolicy.MAX_DAYS, ChronoUnit.DAYS.between(originalContractDate, k.dueDate()));
+            long extra = Math.max(0, total - coveredDays);
+            iofValue = iofValue.add(k.principal().amount().multiply(taxedShare).multiply(IofPolicy.DAILY_RATE)
+                    .multiply(BigDecimal.valueOf(extra)));
+        }
+        Money iof = Money.of(iofValue.setScale(2, RoundingMode.HALF_UP));
+        Money financed = debt.add(iof);
+        List<Installment> schedule = price(financed, installments, dueDates, monthlyRate);
+
+        Money total = schedule.stream().map(Installment::amount).reduce(Money.ZERO, Money::add);
+        CetPolicy.Cet cet = CetPolicy.of(debt, today,
+                schedule.stream().map(i -> new CetPolicy.Flow(i.dueDate(), i.amount())).toList());
+        return new Quote(debt, iof, financed, installments, monthlyRate, schedule.get(0).amount(), total,
+                total.subtract(financed), cet.monthly(), cet.yearly(), schedule);
     }
 
     /** 1ª parcela no primeiro dia {@code dueDay} a pelo menos 30 dias da contratação; depois, mês a mês. */

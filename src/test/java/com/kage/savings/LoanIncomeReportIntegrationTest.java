@@ -125,4 +125,32 @@ class LoanIncomeReportIntegrationTest extends AbstractIntegrationTest {
         // informe de 2037 (parcial): o quitado já saiu; o pequeno segue
         assertThat(report(customerId, 2037).debts()).extracting(GetIncomeReport.DebtLine::loanId).containsExactly(small.loanId());
     }
+    @Test
+    void renegociado_saiZeradoComoRenegociado_eOAcordoEntraComoDividaNova() {
+        today(LocalDate.of(2035, 3, 1));
+        UUID customerId = newActiveCustomerId();
+        UUID accountId = newAccountIdFor(customerId);
+        depositAccount.execute(new DepositAccount.Input(accountId, new BigDecimal("30000.00")));
+        PersonalLoans.Output loan = personalLoans.contract(accountId, new BigDecimal("6000.00"), 12, 10);
+
+        // abril e maio sem pagar; acordo em junho, sem entrada, em 24x
+        today(LocalDate.of(2035, 6, 20));
+        PersonalLoans.Output agreement = personalLoans.renegotiate(accountId, loan.loanId(), 24, 10, null);
+
+        GetIncomeReport.Output y2035 = report(customerId, 2035);
+        assertThat(y2035.debts()).extracting(GetIncomeReport.DebtLine::loanId).containsExactly(loan.loanId(), agreement.loanId());
+
+        GetIncomeReport.DebtLine original = y2035.debts().get(0);
+        assertThat(original.status()).isEqualTo("RENEGOTIATED");
+        assertThat(original.balanceYearEnd()).isEqualByComparingTo("0.00"); // a dívida foi para o acordo
+        assertThat(original.paidInYear()).isEqualByComparingTo("0.00");
+        assertThat(original.description()).endsWith("Renegociado: o saldo passou para o acordo.");
+
+        GetIncomeReport.DebtLine deal = y2035.debts().get(1);
+        assertThat(deal.description()).startsWith("Acordo de renegociação de empréstimo no Kage em 20/06/2035:")
+                .contains("em 24 parcelas de");
+        assertThat(deal.balanceYearEnd()).isEqualByComparingTo(agreement.financed()); // nenhuma parcela paga ainda
+        assertThat(deal.mustDeclare()).isTrue();
+        assertThat(y2035.totals().debtYearEnd()).isEqualByComparingTo(agreement.financed());
+    }
 }

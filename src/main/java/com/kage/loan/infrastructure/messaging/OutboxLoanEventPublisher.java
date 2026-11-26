@@ -24,6 +24,15 @@ public class OutboxLoanEventPublisher implements LoanEventPublisher {
     }
 
     @Override
+    public void publishRenegotiated(Loan original, Loan agreement, Money downPayment) {
+        Loan.Installment first = agreement.getInstallments().get(0);
+        outbox.publish(LoanEvents.EXCHANGE, LoanEvents.RENEGOTIATED, new LoanEvents.RenegotiatedEvent(agreement.getId(),
+                original.getId(), agreement.getAccountId(), agreement.getReleased().add(downPayment).amount(),
+                downPayment.amount(), agreement.getInstallments().size(), first.amount().amount(), first.dueDate(),
+                DomainTime.instant()));
+    }
+
+    @Override
     public void publishInstallmentPaid(Loan loan, Loan.Installment i) {
         outbox.publish(LoanEvents.EXCHANGE, LoanEvents.INSTALLMENT_PAID, new LoanEvents.InstallmentPaidEvent(loan.getId(),
                 loan.getAccountId(), i.number(), loan.getInstallments().size(), i.paidAmount().amount(),

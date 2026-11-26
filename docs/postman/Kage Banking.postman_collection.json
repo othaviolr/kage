@@ -22298,6 +22298,245 @@
               }
             }
           ]
+        },
+        {
+          "name": "26.22 Renegociar empréstimo quitado -> 422",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/{{lnLoan2Id}}/renegotiation?installments=12",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "{{lnLoan2Id}}",
+                "renegotiation"
+              ],
+              "query": [
+                {
+                  "key": "installments",
+                  "value": "12"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Já quitado', () => pm.expect(pm.response.text()).to.include('quitado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.23 Contratar 1000 em 3x",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000,\n  \"installments\": 3,\n  \"dueDay\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('lnLoan3Id', pm.response.json().loanId);",
+                  "pm.test('Empréstimo novo (não é acordo)', () => { pm.expect(pm.response.json().origin).to.eql('NEW'); pm.expect(pm.response.json().renegotiatedFrom).to.eql(null); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.24 Renegociar em dia -> 422",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/{{lnLoan3Id}}/renegotiation?installments=12&dueDay=15",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "{{lnLoan3Id}}",
+                "renegotiation"
+              ],
+              "query": [
+                {
+                  "key": "installments",
+                  "value": "12"
+                },
+                {
+                  "key": "dueDay",
+                  "value": "15"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Só dívida vencida se renegocia', () => pm.expect(pm.response.text()).to.include('Não há parcela em atraso'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.25 Fechar acordo em dia -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/{{lnLoan3Id}}/renegotiation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "{{lnLoan3Id}}",
+                "renegotiation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"installments\": 12,\n  \"dueDay\": 15,\n  \"downPayment\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.26 Proposta sem o número de parcelas -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/{{lnLoan3Id}}/renegotiation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "{{lnLoan3Id}}",
+                "renegotiation"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.27 Quitar o de 1000",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{lnAccountId}}/loans/{{lnLoan3Id}}/payoff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{lnAccountId}}",
+                "loans",
+                "{{lnLoan3Id}}",
+                "payoff"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Quitado', () => pm.expect(pm.response.json().status).to.eql('PAID'));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

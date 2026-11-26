@@ -59,7 +59,7 @@ class GetIncomeReportTest {
     private static IncomeReportSource.LoanFigures loan(String status, String before, String after, String paid) {
         return new IncomeReportSource.LoanFigures(UUID.randomUUID(), LocalDate.of(2024, 6, 3), status,
                 new BigDecimal("12180.00"), 24, new BigDecimal("787.51"), new BigDecimal(before), new BigDecimal(after),
-                new BigDecimal(paid));
+                new BigDecimal(paid), "NEW");
     }
 
     @Test

@@ -53,6 +53,7 @@ public enum NotificationType {
     LOAN_INSTALLMENT_FAILED(LOANS, true),
     LOAN_PAID_OFF(LOANS, false),
     LOAN_WITHDRAWN(LOANS, false),
+    LOAN_RENEGOTIATED(LOANS, false),
     LOAN_INSTALLMENT_DUE_SOON(LOANS, false),
     /** Resumo ao fim do horário silencioso: gerado pelo job, sem categoria (não liga/desliga). */
     QUIET_HOURS_SUMMARY(null, false);
