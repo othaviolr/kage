@@ -31,12 +31,14 @@ public class PaymentController {
     private final AccessGuard accessGuard;
     private final SchedulePix schedulePix;
     private final ManageScheduledPix manageScheduledPix;
+    private final PixReceipts pixReceipts;
 
     public PaymentController(RegisterPixKey registerPixKey, DeletePixKey deletePixKey, GetPixKey getPixKey,
                              SendPix sendPix, GetPixTransaction getPixTransaction, RequestPixRefund requestPixRefund,
                              ApprovePixRefund approvePixRefund, RejectPixRefund rejectPixRefund,
                              GetPixRefund getPixRefund, AccessGuard accessGuard, SchedulePix schedulePix,
-                             ManageScheduledPix manageScheduledPix) {
+                             ManageScheduledPix manageScheduledPix, PixReceipts pixReceipts) {
+        this.pixReceipts = pixReceipts;
         this.schedulePix = schedulePix;
         this.manageScheduledPix = manageScheduledPix;
         this.registerPixKey = registerPixKey;
@@ -104,6 +106,13 @@ public class PaymentController {
     public ResponseEntity<GetPixTransaction.Output> getTransaction(@PathVariable UUID transactionId) {
         accessGuard.checkPixTransaction(transactionId);
         return ResponseEntity.ok(getPixTransaction.execute(transactionId));
+    }
+
+    /** Comprovante (quem pagou ou quem recebeu), só com o PIX concluído. */
+    @GetMapping("/transactions/{transactionId}/receipt")
+    public ResponseEntity<PixReceipts.Receipt> getReceipt(@PathVariable UUID transactionId) {
+        accessGuard.checkPixTransaction(transactionId);
+        return ResponseEntity.ok(pixReceipts.of(transactionId));
     }
 
     @PostMapping("/refunds")

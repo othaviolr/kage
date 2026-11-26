@@ -20,8 +20,11 @@ public class AccountHolderDirectoryImpl implements AccountHolderDirectory {
 
     @Override
     public Optional<Holder> holderOf(UUID accountId) {
-        return accountRepository.findById(accountId).map(account -> new Holder(account.getId(),
-                customerRepository.findById(account.getCustomerId()).map(c -> c.getPersonalInfo().fullName()).orElse(null),
-                account.getStatus() == AccountStatus.ACTIVE));
+        return accountRepository.findById(accountId).map(account -> {
+            var person = customerRepository.findById(account.getCustomerId()).map(c -> c.getPersonalInfo());
+            return new Holder(account.getId(), person.map(p -> p.fullName()).orElse(null),
+                    person.map(p -> p.cpf().value()).orElse(null), account.getBranch(),
+                    account.getAccountNumber() + "-" + account.getAccountDigit(), account.getStatus() == AccountStatus.ACTIVE);
+        });
     }
 }

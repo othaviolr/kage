@@ -4,6 +4,7 @@ import com.kage.account.domain.repository.AccountEntryRepository;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.infrastructure.BoletoAccountGatewayImpl;
 import com.kage.boleto.application.usecase.BoletoEventPublisher;
+import com.kage.boleto.application.usecase.BoletoReceipts;
 import com.kage.boleto.application.usecase.IssueBoletos;
 import com.kage.boleto.application.usecase.PayBoletos;
 import com.kage.boleto.domain.repository.BoletoPaymentRepository;
@@ -68,5 +69,11 @@ public class BoletoConfig {
                                  Clock clock) {
         return new PayBoletos(boletoRepository, boletoPaymentRepository, boletoAccountGateway, boletoEventPublisher,
                 bankCode, clock);
+    }
+
+    @Bean
+    public BoletoReceipts boletoReceipts(BoletoPaymentRepository boletoPaymentRepository, BoletoRepository boletoRepository,
+                                         BoletoAccountGateway boletoAccountGateway) {
+        return new BoletoReceipts(boletoPaymentRepository, boletoRepository, boletoAccountGateway);
     }
 }

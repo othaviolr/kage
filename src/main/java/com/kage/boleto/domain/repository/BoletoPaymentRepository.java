@@ -24,4 +24,6 @@ public interface BoletoPaymentRepository {
     boolean existsByBarcode(String barcode);
 
     List<Payment> findByPayerAccount(UUID accountId, int limit);
+
+    java.util.Optional<Payment> findById(UUID id);
 }

@@ -6263,6 +6263,41 @@
               }
             }
           ]
+        },
+        {
+          "name": "6.100 Comprovante do PIX concluído",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/transactions/{{pixTxId}}/receipt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "transactions",
+                "{{pixTxId}}",
+                "receipt"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('PIX com os dois lados', () => { pm.expect(j.type).to.eql('PIX'); pm.expect(j.e2eId).to.match(/^E2E/); pm.expect(j.payer.institution).to.eql('Kage (999)'); pm.expect(j.payee.pixKey).to.be.a('string'); });",
+                  "pm.test('CPF mascarado', () => pm.expect(j.payer.document).to.match(/^\\*\\*\\*\\.\\d{3}\\.\\d{3}-\\*\\*$/));",
+                  "pm.test('Código de autenticação', () => pm.expect(j.authenticationCode).to.match(/^[0-9A-F]{4}(-[0-9A-F]{4}){7}$/));"
+                ]
+              }
+            }
+          ]
         }
       ],
       "description": "Fluxo assíncrono: POST /send devolve PROCESSING; o débito/crédito e a confirmação acontecem via RabbitMQ (pix.sent.queue -> pix.debit.confirmed.queue). Os requests 'Aguardar' fazem retry no Collection Runner."
@@ -10398,7 +10433,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "pm.test('Pago 250', () => { pm.expect(pm.response.json().paidAmount).to.eql(250); pm.expect(pm.response.json().kind).to.eql('INTERNAL'); });"
+                  "pm.test('Pago 250', () => { pm.expect(pm.response.json().paidAmount).to.eql(250); pm.expect(pm.response.json().kind).to.eql('INTERNAL'); });",
+                  "pm.collectionVariables.set('blPaymentId', pm.response.json().paymentId);"
                 ]
               }
             }
@@ -10955,6 +10991,40 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12.20 Comprovante do pagamento do boleto",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/boleto-payments/{{blPaymentId}}/receipt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "boleto-payments",
+                "{{blPaymentId}}",
+                "receipt"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Boleto pago, com quem recebeu', () => { pm.expect(j.type).to.eql('BOLETO'); pm.expect(j.paidAmount).to.eql(250); pm.expect(j.beneficiary.name).to.eql('Beneficiária Boleto'); pm.expect(j.digitableLine).to.eql(pm.collectionVariables.get('blALine')); });",
+                  "pm.test('CPF mascarado', () => pm.expect(j.beneficiary.document).to.match(/^\\*\\*\\*\\.\\d{3}\\.\\d{3}-\\*\\*$/));",
+                  "pm.test('Código de autenticação', () => pm.expect(j.authenticationCode).to.match(/^[0-9A-F]{4}(-[0-9A-F]{4}){7}$/));"
                 ]
               }
             }
