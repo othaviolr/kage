@@ -17,11 +17,21 @@ import java.util.UUID;
  *                          lançada duas vezes
  * @param installmentNumber parcela desta linha (1..N); nulo para encargos
  * @param installmentCount  total de parcelas (1 = à vista); nulo para encargos
+ * @param virtualCardId     compra feita com um cartão virtual: qual; nulo para o físico e para encargos
  */
 public record InvoiceItem(UUID id, UUID purchaseId, String description, Money amount, LocalDateTime purchasedAt,
-                          InvoiceItemKind kind, Integer installmentNumber, Integer installmentCount) {
+                          InvoiceItemKind kind, Integer installmentNumber, Integer installmentCount,
+                          UUID virtualCardId) {
+
+    public InvoiceItem(UUID id, UUID purchaseId, String description, Money amount, LocalDateTime purchasedAt,
+                       InvoiceItemKind kind, Integer installmentNumber, Integer installmentCount) {
+        this(id, purchaseId, description, amount, purchasedAt, kind, installmentNumber, installmentCount, null);
+    }
 
     public InvoiceItem {
+        if (virtualCardId != null && kind != InvoiceItemKind.PURCHASE) {
+            throw new ValidationException("Só compra tem cartão virtual");
+        }
         if (id == null) throw new ValidationException("Identificador do lançamento é obrigatório");
         if (purchaseId == null) throw new ValidationException("Identificador da compra é obrigatório");
         if (description == null || description.isBlank()) throw new ValidationException("Descrição do lançamento é obrigatória");
@@ -42,8 +52,13 @@ public record InvoiceItem(UUID id, UUID purchaseId, String description, Money am
 
     public static InvoiceItem installment(UUID purchaseId, String description, Money amount, LocalDateTime purchasedAt,
                                           int number, int count) {
+        return installment(purchaseId, description, amount, purchasedAt, number, count, null);
+    }
+
+    public static InvoiceItem installment(UUID purchaseId, String description, Money amount, LocalDateTime purchasedAt,
+                                          int number, int count, UUID virtualCardId) {
         return new InvoiceItem(UUID.randomUUID(), purchaseId, description, amount, purchasedAt, InvoiceItemKind.PURCHASE,
-                number, count);
+                number, count, virtualCardId);
     }
 
     public static InvoiceItem charge(InvoiceItemKind kind, UUID sourceInvoiceId, String description, Money amount,

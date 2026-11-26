@@ -115,7 +115,7 @@ public final class NotificationTemplates {
     }
 
     public static Text disputeOpened(String description, BigDecimal amount, BigDecimal creditedAmount,
-                                     String creditMonth, boolean cardBlocked) {
+                                     String creditMonth, boolean cardBlocked, boolean virtualCardDeleted) {
         StringBuilder body = new StringBuilder("Recebemos sua contestação de \"").append(description).append("\" (")
                 .append(money(amount)).append("). Enquanto analisamos, essa compra não é cobrada");
         if (creditedAmount.signum() > 0 && creditMonth != null) {
@@ -124,6 +124,9 @@ public final class NotificationTemplates {
         }
         body.append('.');
         if (cardBlocked) body.append(" Por segurança, bloqueamos seu cartão.");
+        if (virtualCardDeleted) {
+            body.append(" Por segurança, apagamos o cartão virtual usado nessa compra; seu cartão físico continua funcionando.");
+        }
         return new Text("Contestação aberta", body.toString());
     }
 

@@ -16,7 +16,7 @@ class DisputeTest {
 
     private static Dispute open(DisputeReason reason, String details) {
         return Dispute.open(UUID.randomUUID(), UUID.randomUUID(), "Loja", Money.of("300.00"), Money.of("100.00"),
-                "2026-10", reason, details, false);
+                "2026-10", reason, details, false, null, false);
     }
 
     @Test

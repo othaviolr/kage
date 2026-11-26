@@ -16,7 +16,8 @@ public class GetInvoice {
 
     public record Input(UUID cardId, String referenceMonth) {}
     public record ItemOutput(UUID id, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
-                             String kind, Integer installmentNumber, Integer installmentCount) {}
+                             String kind, Integer installmentNumber, Integer installmentCount,
+                             UUID virtualCardId) {}
     /**
      * @param minimumPayment pagando menos que isso até o vencimento, a virada cobra multa e mora
      * @param remaining      saldo devedor; o que sobrar no próximo fechamento vai para o rotativo
@@ -45,7 +46,7 @@ public class GetInvoice {
         List<ItemOutput> items = invoice.getItems().stream()
                 .map(item -> new ItemOutput(item.id(), item.purchaseId(), item.description(),
                         item.amount().amount(), item.purchasedAt(), item.kind().name(),
-                        item.installmentNumber(), item.installmentCount()))
+                        item.installmentNumber(), item.installmentCount(), item.virtualCardId()))
                 .toList();
 
         return new Output(invoice.getId(), invoice.getCardId(), invoice.getReferenceMonth().toString(),

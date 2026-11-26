@@ -55,6 +55,12 @@ kage:
       # SÓ PARA DESENVOLVIMENTO: devolve o código do login em dispositivo novo na resposta do /login
       # (não há SMS real). Em produção fica false. Sem a variável própria, segue a do reset.
       expose-code: ${KAGE_DEV_EXPOSE_LOGIN_CODE:${KAGE_DEV_EXPOSE_RESET_TOKEN:false}}
+  cards:
+    # gera número e CVV dos cartões virtuais (HMAC; o número não é guardado). Em produção: obrigatório
+    # via KAGE_CARD_SECRET (>= 32 bytes, aleatório) — trocar o segredo muda o número de todos os virtuais.
+    secret: ${KAGE_CARD_SECRET:dev-only-kage-card-secret-change-me-0123456789}
+    # 6 primeiros dígitos (faixa Mastercard)
+    bin: ${KAGE_CARD_BIN:529999}
   pix:
     # dispara os PIX agendados do dia logo depois do fim da janela noturna
     scheduler-enabled: ${KAGE_PIX_SCHEDULER_ENABLED:true}

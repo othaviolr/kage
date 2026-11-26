@@ -33,7 +33,13 @@ public class InvoiceItemJpaEntity {
     @Column(nullable = false, updatable = false, length = 32)
     private com.kage.card.domain.enums.InvoiceItemKind kind;
 
+    @Column(name = "virtual_card_id", updatable = false)
+    private UUID virtualCardId;
+
     public InvoiceItemJpaEntity() {}
+
+    public UUID getVirtualCardId() { return virtualCardId; }
+    public void setVirtualCardId(UUID virtualCardId) { this.virtualCardId = virtualCardId; }
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }

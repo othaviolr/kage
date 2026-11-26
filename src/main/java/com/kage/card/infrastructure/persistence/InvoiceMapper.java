@@ -38,6 +38,7 @@ public class InvoiceMapper {
             entity.setKind(item.kind());
             entity.setInstallmentNumber(item.installmentNumber());
             entity.setInstallmentCount(item.installmentCount());
+            entity.setVirtualCardId(item.virtualCardId());
             return entity;
         }).collect(Collectors.toList());
     }
@@ -46,7 +47,7 @@ public class InvoiceMapper {
         List<InvoiceItem> items = itemEntities.stream()
                 .map(item -> new InvoiceItem(item.getId(), item.getPurchaseId(), item.getDescription(),
                         Money.of(item.getAmount()), item.getPurchasedAt(), item.getKind(),
-                        item.getInstallmentNumber(), item.getInstallmentCount()))
+                        item.getInstallmentNumber(), item.getInstallmentCount(), item.getVirtualCardId()))
                 .collect(Collectors.toList());
 
         return Invoice.reconstitute(

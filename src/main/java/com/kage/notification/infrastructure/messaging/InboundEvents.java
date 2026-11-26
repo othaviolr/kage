@@ -46,7 +46,8 @@ public final class InboundEvents {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record DisputeOpened(UUID cardId, UUID disputeId, String description, BigDecimal amount,
-                                BigDecimal creditedAmount, String creditMonth, boolean cardBlocked) {}
+                                BigDecimal creditedAmount, String creditMonth, boolean cardBlocked,
+                                boolean virtualCardDeleted) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record DisputeResolved(UUID cardId, UUID disputeId, String description, BigDecimal amount, String status,

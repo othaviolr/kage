@@ -32,6 +32,7 @@ public class CardController {
     private final FinanceInvoice financeInvoice;
     private final AnticipateInstallments anticipateInstallments;
     private final DisputePurchase disputePurchase;
+    private final VirtualCards virtualCards;
 
     /**
      * Emissão é do ADMIN: o limite de crédito é decisão da análise de crédito do banco, não do cliente.
@@ -43,7 +44,9 @@ public class CardController {
                           GetInvoice getInvoice, ListInvoices listInvoices,
                           CloseInvoice closeInvoice, CancelCard cancelCard, AccessGuard accessGuard,
                           PayInvoice payInvoice, SetAutoDebit setAutoDebit, FinanceInvoice financeInvoice,
-                          AnticipateInstallments anticipateInstallments, DisputePurchase disputePurchase) {
+                          AnticipateInstallments anticipateInstallments, DisputePurchase disputePurchase,
+                          VirtualCards virtualCards) {
+        this.virtualCards = virtualCards;
         this.anticipateInstallments = anticipateInstallments;
         this.disputePurchase = disputePurchase;
         this.financeInvoice = financeInvoice;
@@ -95,7 +98,8 @@ public class CardController {
                                                                      @RequestBody PurchaseRequest request) {
         LocalDateTime purchasedAt = request.purchasedAt() != null ? request.purchasedAt() : DomainTime.now();
         RegisterPurchase.Output output = registerPurchase.execute(new RegisterPurchase.Input(
-                id, request.purchaseId(), request.description(), request.amount(), purchasedAt, request.installments()));
+                id, request.purchaseId(), request.description(), request.amount(), purchasedAt, request.installments(),
+                request.virtualCardNumber()));
         return ResponseEntity.status(HttpStatus.CREATED).body(output);
     }
 
@@ -182,6 +186,51 @@ public class CardController {
     public record ResolveDisputeRequest(Boolean accepted, String note) {
     }
 
+    /** Cria um cartão virtual (PERMANENT, o padrão, ou TEMPORARY de 24h). A resposta já traz número e CVV. */
+    @PostMapping("/{id}/virtual-cards")
+    public ResponseEntity<VirtualCards.Details> createVirtualCard(@PathVariable UUID id, @RequestBody VirtualCardRequest request) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(virtualCards.create(new VirtualCards.Input(id, request.nickname(), request.kind())));
+    }
+
+    /** Lista com o número mascarado (apagados e expirados inclusive, para o histórico). */
+    @GetMapping("/{id}/virtual-cards")
+    public ResponseEntity<List<VirtualCards.Output>> listVirtualCards(@PathVariable UUID id) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(virtualCards.list(id));
+    }
+
+    /** Número completo, CVV e validade, para preencher no site. */
+    @GetMapping("/{id}/virtual-cards/{virtualCardId}")
+    public ResponseEntity<VirtualCards.Details> virtualCardDetails(@PathVariable UUID id, @PathVariable UUID virtualCardId) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(virtualCards.details(id, virtualCardId));
+    }
+
+    @PatchMapping("/{id}/virtual-cards/{virtualCardId}/block")
+    public ResponseEntity<VirtualCards.Output> blockVirtualCard(@PathVariable UUID id, @PathVariable UUID virtualCardId) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(virtualCards.block(id, virtualCardId));
+    }
+
+    @PatchMapping("/{id}/virtual-cards/{virtualCardId}/unblock")
+    public ResponseEntity<VirtualCards.Output> unblockVirtualCard(@PathVariable UUID id, @PathVariable UUID virtualCardId) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(virtualCards.unblock(id, virtualCardId));
+    }
+
+    /** Apaga de vez: o número deixa de funcionar. Não afeta o físico nem os outros virtuais. */
+    @DeleteMapping("/{id}/virtual-cards/{virtualCardId}")
+    public ResponseEntity<VirtualCards.Output> deleteVirtualCard(@PathVariable UUID id, @PathVariable UUID virtualCardId) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(virtualCards.delete(id, virtualCardId));
+    }
+
+    /** @param kind PERMANENT (padrão) ou TEMPORARY (expira em 24h) */
+    public record VirtualCardRequest(String nickname, String kind) {
+    }
+
     @GetMapping("/{id}/invoices")
     public ResponseEntity<ListInvoices.Output> listInvoices(@PathVariable UUID id) {
         accessGuard.checkCard(id);
@@ -222,8 +271,11 @@ public class CardController {
         return ResponseEntity.ok(closeInvoice.execute(new CloseInvoice.Input(id, referenceMonth)));
     }
 
-    /** @param installments parcelas sem juros (1 a 12); omitido = à vista */
+    /**
+     * @param installments      parcelas sem juros (1 a 12); omitido = à vista
+     * @param virtualCardNumber compra online com o número de um cartão virtual deste cartão; omitido = o físico
+     */
     public record PurchaseRequest(UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
-                                  Integer installments) {
+                                  Integer installments, String virtualCardNumber) {
     }
 }

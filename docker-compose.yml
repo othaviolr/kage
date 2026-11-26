@@ -56,6 +56,7 @@ services:
       SPRING_RABBITMQ_HOST: rabbitmq
       KAGE_JWT_SECRET: ${KAGE_JWT_SECRET:-dev-only-kage-jwt-secret-change-me-0123456789}
       KAGE_ADMIN_PASSWORD: ${KAGE_ADMIN_PASSWORD:-kage-admin-dev-123}
+      KAGE_CARD_SECRET: ${KAGE_CARD_SECRET:-dev-only-kage-card-secret-change-me-0123456789}
       # CDI das caixinhas: "fixed" (padrão; simula datas futuras) ou "bcb" (série real do Banco Central)
       KAGE_SAVINGS_CDI_SOURCE: ${KAGE_SAVINGS_CDI_SOURCE:-fixed}
       # só para testar a recuperação de senha sem e-mail real; nunca em produção

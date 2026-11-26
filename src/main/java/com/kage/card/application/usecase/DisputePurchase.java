@@ -52,12 +52,13 @@ public class DisputePurchase {
     public record Output(UUID disputeId, UUID cardId, UUID purchaseId, String description, BigDecimal amount,
                          BigDecimal creditedAmount, String creditMonth, String reason, String details, String status,
                          boolean cardBlocked, LocalDateTime openedAt, LocalDateTime resolvedAt, String resolutionNote,
-                         String reversalMonth) {
+                         String reversalMonth, UUID virtualCardId, boolean virtualCardDeleted) {
 
         static Output of(Dispute d) {
             return new Output(d.id(), d.cardId(), d.purchaseId(), d.description(), d.amount().amount(),
                     d.creditedAmount().amount(), d.creditMonth(), d.reason().name(), d.details(), d.status().name(),
-                    d.cardBlocked(), d.openedAt(), d.resolvedAt(), d.resolutionNote(), d.reversalMonth());
+                    d.cardBlocked(), d.openedAt(), d.resolvedAt(), d.resolutionNote(), d.reversalMonth(),
+                    d.virtualCardId(), d.virtualCardDeleted());
         }
     }
 
@@ -65,13 +66,16 @@ public class DisputePurchase {
     private final InvoiceRepository invoiceRepository;
     private final DisputeRepository disputeRepository;
     private final CardEventPublisher eventPublisher;
+    private final VirtualCards virtualCards;
 
     public DisputePurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
-                           DisputeRepository disputeRepository, CardEventPublisher eventPublisher) {
+                           DisputeRepository disputeRepository, CardEventPublisher eventPublisher,
+                           VirtualCards virtualCards) {
         this.cardRepository = cardRepository;
         this.invoiceRepository = invoiceRepository;
         this.disputeRepository = disputeRepository;
         this.eventPublisher = eventPublisher;
+        this.virtualCards = virtualCards;
     }
 
     @Transactional
@@ -142,15 +146,22 @@ public class DisputePurchase {
 
         if (!removed.isZero()) card.releaseLimit(removed);
         boolean blocked = false;
-        if (reason.isFraud() && card.getStatus() == CardStatus.ACTIVE) {
-            card.block(); // "não reconheço": ninguém mais compra com este cartão até o cliente desbloquear
-            blocked = true;
+        boolean virtualDeleted = false;
+        UUID virtualCardId = sample.virtualCardId();
+        if (reason.isFraud()) {
+            if (virtualCardId != null && virtualCards != null) {
+                // o número que vazou é o do virtual: apagá-lo basta, o físico segue funcionando
+                virtualDeleted = virtualCards.deleteCompromised(virtualCardId);
+            } else if (card.getStatus() == CardStatus.ACTIVE) {
+                card.block(); // "não reconheço": ninguém mais compra com este cartão até o cliente desbloquear
+                blocked = true;
+            }
         }
         cardRepository.save(card);
 
         Dispute dispute = Dispute.open(card.getId(), input.purchaseId(), description, amount, billed,
                 creditInvoice == null ? null : creditInvoice.getReferenceMonth().toString(), reason, input.details(),
-                blocked);
+                blocked, virtualCardId, virtualDeleted);
         try {
             disputeRepository.insert(dispute);
         } catch (DuplicateKeyException e) {
