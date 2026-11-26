@@ -14,6 +14,9 @@ import com.kage.notification.application.usecase.ListNotifications;
 import com.kage.notification.application.usecase.MarkNotificationAsRead;
 import com.kage.notification.application.usecase.NotificationPreferences;
 import com.kage.notification.application.usecase.Notify;
+import com.kage.notification.application.usecase.QuietHoursSummaries;
+import com.kage.notification.infrastructure.scheduling.QuietHoursSummaryScheduler;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import com.kage.notification.domain.repository.NotificationPreferenceRepository;
 import com.kage.notification.infrastructure.persistence.JdbcNotificationPreferenceRepository;
 import com.kage.notification.domain.repository.NotificationRepository;
@@ -74,6 +77,19 @@ public class NotificationConfig {
     @Bean
     public NotificationPreferenceRepository notificationPreferenceRepository(JdbcTemplate jdbcTemplate) {
         return new JdbcNotificationPreferenceRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public QuietHoursSummaries quietHoursSummaries(NotificationPreferenceRepository notificationPreferenceRepository,
+                                                   NotificationRepository notificationRepository,
+                                                   NotificationChannel notificationChannel, Clock clock) {
+        return new QuietHoursSummaries(notificationPreferenceRepository, notificationRepository, notificationChannel, clock);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "kage.notification.quiet-summary.scheduler-enabled", havingValue = "true", matchIfMissing = true)
+    public QuietHoursSummaryScheduler quietHoursSummaryScheduler(QuietHoursSummaries quietHoursSummaries, Clock clock) {
+        return new QuietHoursSummaryScheduler(quietHoursSummaries, clock);
     }
 
     @Bean

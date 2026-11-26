@@ -43,7 +43,9 @@ public enum NotificationType {
     LIMIT_INCREASE_REQUESTED(SECURITY, true),
     SAVINGS_GOAL_REACHED(SAVINGS, false),
     BOLETO_RECEIVED(BOLETO, false),
-    BOLETO_PAYMENT_MADE(BOLETO, false);
+    BOLETO_PAYMENT_MADE(BOLETO, false),
+    /** Resumo ao fim do horário silencioso: gerado pelo job, sem categoria (não liga/desliga). */
+    QUIET_HOURS_SUMMARY(null, false);
 
     private final NotificationCategory category;
     private final boolean critical;
@@ -64,6 +66,6 @@ public enum NotificationType {
 
     /** Push sai se o aviso é crítico, se a categoria é obrigatória ou se o cliente não a desligou. */
     public boolean shouldPush(java.util.Set<NotificationCategory> disabled) {
-        return critical || category.isMandatory() || !disabled.contains(category);
+        return critical || category == null || category.isMandatory() || !disabled.contains(category);
     }
 }

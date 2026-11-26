@@ -78,6 +78,7 @@ public abstract class AbstractIntegrationTest {
         registry.add("kage.pix.scheduler-enabled", () -> "false");
         registry.add("kage.savings.scheduler-enabled", () -> "false");
         registry.add("kage.limits.scheduler-enabled", () -> "false");
+        registry.add("kage.notification.quiet-summary.scheduler-enabled", () -> "false");
 
         // sem e-mail real, o teste da recuperação de senha precisa receber o token na resposta
         registry.add("kage.security.password-reset.expose-token", () -> "true");

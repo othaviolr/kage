@@ -7,21 +7,28 @@ package com.kage.notification.domain.enums;
  * garantir que o cliente viu.
  */
 public enum NotificationCategory {
-    SECURITY("Segurança (senha, novo dispositivo, aumento de limite)", true),
-    INVOICE("Fatura do cartão (fechamento, pagamento, rotativo, parcelamento)", true),
-    CARD_SERVICES("Contestações e 2ª via do cartão", true),
-    CARD_PURCHASES("Compras no cartão", false),
-    PIX("PIX enviados, recebidos, estornos e cobranças agendadas", false),
-    ACCOUNT("Depósitos e saques", false),
-    BOLETO("Boletos recebidos e pagos", false),
-    SAVINGS("Caixinhas", false);
+    SECURITY("Segurança (senha, novo dispositivo, aumento de limite)", "segurança", true),
+    INVOICE("Fatura do cartão (fechamento, pagamento, rotativo, parcelamento)", "fatura", true),
+    CARD_SERVICES("Contestações e 2ª via do cartão", "contestação e 2ª via", true),
+    CARD_PURCHASES("Compras no cartão", "compras no cartão", false),
+    PIX("PIX enviados, recebidos, estornos e cobranças agendadas", "PIX", false),
+    ACCOUNT("Depósitos e saques", "depósitos e saques", false),
+    BOLETO("Boletos recebidos e pagos", "boletos", false),
+    SAVINGS("Caixinhas", "caixinhas", false);
 
     private final String description;
+    private final String label;
     private final boolean mandatory;
 
-    NotificationCategory(String description, boolean mandatory) {
+    NotificationCategory(String description, String label, boolean mandatory) {
         this.description = description;
+        this.label = label;
         this.mandatory = mandatory;
+    }
+
+    /** Nome curto, para frases ("3 de PIX, 2 de compras no cartão"). */
+    public String label() {
+        return label;
     }
 
     public String description() {

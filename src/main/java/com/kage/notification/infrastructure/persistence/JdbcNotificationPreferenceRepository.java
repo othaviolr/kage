@@ -10,6 +10,8 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -56,6 +58,17 @@ public class JdbcNotificationPreferenceRepository implements NotificationPrefere
         jdbcTemplate.update("INSERT INTO invoice_email_settings (customer_id, enabled, updated_at) VALUES (?, ?, ?) "
                         + "ON CONFLICT (customer_id) DO UPDATE SET enabled = EXCLUDED.enabled, updated_at = EXCLUDED.updated_at",
                 customerId, enabled, Timestamp.valueOf(now));
+    }
+
+    @Override
+    public Map<UUID, QuietHours> enabledQuietHours() {
+        Map<UUID, QuietHours> result = new HashMap<>();
+        jdbcTemplate.query("SELECT customer_id, start_time, end_time FROM notification_quiet_hours WHERE enabled",
+                rs -> {
+                    result.put(rs.getObject("customer_id", UUID.class), new QuietHours(true,
+                            rs.getTime("start_time").toLocalTime(), rs.getTime("end_time").toLocalTime()));
+                });
+        return result;
     }
 
     @Override
