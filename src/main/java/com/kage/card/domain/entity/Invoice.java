@@ -95,11 +95,17 @@ public class Invoice {
     /** Parcela de compra parcelada (a mesma compra tem uma linha em cada fatura do plano). */
     public void addInstallment(UUID purchaseId, String description, Money amount, LocalDateTime purchasedAt,
                                int number, int count) {
+        addInstallment(purchaseId, description, amount, purchasedAt, number, count, null);
+    }
+
+    /** @param virtualCardId cartão virtual usado na compra; nulo = o físico */
+    public void addInstallment(UUID purchaseId, String description, Money amount, LocalDateTime purchasedAt,
+                               int number, int count, UUID virtualCardId) {
         if (this.status != InvoiceStatus.OPEN) throw new BusinessRuleException("Fatura não está aberta para novos lançamentos");
         if (items.stream().anyMatch(item -> item.purchaseId().equals(purchaseId))) {
             throw new ConflictException("Compra já lançada nesta fatura");
         }
-        this.items.add(InvoiceItem.installment(purchaseId, description, amount, purchasedAt, number, count));
+        this.items.add(InvoiceItem.installment(purchaseId, description, amount, purchasedAt, number, count, virtualCardId));
         this.updatedAt = DomainTime.now();
     }
 

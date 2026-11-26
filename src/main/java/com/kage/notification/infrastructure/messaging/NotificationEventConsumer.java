@@ -111,7 +111,8 @@ public class NotificationEventConsumer {
     @RabbitListener(queues = "notification.card.dispute.opened.queue")
     public void onDisputeOpened(InboundEvents.DisputeOpened e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toCardOwner(e.cardId(), NotificationType.CARD_DISPUTE_OPENED, NotificationTemplates.disputeOpened(
-                e.description(), e.amount(), e.creditedAmount(), e.creditMonth(), e.cardBlocked()), e.disputeId(), messageId);
+                e.description(), e.amount(), e.creditedAmount(), e.creditMonth(), e.cardBlocked(), e.virtualCardDeleted()),
+                e.disputeId(), messageId);
     }
 
     @RabbitListener(queues = "notification.card.dispute.resolved.queue")

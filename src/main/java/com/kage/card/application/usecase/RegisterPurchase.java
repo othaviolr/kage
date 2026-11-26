@@ -21,9 +21,17 @@ import java.util.UUID;
 
 public class RegisterPurchase {
 
-    /** @param installments parcelas sem juros (1 = à vista; nulo também) */
+    /**
+     * @param installments      parcelas sem juros (1 = à vista; nulo também)
+     * @param virtualCardNumber compra feita com o número de um cartão virtual deste cartão; nulo = o físico
+     */
     public record Input(UUID cardId, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
-                        Integer installments) {
+                        Integer installments, String virtualCardNumber) {
+        public Input(UUID cardId, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
+                     Integer installments) {
+            this(cardId, purchaseId, description, amount, purchasedAt, installments, null);
+        }
+
         public Input(UUID cardId, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt) {
             this(cardId, purchaseId, description, amount, purchasedAt, 1);
         }
@@ -31,14 +39,21 @@ public class RegisterPurchase {
 
     /** @param invoiceId fatura da 1ª parcela; {@code installmentAmount} é o valor dela */
     public record Output(UUID cardId, BigDecimal availableLimit, UUID invoiceId, String referenceMonth,
-                         BigDecimal invoiceTotal, int installments, BigDecimal installmentAmount, boolean duplicate) {}
+                         BigDecimal invoiceTotal, int installments, BigDecimal installmentAmount, boolean duplicate,
+                         UUID virtualCardId) {}
 
     private final CardRepository cardRepository;
     private final InvoiceRepository invoiceRepository;
+    private final VirtualCards virtualCards;
 
     public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
+        this(cardRepository, invoiceRepository, null);
+    }
+
+    public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository, VirtualCards virtualCards) {
         this.cardRepository = cardRepository;
         this.invoiceRepository = invoiceRepository;
+        this.virtualCards = virtualCards;
     }
 
     @Transactional
@@ -53,6 +68,13 @@ public class RegisterPurchase {
         Optional<Invoice> alreadyRegistered = invoiceRepository.findByCardIdAndPurchaseId(card.getId(), input.purchaseId());
         if (alreadyRegistered.isPresent()) {
             return toOutput(card, alreadyRegistered.get(), input.purchaseId(), true);
+        }
+
+        // o virtual precisa ser deste cartão e estar valendo; o físico (status, limite) é checado abaixo
+        UUID virtualCardId = null;
+        if (input.virtualCardNumber() != null) {
+            if (virtualCards == null) throw new IllegalStateException("Cartões virtuais não configurados");
+            virtualCardId = virtualCards.authorize(card.getId(), input.virtualCardNumber());
         }
 
         int installments = input.installments() == null ? 1 : input.installments();
@@ -71,7 +93,7 @@ public class RegisterPurchase {
                     ? input.description()
                     : input.description() + " (" + number + "/" + installments + ")";
             invoice.addInstallment(input.purchaseId(), description, parts.get(number - 1), input.purchasedAt(),
-                    number, installments);
+                    number, installments, virtualCardId);
             Invoice saved = invoiceRepository.save(invoice);
             if (first == null) first = saved;
             month = saved.getReferenceMonth().plusMonths(1); // a próxima parcela vai para o mês seguinte
@@ -105,6 +127,6 @@ public class RegisterPurchase {
         var item = invoice.getItems().stream().filter(i -> i.purchaseId().equals(purchaseId)).findFirst().orElseThrow();
         return new Output(card.getId(), card.availableLimit().amount(), invoice.getId(),
                 invoice.getReferenceMonth().toString(), invoice.total().amount(), item.installmentCount(),
-                item.amount().amount(), duplicate);
+                item.amount().amount(), duplicate, item.virtualCardId());
     }
 }

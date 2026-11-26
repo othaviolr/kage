@@ -24,7 +24,7 @@ public final class CardEvents {
     /** @param creditMonth fatura que recebeu o crédito do que já tinha sido cobrado; nulo se nada tinha */
     public record DisputeOpenedEvent(UUID cardId, UUID disputeId, String description, BigDecimal amount,
                                      BigDecimal creditedAmount, String creditMonth, String reason, boolean cardBlocked,
-                                     Instant occurredAt) {}
+                                     boolean virtualCardDeleted, Instant occurredAt) {}
 
     /** @param reversalMonth negada: fatura em que a compra volta a ser cobrada */
     public record DisputeResolvedEvent(UUID cardId, UUID disputeId, String description, BigDecimal amount,

@@ -9,6 +9,10 @@ import com.kage.card.application.usecase.*;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.DisputeRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
+import com.kage.card.domain.repository.VirtualCardRepository;
+import com.kage.card.domain.service.CardNumberService;
+import com.kage.card.infrastructure.security.HmacCardNumberService;
+import org.springframework.beans.factory.annotation.Value;
 import com.kage.card.domain.service.CardAccountValidationService;
 import com.kage.card.domain.service.CardCustomerValidationService;
 import com.kage.card.infrastructure.persistence.*;
@@ -73,8 +77,26 @@ public class CardConfig {
     }
 
     @Bean
-    public RegisterPurchase registerPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
-        return new RegisterPurchase(cardRepository, invoiceRepository);
+    public RegisterPurchase registerPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                                             VirtualCards virtualCards) {
+        return new RegisterPurchase(cardRepository, invoiceRepository, virtualCards);
+    }
+
+    @Bean
+    public CardNumberService cardNumberService(@Value("${kage.cards.secret}") String secret,
+                                               @Value("${kage.cards.bin:529999}") String bin) {
+        return new HmacCardNumberService(secret, bin);
+    }
+
+    @Bean
+    public VirtualCardRepository virtualCardRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcVirtualCardRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public VirtualCards virtualCards(CardRepository cardRepository, VirtualCardRepository virtualCardRepository,
+                                     CardNumberService cardNumberService) {
+        return new VirtualCards(cardRepository, virtualCardRepository, cardNumberService);
     }
 
     @Bean
@@ -111,8 +133,9 @@ public class CardConfig {
 
     @Bean
     public DisputePurchase disputePurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
-                                           DisputeRepository disputeRepository, CardEventPublisher cardEventPublisher) {
-        return new DisputePurchase(cardRepository, invoiceRepository, disputeRepository, cardEventPublisher);
+                                           DisputeRepository disputeRepository, CardEventPublisher cardEventPublisher,
+                                           VirtualCards virtualCards) {
+        return new DisputePurchase(cardRepository, invoiceRepository, disputeRepository, cardEventPublisher, virtualCards);
     }
 
     @Bean
@@ -157,7 +180,7 @@ public class CardConfig {
     }
 
     @Bean
-    public CancelCard cancelCard(CardRepository cardRepository) {
-        return new CancelCard(cardRepository);
+    public CancelCard cancelCard(CardRepository cardRepository, VirtualCards virtualCards) {
+        return new CancelCard(cardRepository, virtualCards);
     }
 }

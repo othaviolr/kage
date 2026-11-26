@@ -16,7 +16,8 @@ import java.util.UUID;
 public class JdbcDisputeRepository implements DisputeRepository {
 
     private static final String COLUMNS = "id, card_id, purchase_id, description, amount, credited_amount, credit_month, "
-            + "reason, details, status, card_blocked, opened_at, resolved_at, resolution_note, reversal_month";
+            + "reason, details, status, card_blocked, opened_at, resolved_at, resolution_note, reversal_month, "
+            + "virtual_card_id, virtual_card_deleted";
 
     private static final RowMapper<Dispute> MAPPER = (rs, n) -> {
         Timestamp resolvedAt = rs.getTimestamp("resolved_at");
@@ -26,7 +27,8 @@ public class JdbcDisputeRepository implements DisputeRepository {
                 rs.getString("credit_month"), DisputeReason.valueOf(rs.getString("reason")), rs.getString("details"),
                 DisputeStatus.valueOf(rs.getString("status")), rs.getBoolean("card_blocked"),
                 rs.getTimestamp("opened_at").toLocalDateTime(), resolvedAt == null ? null : resolvedAt.toLocalDateTime(),
-                rs.getString("resolution_note"), rs.getString("reversal_month"));
+                rs.getString("resolution_note"), rs.getString("reversal_month"),
+                rs.getObject("virtual_card_id", UUID.class), rs.getBoolean("virtual_card_deleted"));
     };
 
     private final JdbcTemplate jdbcTemplate;
@@ -37,11 +39,11 @@ public class JdbcDisputeRepository implements DisputeRepository {
 
     @Override
     public void insert(Dispute d) {
-        jdbcTemplate.update("INSERT INTO card_disputes (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        jdbcTemplate.update("INSERT INTO card_disputes (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 d.id(), d.cardId(), d.purchaseId(), d.description(), d.amount().amount(), d.creditedAmount().amount(),
                 d.creditMonth(), d.reason().name(), d.details(), d.status().name(), d.cardBlocked(),
                 Timestamp.valueOf(d.openedAt()), d.resolvedAt() == null ? null : Timestamp.valueOf(d.resolvedAt()),
-                d.resolutionNote(), d.reversalMonth());
+                d.resolutionNote(), d.reversalMonth(), d.virtualCardId(), d.virtualCardDeleted());
     }
 
     @Override
