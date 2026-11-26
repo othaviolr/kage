@@ -146,10 +146,50 @@ public final class NotificationTemplates {
                 + " foi recusada: " + reason + ".");
     }
 
+    public static Text loanContracted(BigDecimal released, int installments, BigDecimal installmentAmount,
+                                      LocalDate firstDueDate) {
+        return new Text("Empréstimo na sua conta", money(released) + " já estão na sua conta. São " + installments
+                + " parcelas de " + money(installmentAmount) + ", a primeira em " + firstDueDate.format(DATE)
+                + ", debitadas da conta. Mudou de ideia? Dá para desistir em até 7 dias, sem juros nem IOF.");
+    }
+
+    public static Text loanInstallmentPaid(int number, int installments, BigDecimal paid, BigDecimal lateCharges,
+                                           BigDecimal discount, int remaining) {
+        StringBuilder body = new StringBuilder("Parcela ").append(number).append('/').append(installments)
+                .append(" do empréstimo paga: ").append(money(paid));
+        if (discount != null && discount.signum() > 0) body.append(", com ").append(money(discount)).append(" de desconto por antecipar");
+        if (lateCharges != null && lateCharges.signum() > 0) body.append(", com ").append(money(lateCharges)).append(" de multa e juros de atraso");
+        body.append(". ").append(remaining == 0 ? "Era a última: seu empréstimo está quitado."
+                : "Falta" + (remaining == 1 ? " 1 parcela." : "m " + remaining + " parcelas."));
+        return new Text(remaining == 0 ? "Empréstimo quitado" : "Parcela do empréstimo paga", body.toString());
+    }
+
+    public static Text loanInstallmentFailed(int number, int installments, BigDecimal due, String reason) {
+        return new Text("Parcela do empréstimo não foi paga", "Não conseguimos debitar a parcela " + number + "/" + installments
+                + " (" + money(due) + "): " + reason + ". Deixe o saldo na conta: tentamos de novo todo dia. "
+                + "Em atraso, a parcela tem multa de 2% e juros de 1% ao mês.");
+    }
+
+    public static Text loanPaidOff(BigDecimal paid, BigDecimal discount) {
+        String saving = discount != null && discount.signum() > 0 ? ", com " + money(discount) + " de desconto nos juros" : "";
+        return new Text("Empréstimo quitado", "Você quitou o empréstimo: " + money(paid) + saving + ".");
+    }
+
+    public static Text loanWithdrawn(BigDecimal returned) {
+        return new Text("Desistência confirmada", "Cancelamos o empréstimo: " + money(returned)
+                + " voltaram para o Kage, sem juros nem IOF.");
+    }
+
+    public static Text loanInstallmentDueSoon(int number, int installments, BigDecimal amount, LocalDate dueDate) {
+        return new Text("Parcela do empréstimo vence logo", "A parcela " + number + "/" + installments + " ("
+                + money(amount) + ") vence em " + dueDate.format(DATE) + " e é debitada da sua conta. "
+                + "Deixe o saldo disponível.");
+    }
+
     public static Text limitOffered(BigDecimal offeredLimit, java.time.LocalDateTime expiresAt) {
         return new Text("Seu limite pode aumentar", "Pelo seu histórico de pagamentos em dia, o limite do seu cartão "
                 + "pode ir para " + money(offeredLimit) + ". Aceite pelo app até "
-                + expiresAt.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")) + ".");
+                + expiresAt.toLocalDate().format(DATE) + ".");
     }
 
     public static Text cardReissued(String lastDigits, boolean oldNumberCancelled) {

@@ -83,6 +83,25 @@ public class JdbcLoanRepository implements LoanRepository {
                 + "WHERE l.status = 'ACTIVE' AND NOT i.paid AND i.due_date <= ?", UUID.class, Date.valueOf(date));
     }
 
+    @Override
+    public List<InstallmentRef> notRemindedDueOn(LocalDate dueDate) {
+        return jdbcTemplate.query("SELECT i.loan_id, i.number FROM loan_installments i JOIN loans l ON l.id = i.loan_id "
+                        + "WHERE l.status = 'ACTIVE' AND NOT i.paid AND i.due_date = ? AND i.reminded_at IS NULL",
+                (rs, n) -> new InstallmentRef(rs.getObject("loan_id", UUID.class), rs.getInt("number")), Date.valueOf(dueDate));
+    }
+
+    @Override
+    public boolean markReminded(UUID loanId, int number, LocalDateTime at) {
+        return jdbcTemplate.update("UPDATE loan_installments SET reminded_at = ? WHERE loan_id = ? AND number = ? "
+                + "AND reminded_at IS NULL", Timestamp.valueOf(at), loanId, number) == 1;
+    }
+
+    @Override
+    public boolean markFailureNotified(UUID loanId, int number, LocalDateTime at) {
+        return jdbcTemplate.update("UPDATE loan_installments SET failure_notified_at = ? WHERE loan_id = ? AND number = ? "
+                + "AND failure_notified_at IS NULL", Timestamp.valueOf(at), loanId, number) == 1;
+    }
+
     private Loan map(ResultSet rs) throws SQLException {
         UUID id = rs.getObject("id", UUID.class);
         List<Loan.Installment> installments = jdbcTemplate.query("SELECT " + INSTALLMENT_COLUMNS

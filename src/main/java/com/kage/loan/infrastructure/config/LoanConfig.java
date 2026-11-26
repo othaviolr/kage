@@ -3,11 +3,16 @@ package com.kage.loan.infrastructure.config;
 import com.kage.account.domain.repository.AccountEntryRepository;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.infrastructure.LoanAccountGatewayImpl;
+import com.kage.loan.application.usecase.LoanEventPublisher;
 import com.kage.loan.application.usecase.PersonalLoans;
 import com.kage.loan.application.usecase.RunLoanDebits;
 import com.kage.loan.domain.repository.LoanRepository;
 import com.kage.loan.domain.service.LoanAccountGateway;
+import com.kage.loan.infrastructure.messaging.LoanEvents;
+import com.kage.loan.infrastructure.messaging.OutboxLoanEventPublisher;
 import com.kage.loan.infrastructure.persistence.JdbcLoanRepository;
+import com.kage.shared.infrastructure.messaging.OutboxEventPublisher;
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,14 +38,26 @@ public class LoanConfig {
     }
 
     @Bean
-    public PersonalLoans personalLoans(LoanRepository loanRepository, LoanAccountGateway loanAccountGateway) {
-        return new PersonalLoans(loanRepository, loanAccountGateway);
+    public LoanEventPublisher loanEventPublisher(OutboxEventPublisher outboxEventPublisher) {
+        return new OutboxLoanEventPublisher(outboxEventPublisher);
+    }
+
+    @Bean
+    public TopicExchange loanExchange() {
+        return new TopicExchange(LoanEvents.EXCHANGE);
+    }
+
+    @Bean
+    public PersonalLoans personalLoans(LoanRepository loanRepository, LoanAccountGateway loanAccountGateway,
+                                       LoanEventPublisher loanEventPublisher) {
+        return new PersonalLoans(loanRepository, loanAccountGateway, loanEventPublisher);
     }
 
     @Bean
     public RunLoanDebits runLoanDebits(LoanRepository loanRepository, LoanAccountGateway loanAccountGateway,
-                                       PlatformTransactionManager transactionManager) {
-        return new RunLoanDebits(loanRepository, loanAccountGateway, new TransactionTemplate(transactionManager));
+                                       PlatformTransactionManager transactionManager, LoanEventPublisher loanEventPublisher) {
+        return new RunLoanDebits(loanRepository, loanAccountGateway, new TransactionTemplate(transactionManager),
+                loanEventPublisher);
     }
 
     /** Débito automático das parcelas: todo dia de manhã. Os testes desligam (kage.loans.scheduler-enabled=false). */

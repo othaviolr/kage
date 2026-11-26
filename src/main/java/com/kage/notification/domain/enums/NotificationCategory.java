@@ -14,7 +14,8 @@ public enum NotificationCategory {
     PIX("PIX enviados, recebidos, estornos e cobranças agendadas", "PIX", false),
     ACCOUNT("Depósitos e saques", "depósitos e saques", false),
     BOLETO("Boletos recebidos e pagos", "boletos", false),
-    SAVINGS("Caixinhas", "caixinhas", false);
+    SAVINGS("Caixinhas", "caixinhas", false),
+    LOANS("Empréstimo pessoal (contratação, parcelas e lembretes)", "empréstimo", false);
 
     private final String description;
     private final String label;

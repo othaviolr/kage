@@ -54,10 +54,12 @@ public class PersonalLoans {
 
     private final LoanRepository loanRepository;
     private final LoanAccountGateway accounts;
+    private final LoanEventPublisher events;
 
-    public PersonalLoans(LoanRepository loanRepository, LoanAccountGateway accounts) {
+    public PersonalLoans(LoanRepository loanRepository, LoanAccountGateway accounts, LoanEventPublisher events) {
         this.loanRepository = loanRepository;
         this.accounts = accounts;
+        this.events = events;
     }
 
     public Offer offer(UUID accountId) {
@@ -91,6 +93,7 @@ public class PersonalLoans {
             throw new ConflictException("Já existe um empréstimo ativo nesta conta");
         }
         accounts.disburse(accountId, quote.released(), loan.getId());
+        events.publishContracted(loan);
         return toOutput(loan);
     }
 
@@ -113,6 +116,7 @@ public class PersonalLoans {
         loanRepository.update(loan);
         accounts.collect(accountId, paid, loanId);
         Loan.Installment done = loan.getInstallments().get(number - 1);
+        events.publishInstallmentPaid(loan, done);
         return new Payment(loanId, loan.getStatus().name(), paid.amount(), number, done.lateCharges().amount(),
                 done.discount().amount());
     }
@@ -135,6 +139,7 @@ public class PersonalLoans {
         Money paid = loan.payOff(DomainTime.today());
         loanRepository.update(loan);
         accounts.collect(accountId, paid, loanId);
+        events.publishPaidOff(loan, paid, Money.of(quote.discount()));
         return new Payment(loanId, loan.getStatus().name(), paid.amount(), null, quote.lateCharges(), quote.discount());
     }
 
@@ -145,6 +150,7 @@ public class PersonalLoans {
         Money returned = loan.withdraw(DomainTime.today());
         loanRepository.update(loan);
         accounts.returnDisbursement(accountId, returned, loanId);
+        events.publishWithdrawn(loan, returned);
         return new Payment(loanId, loan.getStatus().name(), returned.amount(), null, BigDecimal.ZERO, BigDecimal.ZERO);
     }
 
