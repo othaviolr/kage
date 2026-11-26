@@ -56,6 +56,23 @@ public class NotificationController {
     public record PreferenceRequest(Boolean enabled) {
     }
 
+    /** Horário silencioso: avisos não críticos nessa janela ficam só na caixa de entrada. */
+    @GetMapping("/quiet-hours")
+    public ResponseEntity<NotificationPreferences.QuietHoursOutput> quietHours(@RequestParam(required = false) UUID customerId) {
+        return ResponseEntity.ok(notificationPreferences.quietHours(owner(customerId)));
+    }
+
+    @PutMapping("/quiet-hours")
+    public ResponseEntity<NotificationPreferences.QuietHoursOutput> setQuietHours(@RequestBody QuietHoursRequest request,
+                                                                                  @RequestParam(required = false) UUID customerId) {
+        return ResponseEntity.ok(notificationPreferences.setQuietHours(owner(customerId), request.enabled(),
+                request.start(), request.end()));
+    }
+
+    /** @param start/end "HH:mm"; a janela pode atravessar a meia-noite (22:00 a 07:00) */
+    public record QuietHoursRequest(Boolean enabled, String start, String end) {
+    }
+
     /** O cliente mexe sempre no próprio (do token); o ADMIN informa de qual cliente. */
     private UUID owner(UUID customerId) {
         AuthenticatedUser user = accessGuard.currentUser();

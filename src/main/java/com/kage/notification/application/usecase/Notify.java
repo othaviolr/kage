@@ -2,6 +2,8 @@ package com.kage.notification.application.usecase;
 
 import com.kage.notification.domain.entity.Notification;
 import com.kage.notification.domain.enums.NotificationType;
+import com.kage.notification.domain.enums.PushSilencedReason;
+import com.kage.notification.domain.valueobject.QuietHours;
 import com.kage.notification.domain.repository.NotificationPreferenceRepository;
 import com.kage.notification.domain.repository.NotificationRepository;
 import com.kage.notification.domain.service.NotificationChannel;
@@ -20,6 +22,7 @@ import java.util.UUID;
  *   fonte da verdade; reprocessar só duplicaria o push para quem já recebeu.
  * - Categoria desligada pelo cliente: o aviso vai para a caixa de entrada sem push (a não ser que
  *   seja crítico ou de categoria obrigatória — ver NotificationType.shouldPush).
+ * - Horário silencioso do cliente: avisos não críticos também ficam só na caixa de entrada.
  */
 public class Notify {
 
@@ -45,11 +48,22 @@ public class Notify {
         this.preferences = preferences;
     }
 
+    /** Nulo = vai por push. Crítico vai sempre; senão, horário silencioso e depois a categoria. */
+    private PushSilencedReason silencedReason(Input input, LocalDateTime now) {
+        if (preferences == null || input.type().isCritical()) return null;
+        QuietHours quiet = preferences.quietHours(input.customerId()).orElse(QuietHours.DEFAULT);
+        if (quiet.silences(now.toLocalTime())) return PushSilencedReason.QUIET_HOURS;
+        if (!input.type().shouldPush(preferences.disabledFor(input.customerId()))) return PushSilencedReason.CATEGORY_DISABLED;
+        return null;
+    }
+
     /** @return true se o aviso é novo; false se era reentrega */
     public boolean execute(Input input) {
-        boolean push = preferences == null || input.type().shouldPush(preferences.disabledFor(input.customerId()));
+        LocalDateTime now = LocalDateTime.now(clock);
+        PushSilencedReason silenced = silencedReason(input, now);
+        boolean push = silenced == null;
         Notification notification = Notification.create(input.customerId(), input.type(), input.text().title(),
-                input.text().message(), input.referenceId(), input.sourceEventId(), LocalDateTime.now(clock), push);
+                input.text().message(), input.referenceId(), input.sourceEventId(), now, silenced);
 
         if (!notificationRepository.saveIfNew(notification)) {
             logger.debug("Notificação do evento {} já existe, ignorando reentrega", input.sourceEventId());
@@ -57,8 +71,7 @@ public class Notify {
         }
 
         if (!push) {
-            logger.debug("Notificação {} só na caixa de entrada: o cliente desligou {}", notification.getId(),
-                    input.type().category());
+            logger.debug("Notificação {} só na caixa de entrada ({})", notification.getId(), silenced);
             return true;
         }
         try {

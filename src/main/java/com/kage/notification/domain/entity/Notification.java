@@ -1,6 +1,7 @@
 package com.kage.notification.domain.entity;
 
 import com.kage.notification.domain.enums.NotificationType;
+import com.kage.notification.domain.enums.PushSilencedReason;
 import com.kage.shared.domain.exception.ValidationException;
 
 import java.time.LocalDateTime;
@@ -11,8 +12,8 @@ import java.util.UUID;
  * e-mail é uma tentativa em cima dela.
  *
  * @param sourceEventId id da mensagem que gerou o aviso: a mesma mensagem reentregue não gera outro
- * @param pushed        foi (ou tentou ser) enviado por push; false = o cliente desligou a categoria e o
- *                      aviso ficou só no app
+ * @param pushed        foi (ou tentou ser) enviado por push; false = ficou só no app
+ * @param silencedReason por que ficou sem push (categoria desligada, horário silencioso); nulo se foi
  */
 public class Notification {
 
@@ -26,11 +27,13 @@ public class Notification {
     private final LocalDateTime createdAt;
     private LocalDateTime readAt;
     private final boolean pushed;
+    private final PushSilencedReason silencedReason;
 
     private Notification(UUID id, UUID customerId, NotificationType type, String title, String message,
                          UUID referenceId, String sourceEventId, LocalDateTime createdAt, LocalDateTime readAt,
-                         boolean pushed) {
+                         boolean pushed, PushSilencedReason silencedReason) {
         this.pushed = pushed;
+        this.silencedReason = silencedReason;
         this.id = id;
         this.customerId = customerId;
         this.type = type;
@@ -44,24 +47,26 @@ public class Notification {
 
     public static Notification create(UUID customerId, NotificationType type, String title, String message,
                                       UUID referenceId, String sourceEventId, LocalDateTime now) {
-        return create(customerId, type, title, message, referenceId, sourceEventId, now, true);
+        return create(customerId, type, title, message, referenceId, sourceEventId, now, null);
     }
 
+    /** @param silencedReason nulo = vai por push */
     public static Notification create(UUID customerId, NotificationType type, String title, String message,
-                                      UUID referenceId, String sourceEventId, LocalDateTime now, boolean pushed) {
+                                      UUID referenceId, String sourceEventId, LocalDateTime now,
+                                      PushSilencedReason silencedReason) {
         if (customerId == null) throw new ValidationException("Destinatário é obrigatório");
         if (type == null) throw new ValidationException("Tipo da notificação é obrigatório");
         if (title == null || title.isBlank()) throw new ValidationException("Título é obrigatório");
         if (sourceEventId == null || sourceEventId.isBlank()) throw new ValidationException("Evento de origem é obrigatório");
         return new Notification(UUID.randomUUID(), customerId, type, title, message, referenceId, sourceEventId, now, null,
-                pushed);
+                silencedReason == null, silencedReason);
     }
 
     public static Notification reconstitute(UUID id, UUID customerId, NotificationType type, String title, String message,
                                             UUID referenceId, String sourceEventId, LocalDateTime createdAt,
-                                            LocalDateTime readAt, boolean pushed) {
+                                            LocalDateTime readAt, boolean pushed, PushSilencedReason silencedReason) {
         return new Notification(id, customerId, type, title, message, referenceId, sourceEventId, createdAt, readAt,
-                pushed);
+                pushed, silencedReason);
     }
 
     /** Idempotente: marcar como lida de novo mantém a data da primeira leitura. */
@@ -83,4 +88,5 @@ public class Notification {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getReadAt() { return readAt; }
     public boolean isPushed() { return pushed; }
+    public PushSilencedReason getSilencedReason() { return silencedReason; }
 }
