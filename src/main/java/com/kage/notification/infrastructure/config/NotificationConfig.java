@@ -4,7 +4,10 @@ import com.kage.account.domain.repository.AccountRepository;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.notification.application.usecase.ListNotifications;
 import com.kage.notification.application.usecase.MarkNotificationAsRead;
+import com.kage.notification.application.usecase.NotificationPreferences;
 import com.kage.notification.application.usecase.Notify;
+import com.kage.notification.domain.repository.NotificationPreferenceRepository;
+import com.kage.notification.infrastructure.persistence.JdbcNotificationPreferenceRepository;
 import com.kage.notification.domain.repository.NotificationRepository;
 import com.kage.notification.domain.service.NotificationChannel;
 import com.kage.notification.domain.service.RecipientDirectory;
@@ -40,8 +43,19 @@ public class NotificationConfig {
     }
 
     @Bean
-    public Notify notify(NotificationRepository notificationRepository, NotificationChannel notificationChannel, Clock clock) {
-        return new Notify(notificationRepository, notificationChannel, clock);
+    public NotificationPreferenceRepository notificationPreferenceRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcNotificationPreferenceRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public NotificationPreferences notificationPreferences(NotificationPreferenceRepository repository, Clock clock) {
+        return new NotificationPreferences(repository, clock);
+    }
+
+    @Bean
+    public Notify notify(NotificationRepository notificationRepository, NotificationChannel notificationChannel, Clock clock,
+                         NotificationPreferenceRepository notificationPreferenceRepository) {
+        return new Notify(notificationRepository, notificationChannel, clock, notificationPreferenceRepository);
     }
 
     @Bean

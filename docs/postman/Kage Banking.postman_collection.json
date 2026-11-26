@@ -19473,10 +19473,559 @@
       ]
     },
     {
-      "name": "23. Estorno de juros na contestação",
+      "name": "23. Preferências de notificação",
       "item": [
         {
           "name": "23.1.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Preferências\",\n  \"cpf\": \"{{npCpf}}\",\n  \"email\": \"{{npEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('npCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('npEmail', `kage.np+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('npCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23.1.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{npCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{npCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23.1.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{npCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('npAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23.2 Preferências: tudo ligado, três obrigatórias",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/preferences?customerId={{npCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "preferences"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{npCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json();",
+                  "pm.test('8 categorias, todas ligadas', () => { pm.expect(list).to.have.length(8); list.forEach(p => pm.expect(p.enabled).to.eql(true)); });",
+                  "pm.test('Segurança, fatura e serviços do cartão são obrigatórias', () =>",
+                  "  pm.expect(list.filter(p => p.mandatory).map(p => p.category).sort()).to.eql(['CARD_SERVICES', 'INVOICE', 'SECURITY']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23.3 Desligar o push de depósitos e saques",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/preferences/ACCOUNT?customerId={{npCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "preferences",
+                "ACCOUNT"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{npCustomerId}}"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ACCOUNT desligada', () => pm.expect(pm.response.json().find(p => p.category === 'ACCOUNT').enabled).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23.4 Desligar a fatura -> 422 (obrigatória)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/preferences/INVOICE?customerId={{npCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "preferences",
+                "INVOICE"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{npCustomerId}}"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23.5 Categoria inexistente -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/preferences/MARKETING?customerId={{npCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "preferences",
+                "MARKETING"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{npCustomerId}}"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23.6 Sem enabled -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/preferences/PIX?customerId={{npCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "preferences",
+                "PIX"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{npCustomerId}}"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23.7 Depositar 50",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{npAccountId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{npAccountId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23.8 O aviso do depósito está na caixa de entrada, sem push",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{npCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{npCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// o aviso é assíncrono (outbox -> RabbitMQ -> notificação): dá um tempo para ele chegar",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const n = pm.response.json().notifications.find(x => x.type === 'DEPOSIT_RECEIVED');",
+                  "pm.test('Na caixa de entrada, sem push', () => {",
+                  "  pm.expect(n, 'o aviso chega pelo RabbitMQ; se falhar, rode de novo').to.exist;",
+                  "  pm.expect(n.pushed).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23.9 Religar",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/preferences/ACCOUNT?customerId={{npCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "preferences",
+                "ACCOUNT"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{npCustomerId}}"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ACCOUNT ligada', () => pm.expect(pm.response.json().find(p => p.category === 'ACCOUNT').enabled).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23.10 Backoffice sem customerId -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "preferences"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "24. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "24.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -19533,7 +20082,7 @@
           ]
         },
         {
-          "name": "23.1.2 Aprovar KYC",
+          "name": "24.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -19564,7 +20113,7 @@
           ]
         },
         {
-          "name": "23.1.3 Abrir conta",
+          "name": "24.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -19607,7 +20156,7 @@
           ]
         },
         {
-          "name": "23.1.4 Depositar 3000",
+          "name": "24.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -19651,7 +20200,7 @@
           ]
         },
         {
-          "name": "23.2 Emitir cartão",
+          "name": "24.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -19694,7 +20243,7 @@
           ]
         },
         {
-          "name": "23.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "24.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -19747,7 +20296,7 @@
           ]
         },
         {
-          "name": "23.4 Outras compras: 600",
+          "name": "24.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -19791,7 +20340,7 @@
           ]
         },
         {
-          "name": "23.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "24.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -19827,7 +20376,7 @@
           ]
         },
         {
-          "name": "23.6 Paga só 400 de 1000",
+          "name": "24.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -19874,7 +20423,7 @@
           ]
         },
         {
-          "name": "23.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "24.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -19910,7 +20459,7 @@
           ]
         },
         {
-          "name": "23.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "24.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -19942,7 +20491,7 @@
           ]
         },
         {
-          "name": "23.9 Contestar a compra de 400",
+          "name": "24.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -19990,7 +20539,7 @@
           ]
         },
         {
-          "name": "23.10 Procedente: devolve os juros que a compra gerou",
+          "name": "24.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -20039,7 +20588,7 @@
           ]
         },
         {
-          "name": "23.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "24.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],
