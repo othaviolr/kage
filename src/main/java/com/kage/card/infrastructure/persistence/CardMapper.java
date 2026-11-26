@@ -19,6 +19,7 @@ public class CardMapper {
         entity.setAutoDebit(card.isAutoDebit());
         entity.setRevolvingPrincipal(card.getRevolvingPrincipal().amount());
         entity.setRevolvingCharges(card.getRevolvingCharges().amount());
+        entity.setCashbackDestination(card.getCashbackDestination());
         entity.setCreatedAt(card.getCreatedAt());
         entity.setUpdatedAt(card.getUpdatedAt());
         entity.setVersion(card.getVersion());
@@ -39,6 +40,7 @@ public class CardMapper {
                 entity.isAutoDebit(),
                 Money.of(entity.getRevolvingPrincipal()),
                 Money.of(entity.getRevolvingCharges()),
+                entity.getCashbackDestination(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
                 entity.getVersion()

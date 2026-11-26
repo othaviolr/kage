@@ -32,6 +32,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
+import com.kage.card.domain.repository.CashbackAccountCreditRepository;
+import com.kage.card.infrastructure.persistence.JdbcCashbackAccountCreditRepository;
 
 import java.time.Clock;
 
@@ -230,9 +232,17 @@ public class CardConfig {
     }
 
     @Bean
+    public CashbackAccountCreditRepository cashbackAccountCreditRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcCashbackAccountCreditRepository(jdbcTemplate);
+    }
+
+    @Bean
     public Cashbacks cashbacks(CardRepository cardRepository, InvoiceRepository invoiceRepository,
-                               DisputeRepository disputeRepository, CardEventPublisher cardEventPublisher) {
-        return new Cashbacks(cardRepository, invoiceRepository, disputeRepository, cardEventPublisher);
+                               DisputeRepository disputeRepository, CardEventPublisher cardEventPublisher,
+                               CashbackAccountCreditRepository cashbackAccountCreditRepository,
+                               CardBillingAccountService cardBillingAccountService) {
+        return new Cashbacks(cardRepository, invoiceRepository, disputeRepository, cardEventPublisher,
+                cashbackAccountCreditRepository, cardBillingAccountService);
     }
 
     @Bean

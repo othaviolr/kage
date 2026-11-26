@@ -1,6 +1,7 @@
 package com.kage.card.infrastructure.persistence;
 
 import com.kage.card.domain.enums.CardStatus;
+import com.kage.card.domain.enums.CashbackDestination;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -49,6 +50,10 @@ public class CardJpaEntity {
     @Column(name = "revolving_charges", nullable = false, precision = 19, scale = 2)
     private BigDecimal revolvingCharges;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cashback_destination", nullable = false, length = 10)
+    private CashbackDestination cashbackDestination;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -80,6 +85,8 @@ public class CardJpaEntity {
     public CardStatus getStatus() { return status; }
     public void setStatus(CardStatus status) { this.status = status; }
     public boolean isAutoDebit() { return autoDebit; }
+    public CashbackDestination getCashbackDestination() { return cashbackDestination; }
+    public void setCashbackDestination(CashbackDestination cashbackDestination) { this.cashbackDestination = cashbackDestination; }
     public void setAutoDebit(boolean autoDebit) { this.autoDebit = autoDebit; }
     public BigDecimal getRevolvingPrincipal() { return revolvingPrincipal; }
     public void setRevolvingPrincipal(BigDecimal revolvingPrincipal) { this.revolvingPrincipal = revolvingPrincipal; }

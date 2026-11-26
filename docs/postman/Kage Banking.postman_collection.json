@@ -23833,6 +23833,347 @@
               }
             }
           ]
+        },
+        {
+          "name": "28.13 Cashback na conta, em vez de abater a fatura",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/cashback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "cashback"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"ACCOUNT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json();",
+                  "pm.test('Destino: conta; os já creditados ficam onde estão', () => { pm.expect(s.destination).to.eql('ACCOUNT'); pm.expect(s.toInvoices).to.eql(10); pm.expect(s.toAccount).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.14 Destino inválido -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/cashback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "cashback"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"PIX\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.15 Livraria: 500 (junho/2036)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Livraria\",\n  \"amount\": 500,\n  \"purchasedAt\": \"2036-06-05T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.16 Fechar junho (backoffice)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/invoices/2036-06/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "invoices",
+                "2036-06",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.17 Saldo antes de pagar junho",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{cbAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{cbAccountId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('cbBalanceBefore', pm.response.json().balance);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.18 Pagar junho inteira, em dia",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/invoices/2036-06/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "invoices",
+                "2036-06",
+                "pay"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test('PAID', () => pm.expect(p.status).to.eql('PAID'));",
+                  "pm.collectionVariables.set('cbJunePaid', p.amountPaid);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.19 O cashback de 5,00 caiu na conta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{cbAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{cbAccountId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const expected = Number(pm.collectionVariables.get('cbBalanceBefore')) - Number(pm.collectionVariables.get('cbJunePaid')) + 5;",
+                  "pm.test('Saldo = antes - fatura + 5,00 (1% de 500)', () => pm.expect(pm.response.json().balance).to.be.closeTo(expected, 0.001));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.20 Resumo: 10 na fatura, 5 na conta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cbCardId}}/cashback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cbCardId}}",
+                "cashback"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json();",
+                  "pm.test('Totais por destino', () => { pm.expect(s.earned).to.eql(15); pm.expect(s.toInvoices).to.eql(10); pm.expect(s.toAccount).to.eql(5); pm.expect(s.net).to.eql(11); });",
+                  "const june = s.invoices.find(i => i.referenceMonth === '2036-06');",
+                  "pm.test('Junho foi para a conta', () => { pm.expect(june.destination).to.eql('ACCOUNT'); pm.expect(june.creditedIn).to.eql(null); pm.expect(june.amount).to.eql(5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28.21 Aviso: caiu na conta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{cbCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{cbCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const n = pm.response.json().notifications.find(x => x.type === 'CARD_CASHBACK_EARNED' && x.message.includes('06/2036'));",
+                  "pm.test('Já caíram na sua conta', () => { pm.expect(n, 'chega pelo RabbitMQ; se falhar, rode de novo').to.exist; pm.expect(n.message).to.include('R$ 5,00 de cashback'); pm.expect(n.message).to.include('caíram na sua conta'); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

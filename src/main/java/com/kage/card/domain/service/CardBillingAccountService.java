@@ -16,4 +16,10 @@ public interface CardBillingAccountService {
      * @throws com.kage.shared.domain.exception.BusinessRuleException se a conta não está ativa ou não tem saldo
      */
     void debitInvoicePayment(UUID accountId, Money amount, UUID invoiceId);
+
+    /**
+     * Credita o cashback na conta (lançamento no extrato). Conta que não está ativa (bloqueada,
+     * encerrada) não recebe: devolve {@code false} e o cashback vai para a fatura.
+     */
+    boolean creditCashback(UUID accountId, Money amount, UUID sourceInvoiceId);
 }

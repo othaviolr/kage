@@ -80,7 +80,8 @@ public final class InboundEvents {
                                          LocalDate dueDate) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record CashbackEarned(UUID cardId, String referenceMonth, BigDecimal amount) {}
+    /** {@code destination} ausente (evento antigo) = fatura. */
+    public record CashbackEarned(UUID cardId, String referenceMonth, BigDecimal amount, String destination) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record LimitOffered(UUID cardId, UUID offerId, BigDecimal offeredLimit, java.time.LocalDateTime expiresAt) {}

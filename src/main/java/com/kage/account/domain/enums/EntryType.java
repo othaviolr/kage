@@ -21,7 +21,9 @@ public enum EntryType {
     /** Parcela (ou quitação) do empréstimo. */
     LOAN_PAYMENT(false, "Parcela do empréstimo"),
     /** Arrependimento: devolveu o empréstimo em até 7 dias. */
-    LOAN_RETURN(false, "Devolução do empréstimo (arrependimento)");
+    LOAN_RETURN(false, "Devolução do empréstimo (arrependimento)"),
+    /** Cashback do cartão que o cliente escolheu receber na conta. */
+    CARD_CASHBACK(true, "Cashback do cartão");
 
     private final boolean credit;
     private final String label;

@@ -295,6 +295,17 @@ public class CardController {
         return ResponseEntity.ok(cashbacks.summary(id));
     }
 
+    /** Para onde vão os próximos cashbacks: INVOICE (abater a fatura seguinte) ou ACCOUNT (na conta). */
+    @PatchMapping("/{id}/cashback")
+    public ResponseEntity<Cashbacks.Summary> chooseCashbackDestination(@PathVariable UUID id,
+                                                                       @RequestBody CashbackDestinationRequest request) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(cashbacks.chooseDestination(id, request == null ? null : request.destination()));
+    }
+
+    public record CashbackDestinationRequest(String destination) {
+    }
+
     /** Limite em uso, limite aprovado, usado e disponível. */
     @GetMapping("/{id}/credit-limit")
     public ResponseEntity<CreditLimits.Limits> creditLimit(@PathVariable UUID id) {

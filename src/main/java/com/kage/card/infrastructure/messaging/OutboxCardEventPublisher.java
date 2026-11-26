@@ -84,9 +84,9 @@ public class OutboxCardEventPublisher implements CardEventPublisher {
     }
 
     @Override
-    public void publishCashbackEarned(UUID cardId, String referenceMonth, Money amount) {
+    public void publishCashbackEarned(UUID cardId, String referenceMonth, Money amount, String destination) {
         outbox.publish(CardEvents.EXCHANGE, CardEvents.CASHBACK_EARNED, new CardEvents.CashbackEarnedEvent(
-                cardId, referenceMonth, amount.amount(), DomainTime.instant()));
+                cardId, referenceMonth, amount.amount(), destination, DomainTime.instant()));
     }
 
     @Override
