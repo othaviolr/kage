@@ -8,7 +8,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -66,6 +69,18 @@ public class NotificationRepositoryImpl implements NotificationRepository {
                 + (unreadOnly ? " AND read_at IS NULL" : "")
                 + " ORDER BY created_at DESC LIMIT ?";
         return jdbcTemplate.query(sql, MAPPER, customerId, limit);
+    }
+
+    @Override
+    public Map<NotificationType, Integer> countSilenced(UUID customerId, PushSilencedReason reason, LocalDateTime from,
+                                                        LocalDateTime to) {
+        Map<NotificationType, Integer> counts = new EnumMap<>(NotificationType.class);
+        jdbcTemplate.query("SELECT type, COUNT(*) AS total FROM notifications WHERE customer_id = ? "
+                        + "AND push_silenced_reason = ? AND created_at >= ? AND created_at < ? GROUP BY type",
+                rs -> {
+                    counts.put(NotificationType.valueOf(rs.getString("type")), rs.getInt("total"));
+                }, customerId, reason.name(), Timestamp.valueOf(from), Timestamp.valueOf(to));
+        return counts;
     }
 
     @Override

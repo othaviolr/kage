@@ -20928,12 +20928,14 @@
                 "type": "text/javascript",
                 "exec": [
                   "// o servidor roda em horário de Brasília (UTC-3, sem horário de verão desde 2019)",
-                  "const hhmm = offsetMinutes => {",
-                  "  const d = new Date(Date.now() - 3 * 3600 * 1000 + offsetMinutes * 60 * 1000);",
-                  "  return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');",
-                  "};",
-                  "pm.collectionVariables.set('qhStart', hhmm(-60));",
-                  "pm.collectionVariables.set('qhEnd', hhmm(60));"
+                  "const sp = offsetMinutes => new Date(Date.now() - 3 * 3600 * 1000 + offsetMinutes * 60 * 1000);",
+                  "const pad = n => String(n).padStart(2, '0');",
+                  "const hhmm = d => pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());",
+                  "pm.collectionVariables.set('qhStart', hhmm(sp(-60)));",
+                  "pm.collectionVariables.set('qhEnd', hhmm(sp(60)));",
+                  "const after = sp(70); // 10 minutos depois do fim da janela",
+                  "pm.collectionVariables.set('qhSummaryAt', after.getUTCFullYear() + '-' + pad(after.getUTCMonth() + 1) + '-'",
+                  "  + pad(after.getUTCDate()) + 'T' + hhmm(after) + ':00');"
                 ]
               }
             },
@@ -21143,7 +21145,157 @@
           ]
         },
         {
-          "name": "25.8 Desligar (a janela fica guardada)",
+          "name": "25.8 Rodar os resumos 10 minutos depois do fim da janela (backoffice)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/notifications/quiet-hours-summaries/run?at={{qhSummaryAt}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "notifications",
+                "quiet-hours-summaries",
+                "run"
+              ],
+              "query": [
+                {
+                  "key": "at",
+                  "value": "{{qhSummaryAt}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Pelo menos um resumo', () => pm.expect(pm.response.json().summariesSent).to.be.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25.9 Um push só, resumindo o que ficou em silêncio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{qhCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{qhCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const summaries = pm.response.json().notifications.filter(x => x.type === 'QUIET_HOURS_SUMMARY');",
+                  "pm.test('Resumo com o depósito', () => {",
+                  "  pm.expect(summaries).to.have.length(1);",
+                  "  pm.expect(summaries[0].pushed).to.eql(true);",
+                  "  pm.expect(summaries[0].message).to.include('chegou 1 aviso: 1 de depósitos e saques');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25.10 Rodar de novo não duplica",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/notifications/quiet-hours-summaries/run?at={{qhSummaryAt}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "notifications",
+                "quiet-hours-summaries",
+                "run"
+              ],
+              "query": [
+                {
+                  "key": "at",
+                  "value": "{{qhSummaryAt}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25.11 Continua um resumo só",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{qhCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{qhCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Um resumo', () => pm.expect(pm.response.json().notifications.filter(x => x.type === 'QUIET_HOURS_SUMMARY')).to.have.length(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25.12 Desligar (a janela fica guardada)",
           "request": {
             "method": "PUT",
             "header": [

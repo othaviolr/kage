@@ -5,6 +5,7 @@ import com.kage.notification.domain.enums.NotificationCategory;
 import com.kage.notification.domain.valueobject.QuietHours;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -20,6 +21,9 @@ public interface NotificationPreferenceRepository {
     Optional<QuietHours> quietHours(UUID customerId);
 
     void saveQuietHours(UUID customerId, QuietHours quietHours, LocalDateTime now);
+
+    /** Clientes com horário silencioso ligado (para o resumo ao fim da janela). */
+    Map<UUID, QuietHours> enabledQuietHours();
 
     /** Fatura por e-mail no fechamento. Sem registro = ligada. */
     boolean invoiceEmailEnabled(UUID customerId);
