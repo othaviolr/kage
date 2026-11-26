@@ -12,13 +12,14 @@ import java.util.UUID;
  */
 public interface EmailLogRepository {
 
-    enum Status { PENDING, SENT, FAILED }
+    /** SKIPPED: não mandado por opção do cliente (fica registrado que a fatura fechou e por que não foi). */
+    enum Status { PENDING, SENT, FAILED, SKIPPED }
 
     record EmailLog(UUID id, UUID customerId, String kind, String toAddress, String subject, String attachmentName,
                     Integer attachmentSize, String attachmentSha256, UUID referenceId, String sourceEventId,
                     Status status, String failureReason, LocalDateTime createdAt, LocalDateTime sentAt) {}
 
-    /** Cria o registro PENDING. @return false se já existe um para esse evento */
+    /** Cria o registro (PENDING, ou SKIPPED). @return false se já existe um para esse evento */
     boolean insertIfNew(EmailLog log);
 
     Optional<EmailLog> findBySourceEventId(String sourceEventId);

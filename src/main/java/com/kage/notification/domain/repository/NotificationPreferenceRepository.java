@@ -20,4 +20,9 @@ public interface NotificationPreferenceRepository {
     Optional<QuietHours> quietHours(UUID customerId);
 
     void saveQuietHours(UUID customerId, QuietHours quietHours, LocalDateTime now);
+
+    /** Fatura por e-mail no fechamento. Sem registro = ligada. */
+    boolean invoiceEmailEnabled(UUID customerId);
+
+    void setInvoiceEmail(UUID customerId, boolean enabled, LocalDateTime now);
 }
