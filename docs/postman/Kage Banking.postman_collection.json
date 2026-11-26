@@ -19113,10 +19113,370 @@
       ]
     },
     {
-      "name": "22. Estorno de juros na contestação",
+      "name": "22. Fatura em PDF",
       "item": [
         {
           "name": "22.1.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Fatura PDF\",\n  \"cpf\": \"{{pdfCpf}}\",\n  \"email\": \"{{pdfEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('pdfCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('pdfEmail', `kage.pdf+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('pdfCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22.1.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{pdfCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{pdfCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22.1.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{pdfCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('pdfAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22.2 Emitir cartão",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{pdfCustomerId}}\",\n  \"accountId\": \"{{pdfAccountId}}\",\n  \"creditLimit\": 5000,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('pdfCardId', pm.response.json().cardId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22.3 Compra de 450",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{pdfCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{pdfCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Supermercado\",\n  \"amount\": 450\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('pdfMonth', pm.response.json().referenceMonth);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22.4 PDF de fatura aberta -> 422",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{pdfCardId}}/invoices/{{pdfMonth}}/pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{pdfCardId}}",
+                "invoices",
+                "{{pdfMonth}}",
+                "pdf"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22.5 Fechar a fatura (backoffice)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{pdfCardId}}/invoices/{{pdfMonth}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{pdfCardId}}",
+                "invoices",
+                "{{pdfMonth}}",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22.6 Baixar a fatura em PDF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{pdfCardId}}/invoices/{{pdfMonth}}/pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{pdfCardId}}",
+                "invoices",
+                "{{pdfMonth}}",
+                "pdf"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('É um PDF', () => {",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf');",
+                  "  pm.expect(pm.response.text().startsWith('%PDF-')).to.eql(true);",
+                  "});",
+                  "pm.test('Vem como anexo com o nome da fatura', () => {",
+                  "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include('attachment');",
+                  "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include('fatura-kage-' + pm.collectionVariables.get('pdfMonth') + '.pdf');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22.7 Mês sem fatura -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{pdfCardId}}/invoices/2099-01/pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{pdfCardId}}",
+                "invoices",
+                "2099-01",
+                "pdf"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "23. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "23.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -19173,7 +19533,7 @@
           ]
         },
         {
-          "name": "22.1.2 Aprovar KYC",
+          "name": "23.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -19204,7 +19564,7 @@
           ]
         },
         {
-          "name": "22.1.3 Abrir conta",
+          "name": "23.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -19247,7 +19607,7 @@
           ]
         },
         {
-          "name": "22.1.4 Depositar 3000",
+          "name": "23.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -19291,7 +19651,7 @@
           ]
         },
         {
-          "name": "22.2 Emitir cartão",
+          "name": "23.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -19334,7 +19694,7 @@
           ]
         },
         {
-          "name": "22.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "23.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -19387,7 +19747,7 @@
           ]
         },
         {
-          "name": "22.4 Outras compras: 600",
+          "name": "23.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -19431,7 +19791,7 @@
           ]
         },
         {
-          "name": "22.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "23.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -19467,7 +19827,7 @@
           ]
         },
         {
-          "name": "22.6 Paga só 400 de 1000",
+          "name": "23.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -19514,7 +19874,7 @@
           ]
         },
         {
-          "name": "22.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "23.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -19550,7 +19910,7 @@
           ]
         },
         {
-          "name": "22.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "23.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -19582,7 +19942,7 @@
           ]
         },
         {
-          "name": "22.9 Contestar a compra de 400",
+          "name": "23.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -19630,7 +19990,7 @@
           ]
         },
         {
-          "name": "22.10 Procedente: devolve os juros que a compra gerou",
+          "name": "23.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -19679,7 +20039,7 @@
           ]
         },
         {
-          "name": "22.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "23.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],
