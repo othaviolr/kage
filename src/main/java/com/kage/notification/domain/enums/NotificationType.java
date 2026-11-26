@@ -5,6 +5,7 @@ import static com.kage.notification.domain.enums.NotificationCategory.BOLETO;
 import static com.kage.notification.domain.enums.NotificationCategory.CARD_PURCHASES;
 import static com.kage.notification.domain.enums.NotificationCategory.CARD_SERVICES;
 import static com.kage.notification.domain.enums.NotificationCategory.INVOICE;
+import static com.kage.notification.domain.enums.NotificationCategory.LOANS;
 import static com.kage.notification.domain.enums.NotificationCategory.PIX;
 import static com.kage.notification.domain.enums.NotificationCategory.SAVINGS;
 import static com.kage.notification.domain.enums.NotificationCategory.SECURITY;
@@ -45,6 +46,13 @@ public enum NotificationType {
     SAVINGS_GOAL_REACHED(SAVINGS, false),
     BOLETO_RECEIVED(BOLETO, false),
     BOLETO_PAYMENT_MADE(BOLETO, false),
+    LOAN_CONTRACTED(LOANS, false),
+    LOAN_INSTALLMENT_PAID(LOANS, false),
+    /** O débito da parcela não passou: o atraso já conta multa e mora. */
+    LOAN_INSTALLMENT_FAILED(LOANS, true),
+    LOAN_PAID_OFF(LOANS, false),
+    LOAN_WITHDRAWN(LOANS, false),
+    LOAN_INSTALLMENT_DUE_SOON(LOANS, false),
     /** Resumo ao fim do horário silencioso: gerado pelo job, sem categoria (não liga/desliga). */
     QUIET_HOURS_SUMMARY(null, false);
 

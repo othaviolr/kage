@@ -153,6 +153,42 @@ public class NotificationEventConsumer {
                 e.description(), e.amount(), e.reason(), e.virtualCardNickname()), null, messageId);
     }
 
+    @RabbitListener(queues = "notification.loan.contracted.queue")
+    public void onLoanContracted(InboundEvents.LoanContracted e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toAccountOwner(e.accountId(), NotificationType.LOAN_CONTRACTED, NotificationTemplates.loanContracted(e.released(),
+                e.installments(), e.installmentAmount(), e.firstDueDate()), e.loanId(), messageId);
+    }
+
+    @RabbitListener(queues = "notification.loan.installment.paid.queue")
+    public void onLoanInstallmentPaid(InboundEvents.LoanInstallmentPaid e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toAccountOwner(e.accountId(), NotificationType.LOAN_INSTALLMENT_PAID, NotificationTemplates.loanInstallmentPaid(
+                e.number(), e.installments(), e.paid(), e.lateCharges(), e.discount(), e.remaining()), e.loanId(), messageId);
+    }
+
+    @RabbitListener(queues = "notification.loan.installment.failed.queue")
+    public void onLoanInstallmentFailed(InboundEvents.LoanInstallmentFailed e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toAccountOwner(e.accountId(), NotificationType.LOAN_INSTALLMENT_FAILED, NotificationTemplates.loanInstallmentFailed(
+                e.number(), e.installments(), e.due(), e.reason()), e.loanId(), messageId);
+    }
+
+    @RabbitListener(queues = "notification.loan.paid-off.queue")
+    public void onLoanPaidOff(InboundEvents.LoanPaidOff e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toAccountOwner(e.accountId(), NotificationType.LOAN_PAID_OFF, NotificationTemplates.loanPaidOff(e.paid(), e.discount()),
+                e.loanId(), messageId);
+    }
+
+    @RabbitListener(queues = "notification.loan.withdrawn.queue")
+    public void onLoanWithdrawn(InboundEvents.LoanWithdrawn e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toAccountOwner(e.accountId(), NotificationType.LOAN_WITHDRAWN, NotificationTemplates.loanWithdrawn(e.returned()),
+                e.loanId(), messageId);
+    }
+
+    @RabbitListener(queues = "notification.loan.installment.due-soon.queue")
+    public void onLoanInstallmentDueSoon(InboundEvents.LoanInstallmentDueSoon e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toAccountOwner(e.accountId(), NotificationType.LOAN_INSTALLMENT_DUE_SOON, NotificationTemplates.loanInstallmentDueSoon(
+                e.number(), e.installments(), e.amount(), e.dueDate()), e.loanId(), messageId);
+    }
+
     @RabbitListener(queues = "notification.card.limit.offered.queue")
     public void onLimitOffered(InboundEvents.LimitOffered e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toCardOwner(e.cardId(), NotificationType.CARD_LIMIT_OFFERED,

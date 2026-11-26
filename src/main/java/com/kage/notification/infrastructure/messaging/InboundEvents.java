@@ -58,6 +58,28 @@ public final class InboundEvents {
                                    String virtualCardNickname) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record LoanContracted(UUID loanId, UUID accountId, BigDecimal released, int installments,
+                                 BigDecimal installmentAmount, LocalDate firstDueDate) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record LoanInstallmentPaid(UUID loanId, UUID accountId, int number, int installments, BigDecimal paid,
+                                      BigDecimal lateCharges, BigDecimal discount, int remaining) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record LoanInstallmentFailed(UUID loanId, UUID accountId, int number, int installments, BigDecimal due,
+                                        LocalDate dueDate, String reason) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record LoanPaidOff(UUID loanId, UUID accountId, BigDecimal paid, BigDecimal discount) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record LoanWithdrawn(UUID loanId, UUID accountId, BigDecimal returned) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record LoanInstallmentDueSoon(UUID loanId, UUID accountId, int number, int installments, BigDecimal amount,
+                                         LocalDate dueDate) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record LimitOffered(UUID cardId, UUID offerId, BigDecimal offeredLimit, java.time.LocalDateTime expiresAt) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

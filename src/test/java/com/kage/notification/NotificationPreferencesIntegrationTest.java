@@ -76,7 +76,7 @@ class NotificationPreferencesIntegrationTest extends AbstractIntegrationTest {
 
         List<NotificationPreferences.Preference> list = notificationPreferences.list(customerId);
 
-        assertThat(list).hasSize(8).allSatisfy(p -> assertThat(p.enabled()).isTrue());
+        assertThat(list).hasSize(9).allSatisfy(p -> assertThat(p.enabled()).isTrue());
         assertThat(list).filteredOn(NotificationPreferences.Preference::mandatory)
                 .extracting(NotificationPreferences.Preference::category)
                 .containsExactlyInAnyOrder("SECURITY", "INVOICE", "CARD_SERVICES");

@@ -19639,7 +19639,7 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const list = pm.response.json();",
-                  "pm.test('8 categorias, todas ligadas', () => { pm.expect(list).to.have.length(8); list.forEach(p => pm.expect(p.enabled).to.eql(true)); });",
+                  "pm.test('9 categorias, todas ligadas', () => { pm.expect(list).to.have.length(9); list.forEach(p => pm.expect(p.enabled).to.eql(true)); });",
                   "pm.test('Segurança, fatura e serviços do cartão são obrigatórias', () =>",
                   "  pm.expect(list.filter(p => p.mandatory).map(p => p.category).sort()).to.eql(['CARD_SERVICES', 'INVOICE', 'SECURITY']));"
                 ]
@@ -22152,6 +22152,56 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26.19 Avisos do empréstimo na caixa de entrada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{lnCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{lnCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// os avisos são assíncronos (outbox -> RabbitMQ -> notificação): dá um tempo para chegarem",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const all = pm.response.json().notifications;",
+                  "const of = type => all.filter(n => n.type === type);",
+                  "pm.test('Dois contratados (o cancelado e o quitado)', () => pm.expect(of('LOAN_CONTRACTED'), 'chega pelo RabbitMQ; se falhar, rode de novo').to.have.length(2));",
+                  "pm.test('Desistência confirmada', () => pm.expect(of('LOAN_WITHDRAWN')[0].message).to.include('sem juros nem IOF'));",
+                  "pm.test('Parcela antecipada paga, com desconto', () => pm.expect(of('LOAN_INSTALLMENT_PAID')[0].message).to.include('de desconto por antecipar'));",
+                  "pm.test('Quitado', () => pm.expect(of('LOAN_PAID_OFF')[0].title).to.eql('Empréstimo quitado'));"
                 ]
               }
             }

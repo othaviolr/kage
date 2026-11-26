@@ -24,6 +24,7 @@ public class NotificationRabbitMQConfig {
     static final String PIX_EXCHANGE = "pix.exchange";
     static final String SAVINGS_EXCHANGE = "savings.exchange";
     static final String BOLETO_EXCHANGE = "boleto.exchange";
+    static final String LOAN_EXCHANGE = "loan.exchange";
 
     /** routing key -> exchange de origem */
     static final Map<String, String> SUBSCRIPTIONS = Map.ofEntries(
@@ -55,7 +56,13 @@ public class NotificationRabbitMQConfig {
             Map.entry("pix.automatic.charge.scheduled", PIX_EXCHANGE),
             Map.entry("savings.goal.reached", SAVINGS_EXCHANGE),
             Map.entry("boleto.paid", BOLETO_EXCHANGE),
-            Map.entry("boleto.payment.made", BOLETO_EXCHANGE)
+            Map.entry("boleto.payment.made", BOLETO_EXCHANGE),
+            Map.entry("loan.contracted", LOAN_EXCHANGE),
+            Map.entry("loan.installment.paid", LOAN_EXCHANGE),
+            Map.entry("loan.installment.failed", LOAN_EXCHANGE),
+            Map.entry("loan.paid-off", LOAN_EXCHANGE),
+            Map.entry("loan.withdrawn", LOAN_EXCHANGE),
+            Map.entry("loan.installment.due-soon", LOAN_EXCHANGE)
     );
 
     /** Segunda fila no fechamento da fatura: o e-mail com o PDF, separado do push. */
