@@ -88,10 +88,16 @@ class PixAutomaticIntegrationTest extends AbstractIntegrationTest {
 
     /** A academia pede; devolve o id da autorização. */
     private String requestAuthorization(Customer receiver, Customer payer, String fixedAmount) throws Exception {
+        return requestAuthorization(receiver, payer, fixedAmount, "NONE");
+    }
+
+    private String requestAuthorization(Customer receiver, Customer payer, String fixedAmount, String retryPolicy)
+            throws Exception {
         String body = as(receiver, post("/api/pix/automatic/authorizations").content("""
                 {"receiverAccountId":"%s","receiverPixKey":"%s","payerPixKey":"%s","description":"Mensalidade",
-                 "contractReference":"matrícula 42","frequency":"MONTHLY","fixedAmount":%s,"startDate":"%s"}"""
-                .formatted(receiver.accountId(), receiver.key(), payer.key(), fixedAmount, TODAY.plusDays(1))))
+                 "contractReference":"matrícula 42","frequency":"MONTHLY","fixedAmount":%s,"startDate":"%s",
+                 "retryPolicy":"%s"}"""
+                .formatted(receiver.accountId(), receiver.key(), payer.key(), fixedAmount, TODAY.plusDays(1), retryPolicy)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(body, "$.id");
@@ -216,6 +222,85 @@ class PixAutomaticIntegrationTest extends AbstractIntegrationTest {
         runScheduledPix.execute(DUE);
         sleep(Duration.ofSeconds(1));
         assertThat(balance(caio)).isEqualByComparingTo("500.00");
+    }
+
+    private ResultActions retry(Customer who, String chargeId, LocalDate date) throws Exception {
+        return as(who, post("/api/pix/automatic/charges/" + chargeId + "/retry").content("{\"date\":\"%s\"}".formatted(date)));
+    }
+
+    private String chargeStatus(Customer who, String authorizationId) {
+        try {
+            String body = as(who, get("/api/pix/automatic/authorizations/" + authorizationId)).andReturn().getResponse()
+                    .getContentAsString();
+            return JsonPath.read(body, "$.charges[0].status");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** Autorização aceita, com a cobrança de 49,90 do 1º ciclo já recusada por falta de saldo. */
+    private String failedCharge(Customer receiver, Customer payer, String retryPolicy, String[] authorizationId) throws Exception {
+        String id = requestAuthorization(receiver, payer, "49.90", retryPolicy);
+        authorizationId[0] = id;
+        as(payer, post("/api/pix/automatic/authorizations/" + id + "/approve")).andExpect(status().isOk());
+        String chargeId = JsonPath.read(charge(receiver, id, "49.90", DUE).andReturn().getResponse().getContentAsString(), "$.id");
+        runScheduledPix.execute(DUE);
+        assertThat(chargeStatus(payer, id)).isEqualTo("FAILED");
+        return chargeId;
+    }
+
+    @Test
+    void semSaldoNoVencimento_quemRecebeTentaDeNovo_ePagaNoDiaSeguinte() throws Exception {
+        Customer academia = customer("Academia Retry", "0");
+        Customer lia = customer("Lia Pagadora", "0");
+        String[] id = new String[1];
+        String chargeId = failedCharge(academia, lia, "THREE_IN_SEVEN_DAYS", id);
+
+        retry(lia, chargeId, DUE.plusDays(1)).andExpect(status().isUnprocessableEntity()); // só quem recebe
+        retry(academia, chargeId, DUE).andExpect(status().isUnprocessableEntity())          // não no mesmo dia
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Uma tentativa por dia")));
+        retry(academia, chargeId, DUE.plusDays(1)).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("SCHEDULED"))
+                .andExpect(jsonPath("$.attempts.length()").value(2))
+                .andExpect(jsonPath("$.attempts[0].status").value("FAILED"))
+                .andExpect(jsonPath("$.attempts[0].failureReason").value(org.hamcrest.Matchers.containsString("Saldo")));
+        retry(academia, chargeId, DUE.plusDays(2)).andExpect(status().isUnprocessableEntity()); // a anterior ainda não falhou
+
+        awaitUntil(() -> listNotifications.execute(new ListNotifications.Input(lia.id(), false)).notifications().stream()
+                .anyMatch(n -> n.title().equals("Nova tentativa do PIX Automático")), Duration.ofSeconds(15));
+
+        depositAccount.execute(new DepositAccount.Input(lia.accountId(), new BigDecimal("100.00")));
+        runScheduledPix.execute(DUE.plusDays(1));
+        awaitUntil(() -> balance(academia).compareTo(new BigDecimal("49.90")) == 0, Duration.ofSeconds(15));
+        awaitUntil(() -> "PAID".equals(chargeStatus(academia, id[0])), Duration.ofSeconds(15));
+
+        retry(academia, chargeId, DUE.plusDays(3)).andExpect(status().isUnprocessableEntity()); // já foi paga
+    }
+
+    @Test
+    void autorizacaoSemNovasTentativas_naoDeixaTentarDeNovo() throws Exception {
+        Customer escola = customer("Escola Sem Retry", "0");
+        Customer rui = customer("Rui Pagador", "0");
+        String chargeId = failedCharge(escola, rui, "NONE", new String[1]);
+
+        retry(escola, chargeId, DUE.plusDays(1)).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.message").value("Esta autorização não permite novas tentativas"));
+    }
+
+    @Test
+    void noMaximoTresNovasTentativas() throws Exception {
+        Customer clube = customer("Clube Retry", "0");
+        Customer ivo = customer("Ivo Pagador", "0");
+        String[] id = new String[1];
+        String chargeId = failedCharge(clube, ivo, "THREE_IN_SEVEN_DAYS", id);
+
+        for (int day = 1; day <= 3; day++) {
+            retry(clube, chargeId, DUE.plusDays(day)).andExpect(status().isCreated());
+            runScheduledPix.execute(DUE.plusDays(day)); // sem saldo de novo
+            assertThat(chargeStatus(ivo, id[0])).isEqualTo("FAILED");
+        }
+        retry(clube, chargeId, DUE.plusDays(4)).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.message").value("As 3 novas tentativas permitidas já foram feitas"));
     }
 
     @Test

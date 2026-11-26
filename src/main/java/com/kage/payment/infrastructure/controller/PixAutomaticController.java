@@ -4,6 +4,7 @@ import com.kage.auth.infrastructure.security.AccessGuard;
 import com.kage.payment.application.usecase.PixAutomatic;
 import com.kage.payment.domain.entity.PixAutomaticAuthorization.Frequency;
 import com.kage.payment.domain.entity.PixAutomaticAuthorization.Party;
+import com.kage.payment.domain.entity.PixAutomaticAuthorization.RetryPolicy;
 import com.kage.shared.domain.valueobject.Money;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,7 +37,7 @@ public class PixAutomaticController {
         PixAutomatic.View view = pixAutomatic.request(new PixAutomatic.RequestInput(request.receiverAccountId(),
                 request.receiverPixKey(), request.payerPixKey(), request.description(), request.contractReference(),
                 request.frequency(), request.fixedAmount() == null ? null : Money.of(request.fixedAmount()),
-                request.startDate(), request.endDate()));
+                request.startDate(), request.endDate(), request.retryPolicy()));
         return ResponseEntity.status(HttpStatus.CREATED).body(view);
     }
 
@@ -81,6 +82,16 @@ public class PixAutomaticController {
                 request.amount() == null ? null : Money.of(request.amount()), request.dueDate()));
     }
 
+    /**
+     * Quem recebe agenda uma nova tentativa da cobrança recusada por falta de saldo ou de limite (se a
+     * autorização permitir): até 3, uma por dia, até 7 dias depois do vencimento.
+     */
+    @PostMapping("/charges/{chargeId}/retry")
+    public ResponseEntity<PixAutomatic.ChargeView> retryCharge(@PathVariable UUID chargeId, @RequestBody RetryRequest request) {
+        accessGuard.checkPixAutomaticChargeRole(chargeId, Party.RECEIVER);
+        return ResponseEntity.status(HttpStatus.CREATED).body(pixAutomatic.retryCharge(chargeId, request.date()));
+    }
+
     @DeleteMapping("/charges/{chargeId}")
     public ResponseEntity<PixAutomatic.ChargeView> cancelCharge(@PathVariable UUID chargeId) {
         accessGuard.checkPixAutomaticChargePayer(chargeId);
@@ -89,7 +100,10 @@ public class PixAutomaticController {
 
     public record AuthorizationRequest(UUID receiverAccountId, String receiverPixKey, String payerPixKey,
                                        String description, String contractReference, Frequency frequency,
-                                       BigDecimal fixedAmount, LocalDate startDate, LocalDate endDate) {}
+                                       BigDecimal fixedAmount, LocalDate startDate, LocalDate endDate,
+                                       RetryPolicy retryPolicy) {}
+
+    public record RetryRequest(LocalDate date) {}
 
     public record ApproveRequest(BigDecimal maxAmount) {}
 

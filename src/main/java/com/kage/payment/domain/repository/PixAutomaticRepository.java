@@ -24,4 +24,10 @@ public interface PixAutomaticRepository {
     Optional<PixAutomaticCharge> findChargeById(UUID id);
 
     List<PixAutomaticCharge> findCharges(UUID authorizationId);
+
+    /** Lança DuplicateKeyException se já existe tentativa com esse número ou nesse dia. */
+    void insertAttempt(PixAutomaticCharge.Attempt attempt);
+
+    /** Tentativas da cobrança, da original à mais recente. */
+    List<PixAutomaticCharge.Attempt> findAttempts(UUID chargeId);
 }

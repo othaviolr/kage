@@ -155,6 +155,11 @@ public class AccessGuard {
 
     /** Cobrança de PIX Automático: só o pagador dela (ou ADMIN). */
     public void checkPixAutomaticChargePayer(UUID chargeId) {
+        checkPixAutomaticChargeRole(chargeId, PixAutomaticAuthorization.Party.PAYER);
+    }
+
+    /** Cobrança de PIX Automático: só a parte {@code required} da autorização dela (ou ADMIN). */
+    public void checkPixAutomaticChargeRole(UUID chargeId, PixAutomaticAuthorization.Party required) {
         UUID authorizationId = pixAutomaticRepository.findChargeById(chargeId)
                 .map(PixAutomaticCharge::authorizationId)
                 .orElse(null);
@@ -162,7 +167,7 @@ public class AccessGuard {
             if (currentUser().isAdmin()) return;
             throw new NotFoundException("Cobrança não encontrada");
         }
-        checkPixAutomaticRole(authorizationId, PixAutomaticAuthorization.Party.PAYER);
+        checkPixAutomaticRole(authorizationId, required);
     }
 
     public void checkPixRecurrence(UUID recurrenceId) {

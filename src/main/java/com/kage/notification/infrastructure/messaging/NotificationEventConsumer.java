@@ -123,7 +123,8 @@ public class NotificationEventConsumer {
     @RabbitListener(queues = "notification.pix.automatic.charge.scheduled.queue")
     public void onPixAutomaticChargeScheduled(InboundEvents.PixAutomaticChargeScheduled e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toAccountOwner(e.payerAccountId(), NotificationType.PIX_AUTOMATIC_CHARGE_SCHEDULED,
-                NotificationTemplates.pixAutomaticChargeScheduled(e.receiverName(), e.description(), e.amount(), e.dueDate()),
+                NotificationTemplates.pixAutomaticChargeScheduled(e.receiverName(), e.description(), e.amount(), e.dueDate(),
+                        e.attempt() == null ? 1 : e.attempt()),
                 e.chargeId(), messageId);
     }
 

@@ -3,6 +3,7 @@ package com.kage.payment.infrastructure.persistence;
 import com.kage.payment.domain.entity.PixAutomaticAuthorization;
 import com.kage.payment.domain.entity.PixAutomaticAuthorization.Frequency;
 import com.kage.payment.domain.entity.PixAutomaticAuthorization.Party;
+import com.kage.payment.domain.entity.PixAutomaticAuthorization.RetryPolicy;
 import com.kage.payment.domain.entity.PixAutomaticAuthorization.Status;
 import com.kage.payment.domain.entity.PixAutomaticCharge;
 import com.kage.payment.domain.repository.PixAutomaticRepository;
@@ -21,16 +22,24 @@ import java.util.UUID;
 public class JdbcPixAutomaticRepository implements PixAutomaticRepository {
 
     private static final String COLUMNS = "id, payer_account_id, receiver_account_id, receiver_pix_key, receiver_name, "
-            + "description, contract_reference, frequency, fixed_amount, max_amount, start_date, end_date, status, "
-            + "cancelled_by, created_at, updated_at, version";
+            + "description, contract_reference, frequency, fixed_amount, retry_policy, max_amount, start_date, end_date, "
+            + "status, cancelled_by, created_at, updated_at, version";
 
-    private static final String CHARGE_COLUMNS = "id, authorization_id, cycle, amount, due_date, pix_transaction_id, created_at";
+    private static final String CHARGE_COLUMNS = "id, authorization_id, cycle, amount, due_date, created_at";
+
+    private static final String ATTEMPT_COLUMNS = "id, charge_id, attempt_number, scheduled_date, pix_transaction_id, created_at";
+
+    private static final RowMapper<PixAutomaticCharge.Attempt> ATTEMPT_MAPPER = (rs, n) -> new PixAutomaticCharge.Attempt(
+            rs.getObject("id", UUID.class), rs.getObject("charge_id", UUID.class), rs.getInt("attempt_number"),
+            rs.getDate("scheduled_date").toLocalDate(), rs.getObject("pix_transaction_id", UUID.class),
+            rs.getTimestamp("created_at").toLocalDateTime());
 
     private static final RowMapper<PixAutomaticAuthorization> MAPPER = (rs, n) -> PixAutomaticAuthorization.reconstitute(
             rs.getObject("id", UUID.class), rs.getObject("payer_account_id", UUID.class),
             rs.getObject("receiver_account_id", UUID.class), rs.getString("receiver_pix_key"), rs.getString("receiver_name"),
             rs.getString("description"), rs.getString("contract_reference"), Frequency.valueOf(rs.getString("frequency")),
-            money(rs.getBigDecimal("fixed_amount")), money(rs.getBigDecimal("max_amount")),
+            money(rs.getBigDecimal("fixed_amount")), RetryPolicy.valueOf(rs.getString("retry_policy")),
+            money(rs.getBigDecimal("max_amount")),
             rs.getDate("start_date").toLocalDate(), rs.getDate("end_date") == null ? null : rs.getDate("end_date").toLocalDate(),
             Status.valueOf(rs.getString("status")),
             rs.getString("cancelled_by") == null ? null : Party.valueOf(rs.getString("cancelled_by")),
@@ -40,7 +49,7 @@ public class JdbcPixAutomaticRepository implements PixAutomaticRepository {
     private static final RowMapper<PixAutomaticCharge> CHARGE_MAPPER = (rs, n) -> new PixAutomaticCharge(
             rs.getObject("id", UUID.class), rs.getObject("authorization_id", UUID.class), rs.getInt("cycle"),
             Money.of(rs.getBigDecimal("amount")), rs.getDate("due_date").toLocalDate(),
-            rs.getObject("pix_transaction_id", UUID.class), rs.getTimestamp("created_at").toLocalDateTime());
+            rs.getTimestamp("created_at").toLocalDateTime());
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -51,10 +60,10 @@ public class JdbcPixAutomaticRepository implements PixAutomaticRepository {
     @Override
     public void insert(PixAutomaticAuthorization a) {
         jdbcTemplate.update("INSERT INTO pix_automatic_authorizations (" + COLUMNS + ") "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
                 a.getId(), a.getPayerAccountId(), a.getReceiverAccountId(), a.getReceiverPixKey(), a.getReceiverName(),
                 a.getDescription(), a.getContractReference(), a.getFrequency().name(), amount(a.getFixedAmount()),
-                amount(a.getMaxAmount()), Date.valueOf(a.getStartDate()),
+                a.getRetryPolicy().name(), amount(a.getMaxAmount()), Date.valueOf(a.getStartDate()),
                 a.getEndDate() == null ? null : Date.valueOf(a.getEndDate()), a.getStatus().name(),
                 a.getCancelledBy() == null ? null : a.getCancelledBy().name(), Timestamp.valueOf(a.getCreatedAt()),
                 Timestamp.valueOf(a.getUpdatedAt()));
@@ -88,9 +97,22 @@ public class JdbcPixAutomaticRepository implements PixAutomaticRepository {
 
     @Override
     public void insertCharge(PixAutomaticCharge c) {
-        jdbcTemplate.update("INSERT INTO pix_automatic_charges (" + CHARGE_COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?)",
+        jdbcTemplate.update("INSERT INTO pix_automatic_charges (" + CHARGE_COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?)",
                 c.id(), c.authorizationId(), c.cycle(), c.amount().amount(), Date.valueOf(c.dueDate()),
-                c.pixTransactionId(), Timestamp.valueOf(c.createdAt()));
+                Timestamp.valueOf(c.createdAt()));
+    }
+
+    @Override
+    public void insertAttempt(PixAutomaticCharge.Attempt a) {
+        jdbcTemplate.update("INSERT INTO pix_automatic_charge_attempts (" + ATTEMPT_COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?)",
+                a.id(), a.chargeId(), a.number(), Date.valueOf(a.scheduledDate()), a.pixTransactionId(),
+                Timestamp.valueOf(a.createdAt()));
+    }
+
+    @Override
+    public List<PixAutomaticCharge.Attempt> findAttempts(UUID chargeId) {
+        return jdbcTemplate.query("SELECT " + ATTEMPT_COLUMNS + " FROM pix_automatic_charge_attempts WHERE charge_id = ? "
+                + "ORDER BY attempt_number", ATTEMPT_MAPPER, chargeId);
     }
 
     @Override
