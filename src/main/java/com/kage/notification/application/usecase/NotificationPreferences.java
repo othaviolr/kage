@@ -56,6 +56,19 @@ public class NotificationPreferences {
         return list(customerId);
     }
 
+    /** Fatura digital: o e-mail da fatura no fechamento (desligado, a fatura segue no app). */
+    public record InvoiceEmailOutput(boolean enabled) {}
+
+    public InvoiceEmailOutput invoiceEmail(UUID customerId) {
+        return new InvoiceEmailOutput(repository.invoiceEmailEnabled(customerId));
+    }
+
+    public InvoiceEmailOutput setInvoiceEmail(UUID customerId, Boolean enabled) {
+        if (enabled == null) throw new ValidationException("Informe se quer receber a fatura por e-mail (enabled)");
+        repository.setInvoiceEmail(customerId, enabled, LocalDateTime.now(clock));
+        return new InvoiceEmailOutput(enabled);
+    }
+
     public QuietHoursOutput quietHours(UUID customerId) {
         return toOutput(repository.quietHours(customerId).orElse(QuietHours.DEFAULT));
     }

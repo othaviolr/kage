@@ -65,9 +65,10 @@ public class NotificationConfig {
 
     @Bean
     public SendInvoiceEmail sendInvoiceEmail(RecipientDirectory recipientDirectory, InvoiceDocuments invoiceDocuments,
-                                             EmailChannel emailChannel, EmailLogRepository emailLogRepository, Clock clock) {
+                                             EmailChannel emailChannel, EmailLogRepository emailLogRepository, Clock clock,
+                                             NotificationPreferenceRepository notificationPreferenceRepository) {
         return new SendInvoiceEmail(recipientDirectory, new InvoicePdfProviderImpl(invoiceDocuments), emailChannel,
-                emailLogRepository, clock);
+                emailLogRepository, clock, notificationPreferenceRepository);
     }
 
     @Bean

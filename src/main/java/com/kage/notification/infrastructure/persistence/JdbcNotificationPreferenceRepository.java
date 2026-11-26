@@ -46,6 +46,19 @@ public class JdbcNotificationPreferenceRepository implements NotificationPrefere
     }
 
     @Override
+    public boolean invoiceEmailEnabled(UUID customerId) {
+        return jdbcTemplate.queryForList("SELECT enabled FROM invoice_email_settings WHERE customer_id = ?", Boolean.class,
+                customerId).stream().findFirst().orElse(true);
+    }
+
+    @Override
+    public void setInvoiceEmail(UUID customerId, boolean enabled, LocalDateTime now) {
+        jdbcTemplate.update("INSERT INTO invoice_email_settings (customer_id, enabled, updated_at) VALUES (?, ?, ?) "
+                        + "ON CONFLICT (customer_id) DO UPDATE SET enabled = EXCLUDED.enabled, updated_at = EXCLUDED.updated_at",
+                customerId, enabled, Timestamp.valueOf(now));
+    }
+
+    @Override
     public void saveQuietHours(UUID customerId, QuietHours q, LocalDateTime now) {
         jdbcTemplate.update("INSERT INTO notification_quiet_hours (customer_id, enabled, start_time, end_time, updated_at) "
                         + "VALUES (?, ?, ?, ?, ?) ON CONFLICT (customer_id) DO UPDATE SET enabled = EXCLUDED.enabled, "

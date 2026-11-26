@@ -1,6 +1,7 @@
 package com.kage.notification.application.usecase;
 
 import com.kage.notification.domain.repository.EmailLogRepository;
+import com.kage.notification.domain.repository.NotificationPreferenceRepository;
 import com.kage.notification.domain.repository.EmailLogRepository.EmailLog;
 import com.kage.notification.domain.repository.EmailLogRepository.Status;
 import com.kage.notification.domain.service.EmailChannel;
@@ -27,6 +28,10 @@ import java.util.UUID;
 /**
  * Fatura por e-mail no fechamento, com o PDF anexo (a "fatura digital").
  *
+ * O cliente pode desligar: a fatura continua no app (aviso e PDF para baixar), só não vai por e-mail.
+ * Mesmo assim o fechamento fica registrado (SKIPPED, com o motivo) — a auditoria mostra que não foi
+ * falha.
+ *
  * Idempotente pelo evento: o registro do envio é criado antes (PENDING) e marcado SENT depois. Na
  * reentrega, SENT não manda de novo; PENDING ou FAILED tenta outra vez — o envio que caiu no meio não
  * se perde. Falha no envio volta a exceção para a mensagem ser reentregue (e ir para a DLQ se insistir).
@@ -38,6 +43,7 @@ public class SendInvoiceEmail {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MM/yyyy");
     static final String KIND = "INVOICE_CLOSED";
+    static final String OPTED_OUT = "O cliente optou por não receber a fatura por e-mail";
 
     public record Input(UUID cardId, UUID invoiceId, String referenceMonth, BigDecimal total, LocalDate dueDate,
                         String sourceEventId) {}
@@ -51,21 +57,28 @@ public class SendInvoiceEmail {
     private final EmailChannel channel;
     private final EmailLogRepository logRepository;
     private final Clock clock;
+    private final NotificationPreferenceRepository preferences;
 
     public SendInvoiceEmail(RecipientDirectory recipients, InvoicePdfProvider pdfs, EmailChannel channel,
                             EmailLogRepository logRepository, Clock clock) {
+        this(recipients, pdfs, channel, logRepository, clock, null);
+    }
+
+    public SendInvoiceEmail(RecipientDirectory recipients, InvoicePdfProvider pdfs, EmailChannel channel,
+                            EmailLogRepository logRepository, Clock clock, NotificationPreferenceRepository preferences) {
         this.recipients = recipients;
         this.pdfs = pdfs;
         this.channel = channel;
         this.logRepository = logRepository;
         this.clock = clock;
+        this.preferences = preferences;
     }
 
     /** @return true se mandou agora; false se não havia o que mandar ou já tinha sido mandado */
     public boolean execute(Input input) {
         String eventId = input.sourceEventId() != null ? input.sourceEventId() : UUID.randomUUID().toString();
         Optional<EmailLog> previous = logRepository.findBySourceEventId(eventId);
-        if (previous.isPresent() && previous.get().status() == Status.SENT) {
+        if (previous.isPresent() && (previous.get().status() == Status.SENT || previous.get().status() == Status.SKIPPED)) {
             logger.debug("Fatura do evento {} já foi enviada por e-mail", eventId);
             return false;
         }
@@ -76,6 +89,17 @@ public class SendInvoiceEmail {
             logger.warn("Fatura {} sem destinatário de e-mail: cartão ou cliente não encontrado", input.invoiceId());
             return false;
         }
+        String month = YearMonth.parse(input.referenceMonth()).format(MONTH);
+        String subject = "Sua fatura Kage de " + month + " fechou: " + money(input.total()) + ", vence em "
+                + input.dueDate().format(DATE);
+
+        if (preferences != null && !preferences.invoiceEmailEnabled(customerId.get())) {
+            // sem gerar o PDF: o cliente vê a fatura no app
+            logRepository.insertIfNew(new EmailLog(UUID.randomUUID(), customerId.get(), KIND, address.get(), subject,
+                    null, null, null, input.invoiceId(), eventId, Status.SKIPPED, OPTED_OUT, LocalDateTime.now(clock), null));
+            return false;
+        }
+
         Optional<InvoicePdfProvider.Pdf> pdf = pdfs.pdfOf(input.cardId(), input.referenceMonth());
         if (pdf.isEmpty()) {
             logger.warn("Fatura {} de {} sem PDF (não encontrada ou aberta): e-mail não enviado", input.invoiceId(),
@@ -83,9 +107,6 @@ public class SendInvoiceEmail {
             return false;
         }
 
-        String month = YearMonth.parse(input.referenceMonth()).format(MONTH);
-        String subject = "Sua fatura Kage de " + month + " fechou: " + money(input.total()) + ", vence em "
-                + input.dueDate().format(DATE);
         EmailChannel.Email email = new EmailChannel.Email(address.get(), subject, body(month, input),
                 new EmailChannel.Attachment(pdf.get().fileName(), "application/pdf", pdf.get().content()));
 

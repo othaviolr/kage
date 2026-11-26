@@ -56,6 +56,18 @@ public class NotificationController {
     public record PreferenceRequest(Boolean enabled) {
     }
 
+    /** Fatura por e-mail no fechamento (com o PDF anexo). Desligada, a fatura continua no app. */
+    @GetMapping("/invoice-email")
+    public ResponseEntity<NotificationPreferences.InvoiceEmailOutput> invoiceEmail(@RequestParam(required = false) UUID customerId) {
+        return ResponseEntity.ok(notificationPreferences.invoiceEmail(owner(customerId)));
+    }
+
+    @PutMapping("/invoice-email")
+    public ResponseEntity<NotificationPreferences.InvoiceEmailOutput> setInvoiceEmail(@RequestBody PreferenceRequest request,
+                                                                                      @RequestParam(required = false) UUID customerId) {
+        return ResponseEntity.ok(notificationPreferences.setInvoiceEmail(owner(customerId), request.enabled()));
+    }
+
     /** Horário silencioso: avisos não críticos nessa janela ficam só na caixa de entrada. */
     @GetMapping("/quiet-hours")
     public ResponseEntity<NotificationPreferences.QuietHoursOutput> quietHours(@RequestParam(required = false) UUID customerId) {

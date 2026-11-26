@@ -20361,6 +20361,355 @@
               }
             }
           ]
+        },
+        {
+          "name": "24.7 Fatura por e-mail vem ligada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/invoice-email?customerId={{emCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "invoice-email"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{emCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Ligada', () => pm.expect(pm.response.json().enabled).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "24.8 Cliente desliga a fatura por e-mail",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/invoice-email?customerId={{emCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "invoice-email"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{emCustomerId}}"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Desligada', () => pm.expect(pm.response.json().enabled).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "24.9 Sem enabled -> 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/invoice-email?customerId={{emCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "invoice-email"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{emCustomerId}}"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "24.10 Nova compra (cai na fatura seguinte)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{emCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{emCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Farmácia\",\n  \"amount\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('emNextMonth', pm.response.json().referenceMonth);",
+                  "pm.test('Outra fatura', () => pm.expect(pm.response.json().referenceMonth).to.not.eql(pm.collectionVariables.get('emMonth')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "24.11 Fechar a fatura seguinte (backoffice)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{emCardId}}/invoices/{{emNextMonth}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{emCardId}}",
+                "invoices",
+                "{{emNextMonth}}",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "24.12 Fechamento registrado, e-mail não enviado por opção do cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/emails?customerId={{emCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "emails"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{emCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// assíncrono (outbox -> RabbitMQ -> e-mail): dá um tempo",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const all = pm.response.json();",
+                  "pm.test('O mais recente foi pulado, com o motivo', () => {",
+                  "  pm.expect(all, 'sai pelo RabbitMQ; se falhar, rode de novo').to.have.length(2);",
+                  "  pm.expect(all[0].status).to.eql('SKIPPED');",
+                  "  pm.expect(all[0].failureReason).to.include('optou por não receber');",
+                  "  pm.expect(all[0].attachmentName).to.eql(null);",
+                  "});",
+                  "pm.test('O PDF continua disponível no app', () => pm.expect(all[1].status).to.eql('SENT'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "24.13 PDF da fatura segue no app",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{emCardId}}/invoices/{{emNextMonth}}/pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{emCardId}}",
+                "invoices",
+                "{{emNextMonth}}",
+                "pdf"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('PDF', () => pm.expect(pm.response.text().startsWith('%PDF-')).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "24.14 Religar",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/invoice-email?customerId={{emCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "invoice-email"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{emCustomerId}}"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Ligada', () => pm.expect(pm.response.json().enabled).to.eql(true));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
