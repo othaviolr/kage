@@ -1,7 +1,15 @@
 package com.kage.notification.infrastructure.config;
 
 import com.kage.account.domain.repository.AccountRepository;
+import com.kage.card.application.usecase.InvoiceDocuments;
 import com.kage.card.domain.repository.CardRepository;
+import com.kage.customer.domain.repository.CustomerRepository;
+import com.kage.notification.application.usecase.SendInvoiceEmail;
+import com.kage.notification.domain.repository.EmailLogRepository;
+import com.kage.notification.domain.service.EmailChannel;
+import com.kage.notification.infrastructure.InvoicePdfProviderImpl;
+import com.kage.notification.infrastructure.channel.LoggingEmailChannel;
+import com.kage.notification.infrastructure.persistence.JdbcEmailLogRepository;
 import com.kage.notification.application.usecase.ListNotifications;
 import com.kage.notification.application.usecase.MarkNotificationAsRead;
 import com.kage.notification.application.usecase.NotificationPreferences;
@@ -38,8 +46,28 @@ public class NotificationConfig {
     }
 
     @Bean
-    public RecipientDirectory recipientDirectory(AccountRepository accountRepository, CardRepository cardRepository) {
-        return new RecipientDirectoryImpl(accountRepository, cardRepository);
+    public RecipientDirectory recipientDirectory(AccountRepository accountRepository, CardRepository cardRepository,
+                                                 CustomerRepository customerRepository) {
+        return new RecipientDirectoryImpl(accountRepository, cardRepository, customerRepository);
+    }
+
+    /** Troque por um envio real (SES, SMTP...) declarando outro bean EmailChannel. */
+    @Bean
+    @ConditionalOnMissingBean(EmailChannel.class)
+    public EmailChannel emailChannel() {
+        return new LoggingEmailChannel();
+    }
+
+    @Bean
+    public EmailLogRepository emailLogRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcEmailLogRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public SendInvoiceEmail sendInvoiceEmail(RecipientDirectory recipientDirectory, InvoiceDocuments invoiceDocuments,
+                                             EmailChannel emailChannel, EmailLogRepository emailLogRepository, Clock clock) {
+        return new SendInvoiceEmail(recipientDirectory, new InvoicePdfProviderImpl(invoiceDocuments), emailChannel,
+                emailLogRepository, clock);
     }
 
     @Bean
@@ -69,7 +97,8 @@ public class NotificationConfig {
     }
 
     @Bean
-    public NotificationEventConsumer notificationEventConsumer(Notify notify, RecipientDirectory recipientDirectory) {
-        return new NotificationEventConsumer(notify, recipientDirectory);
+    public NotificationEventConsumer notificationEventConsumer(Notify notify, RecipientDirectory recipientDirectory,
+                                                               SendInvoiceEmail sendInvoiceEmail) {
+        return new NotificationEventConsumer(notify, recipientDirectory, sendInvoiceEmail);
     }
 }

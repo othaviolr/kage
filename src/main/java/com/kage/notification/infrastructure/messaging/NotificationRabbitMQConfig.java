@@ -57,6 +57,10 @@ public class NotificationRabbitMQConfig {
             Map.entry("boleto.payment.made", BOLETO_EXCHANGE)
     );
 
+    /** Segunda fila no fechamento da fatura: o e-mail com o PDF, separado do push. */
+    public static final String INVOICE_EMAIL_QUEUE = "notification.email.card.invoice.closed.queue";
+    static final String INVOICE_EMAIL_DLQ = "notification.email.card.invoice.closed.dlq";
+
     static String queue(String routingKey) {
         return "notification." + routingKey + ".queue";
     }
@@ -82,6 +86,16 @@ public class NotificationRabbitMQConfig {
             declarables.add(dlq);
             declarables.add(BindingBuilder.bind(dlq).to(notificationDlx).with(dlqName));
         });
+        Queue emailQueue = QueueBuilder.durable(INVOICE_EMAIL_QUEUE)
+                .deadLetterExchange(DLX)
+                .deadLetterRoutingKey(INVOICE_EMAIL_DLQ)
+                .build();
+        Queue emailDlq = QueueBuilder.durable(INVOICE_EMAIL_DLQ).build();
+        declarables.add(emailQueue);
+        declarables.add(new Binding(emailQueue.getName(), Binding.DestinationType.QUEUE, CARD_EXCHANGE,
+                "card.invoice.closed", null));
+        declarables.add(emailDlq);
+        declarables.add(BindingBuilder.bind(emailDlq).to(notificationDlx).with(INVOICE_EMAIL_DLQ));
         return new Declarables(declarables);
     }
 }
