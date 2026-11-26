@@ -118,7 +118,8 @@ public class NotificationEventConsumer {
     @RabbitListener(queues = "notification.card.dispute.resolved.queue")
     public void onDisputeResolved(InboundEvents.DisputeResolved e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toCardOwner(e.cardId(), NotificationType.CARD_DISPUTE_RESOLVED, NotificationTemplates.disputeResolved(
-                e.description(), e.amount(), "ACCEPTED".equals(e.status()), e.resolutionNote(), e.reversalMonth()),
+                e.description(), e.amount(), "ACCEPTED".equals(e.status()), e.resolutionNote(), e.reversalMonth(),
+                e.interestRefunded()),
                 e.disputeId(), messageId);
     }
 

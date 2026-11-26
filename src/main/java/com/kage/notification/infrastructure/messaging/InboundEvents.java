@@ -54,7 +54,7 @@ public final class InboundEvents {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record DisputeResolved(UUID cardId, UUID disputeId, String description, BigDecimal amount, String status,
-                                  String resolutionNote, String reversalMonth) {}
+                                  String resolutionNote, String reversalMonth, BigDecimal interestRefunded) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record ScheduledPixFailed(UUID transactionId, UUID sourceAccountId, BigDecimal amount, LocalDate scheduledDate,

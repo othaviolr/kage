@@ -17,7 +17,7 @@ public class JdbcDisputeRepository implements DisputeRepository {
 
     private static final String COLUMNS = "id, card_id, purchase_id, description, amount, credited_amount, credit_month, "
             + "reason, details, status, card_blocked, opened_at, resolved_at, resolution_note, reversal_month, "
-            + "virtual_card_id, virtual_card_deleted";
+            + "virtual_card_id, virtual_card_deleted, interest_refunded";
 
     private static final RowMapper<Dispute> MAPPER = (rs, n) -> {
         Timestamp resolvedAt = rs.getTimestamp("resolved_at");
@@ -28,7 +28,8 @@ public class JdbcDisputeRepository implements DisputeRepository {
                 DisputeStatus.valueOf(rs.getString("status")), rs.getBoolean("card_blocked"),
                 rs.getTimestamp("opened_at").toLocalDateTime(), resolvedAt == null ? null : resolvedAt.toLocalDateTime(),
                 rs.getString("resolution_note"), rs.getString("reversal_month"),
-                rs.getObject("virtual_card_id", UUID.class), rs.getBoolean("virtual_card_deleted"));
+                rs.getObject("virtual_card_id", UUID.class), rs.getBoolean("virtual_card_deleted"),
+                Money.of(rs.getBigDecimal("interest_refunded")));
     };
 
     private final JdbcTemplate jdbcTemplate;
@@ -39,18 +40,20 @@ public class JdbcDisputeRepository implements DisputeRepository {
 
     @Override
     public void insert(Dispute d) {
-        jdbcTemplate.update("INSERT INTO card_disputes (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        jdbcTemplate.update("INSERT INTO card_disputes (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 d.id(), d.cardId(), d.purchaseId(), d.description(), d.amount().amount(), d.creditedAmount().amount(),
                 d.creditMonth(), d.reason().name(), d.details(), d.status().name(), d.cardBlocked(),
                 Timestamp.valueOf(d.openedAt()), d.resolvedAt() == null ? null : Timestamp.valueOf(d.resolvedAt()),
-                d.resolutionNote(), d.reversalMonth(), d.virtualCardId(), d.virtualCardDeleted());
+                d.resolutionNote(), d.reversalMonth(), d.virtualCardId(), d.virtualCardDeleted(),
+                d.interestRefunded().amount());
     }
 
     @Override
     public boolean resolve(Dispute d) {
         return jdbcTemplate.update("UPDATE card_disputes SET status = ?, resolved_at = ?, resolution_note = ?, "
-                        + "reversal_month = ? WHERE id = ? AND status = 'OPEN'",
-                d.status().name(), Timestamp.valueOf(d.resolvedAt()), d.resolutionNote(), d.reversalMonth(), d.id()) == 1;
+                        + "reversal_month = ?, interest_refunded = ? WHERE id = ? AND status = 'OPEN'",
+                d.status().name(), Timestamp.valueOf(d.resolvedAt()), d.resolutionNote(), d.reversalMonth(),
+                d.interestRefunded().amount(), d.id()) == 1;
     }
 
     @Override

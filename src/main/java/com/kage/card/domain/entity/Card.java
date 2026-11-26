@@ -165,6 +165,17 @@ public class Card {
         this.updatedAt = DomainTime.now();
     }
 
+    /**
+     * Encargos devolvidos (contestação procedente): deixam de contar no teto legal. O limite volta
+     * quando o crédito do estorno abate cobranças, no fechamento (como todo crédito).
+     */
+    public void refundRevolvingCharges(Money refunded) {
+        if (refunded.isZero()) return;
+        this.revolvingCharges = refunded.isGreaterThan(this.revolvingCharges)
+                ? Money.ZERO : this.revolvingCharges.subtract(refunded);
+        this.updatedAt = DomainTime.now();
+    }
+
     /** Dívida do rotativo quitada: o próximo uso do rotativo começa uma conta nova. */
     public void settleRevolving() {
         this.revolvingPrincipal = Money.ZERO;

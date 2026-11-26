@@ -33,7 +33,8 @@ public final class CardEvents {
 
     /** @param reversalMonth negada: fatura em que a compra volta a ser cobrada */
     public record DisputeResolvedEvent(UUID cardId, UUID disputeId, String description, BigDecimal amount,
-                                       String status, String resolutionNote, String reversalMonth, Instant occurredAt) {}
+                                       String status, String resolutionNote, String reversalMonth,
+                                       BigDecimal interestRefunded, Instant occurredAt) {}
 
     /** @param automatic parcelado pela regra do Bacen (rotativo não pago por dois ciclos), não pelo cliente */
     public record InvoiceFinancedEvent(UUID cardId, UUID invoiceId, String referenceMonth, int installments,
