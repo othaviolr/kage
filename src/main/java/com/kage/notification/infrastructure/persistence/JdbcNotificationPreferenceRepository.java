@@ -4,9 +4,13 @@ import com.kage.notification.domain.enums.NotificationCategory;
 import com.kage.notification.domain.repository.NotificationPreferenceRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import com.kage.notification.domain.valueobject.QuietHours;
+
+import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -32,5 +36,20 @@ public class JdbcNotificationPreferenceRepository implements NotificationPrefere
                         + "VALUES (?, ?, ?, ?) ON CONFLICT (customer_id, category) "
                         + "DO UPDATE SET enabled = EXCLUDED.enabled, updated_at = EXCLUDED.updated_at",
                 customerId, category.name(), enabled, Timestamp.valueOf(now));
+    }
+
+    @Override
+    public Optional<QuietHours> quietHours(UUID customerId) {
+        return jdbcTemplate.query("SELECT enabled, start_time, end_time FROM notification_quiet_hours WHERE customer_id = ?",
+                (rs, n) -> new QuietHours(rs.getBoolean("enabled"), rs.getTime("start_time").toLocalTime(),
+                        rs.getTime("end_time").toLocalTime()), customerId).stream().findFirst();
+    }
+
+    @Override
+    public void saveQuietHours(UUID customerId, QuietHours q, LocalDateTime now) {
+        jdbcTemplate.update("INSERT INTO notification_quiet_hours (customer_id, enabled, start_time, end_time, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?) ON CONFLICT (customer_id) DO UPDATE SET enabled = EXCLUDED.enabled, "
+                        + "start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time, updated_at = EXCLUDED.updated_at",
+                customerId, q.enabled(), Time.valueOf(q.start()), Time.valueOf(q.end()), Timestamp.valueOf(now));
     }
 }

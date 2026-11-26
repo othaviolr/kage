@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -68,7 +69,8 @@ class NotifyPreferencesTest {
 
     @Test
     void avisoCritico_vaiPorPushMesmoComACategoriaDesligada() {
-        when(preferences.disabledFor(customerId)).thenReturn(EnumSet.of(NotificationCategory.CARD_PURCHASES));
+        // crítico nem consulta as preferências; o stub fica para deixar o cenário explícito
+        lenient().when(preferences.disabledFor(customerId)).thenReturn(EnumSet.of(NotificationCategory.CARD_PURCHASES));
         when(repository.saveIfNew(any())).thenReturn(true);
 
         notify.execute(input(NotificationType.CARD_PURCHASE_DECLINED));

@@ -2,6 +2,7 @@ package com.kage.notification.infrastructure.persistence;
 
 import com.kage.notification.domain.entity.Notification;
 import com.kage.notification.domain.enums.NotificationType;
+import com.kage.notification.domain.enums.PushSilencedReason;
 import com.kage.notification.domain.repository.NotificationRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -14,7 +15,8 @@ import java.util.UUID;
 public class NotificationRepositoryImpl implements NotificationRepository {
 
     private static final String COLUMNS =
-            "id, customer_id, type, title, message, reference_id, source_event_id, created_at, read_at, pushed";
+            "id, customer_id, type, title, message, reference_id, source_event_id, created_at, read_at, pushed, "
+                    + "push_silenced_reason";
 
     private static final RowMapper<Notification> MAPPER = (rs, rowNum) -> Notification.reconstitute(
             rs.getObject("id", UUID.class),
@@ -26,7 +28,8 @@ public class NotificationRepositoryImpl implements NotificationRepository {
             rs.getString("source_event_id"),
             rs.getTimestamp("created_at").toLocalDateTime(),
             rs.getTimestamp("read_at") == null ? null : rs.getTimestamp("read_at").toLocalDateTime(),
-            rs.getBoolean("pushed"));
+            rs.getBoolean("pushed"),
+            rs.getString("push_silenced_reason") == null ? null : PushSilencedReason.valueOf(rs.getString("push_silenced_reason")));
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -37,11 +40,12 @@ public class NotificationRepositoryImpl implements NotificationRepository {
     @Override
     public boolean saveIfNew(Notification n) {
         // ON CONFLICT em vez de capturar exceção: num INSERT que falha o Postgres aborta a transação inteira
-        int inserted = jdbcTemplate.update("INSERT INTO notifications (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+        int inserted = jdbcTemplate.update("INSERT INTO notifications (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                         + "ON CONFLICT (source_event_id) DO NOTHING",
                 n.getId(), n.getCustomerId(), n.getType().name(), n.getTitle(), n.getMessage(), n.getReferenceId(),
                 n.getSourceEventId(), Timestamp.valueOf(n.getCreatedAt()),
-                n.getReadAt() == null ? null : Timestamp.valueOf(n.getReadAt()), n.isPushed());
+                n.getReadAt() == null ? null : Timestamp.valueOf(n.getReadAt()), n.isPushed(),
+                n.getSilencedReason() == null ? null : n.getSilencedReason().name());
         return inserted == 1;
     }
 

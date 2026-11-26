@@ -20365,10 +20365,492 @@
       ]
     },
     {
-      "name": "25. Estorno de juros na contestação",
+      "name": "25. Horário silencioso",
       "item": [
         {
           "name": "25.1.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Horário Silencioso\",\n  \"cpf\": \"{{qhCpf}}\",\n  \"email\": \"{{qhEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('qhCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('qhEmail', `kage.qh+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('qhCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25.1.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{qhCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{qhCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25.1.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{qhCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('qhAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25.2 Padrão: desligado, 22:00 às 07:00",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/quiet-hours?customerId={{qhCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "quiet-hours"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{qhCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const q = pm.response.json();",
+                  "pm.test('Desligado, 22h às 7h', () => { pm.expect(q.enabled).to.eql(false); pm.expect(q.start).to.eql('22:00'); pm.expect(q.end).to.eql('07:00'); pm.expect(q.activeNow).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25.3 Ligar com uma janela que cobre agora",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/quiet-hours?customerId={{qhCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "quiet-hours"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{qhCustomerId}}"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true,\n  \"start\": \"{{qhStart}}\",\n  \"end\": \"{{qhEnd}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// o servidor roda em horário de Brasília (UTC-3, sem horário de verão desde 2019)",
+                  "const hhmm = offsetMinutes => {",
+                  "  const d = new Date(Date.now() - 3 * 3600 * 1000 + offsetMinutes * 60 * 1000);",
+                  "  return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');",
+                  "};",
+                  "pm.collectionVariables.set('qhStart', hhmm(-60));",
+                  "pm.collectionVariables.set('qhEnd', hhmm(60));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const q = pm.response.json();",
+                  "pm.test('Ligado e valendo agora', () => { pm.expect(q.enabled).to.eql(true); pm.expect(q.activeNow).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25.4 Horário inválido -> 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/quiet-hours?customerId={{qhCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "quiet-hours"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{qhCustomerId}}"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true,\n  \"start\": \"25:00\",\n  \"end\": \"07:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25.5 Início igual ao fim -> 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/quiet-hours?customerId={{qhCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "quiet-hours"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{qhCustomerId}}"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true,\n  \"start\": \"22:00\",\n  \"end\": \"22:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25.6 Depositar 10",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{qhAccountId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{qhAccountId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25.7 O aviso do depósito ficou só no app (horário silencioso)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{qhCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{qhCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// o aviso é assíncrono (outbox -> RabbitMQ -> notificação): dá um tempo para ele chegar",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const n = pm.response.json().notifications.find(x => x.type === 'DEPOSIT_RECEIVED');",
+                  "pm.test('Sem push, pelo horário silencioso', () => {",
+                  "  pm.expect(n, 'o aviso chega pelo RabbitMQ; se falhar, rode de novo').to.exist;",
+                  "  pm.expect(n.pushed).to.eql(false);",
+                  "  pm.expect(n.silencedReason).to.eql('QUIET_HOURS');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25.8 Desligar (a janela fica guardada)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/quiet-hours?customerId={{qhCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "quiet-hours"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{qhCustomerId}}"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const q = pm.response.json();",
+                  "pm.test('Desligado, mesma janela', () => { pm.expect(q.enabled).to.eql(false); pm.expect(q.start).to.eql(pm.collectionVariables.get('qhStart')); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "26. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "26.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -20425,7 +20907,7 @@
           ]
         },
         {
-          "name": "25.1.2 Aprovar KYC",
+          "name": "26.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -20456,7 +20938,7 @@
           ]
         },
         {
-          "name": "25.1.3 Abrir conta",
+          "name": "26.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -20499,7 +20981,7 @@
           ]
         },
         {
-          "name": "25.1.4 Depositar 3000",
+          "name": "26.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -20543,7 +21025,7 @@
           ]
         },
         {
-          "name": "25.2 Emitir cartão",
+          "name": "26.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -20586,7 +21068,7 @@
           ]
         },
         {
-          "name": "25.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "26.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -20639,7 +21121,7 @@
           ]
         },
         {
-          "name": "25.4 Outras compras: 600",
+          "name": "26.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -20683,7 +21165,7 @@
           ]
         },
         {
-          "name": "25.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "26.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -20719,7 +21201,7 @@
           ]
         },
         {
-          "name": "25.6 Paga só 400 de 1000",
+          "name": "26.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -20766,7 +21248,7 @@
           ]
         },
         {
-          "name": "25.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "26.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -20802,7 +21284,7 @@
           ]
         },
         {
-          "name": "25.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "26.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -20834,7 +21316,7 @@
           ]
         },
         {
-          "name": "25.9 Contestar a compra de 400",
+          "name": "26.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -20882,7 +21364,7 @@
           ]
         },
         {
-          "name": "25.10 Procedente: devolve os juros que a compra gerou",
+          "name": "26.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -20931,7 +21413,7 @@
           ]
         },
         {
-          "name": "25.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "26.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],
