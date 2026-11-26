@@ -39,6 +39,7 @@ public class CardController {
     private final CardPlastics cardPlastics;
     private final AuthorizePurchase authorizePurchase;
     private final InvoiceDocuments invoiceDocuments;
+    private final CreditLimits creditLimits;
 
     /**
      * Emissão é do ADMIN: o limite de crédito é decisão da análise de crédito do banco, não do cliente.
@@ -52,7 +53,8 @@ public class CardController {
                           PayInvoice payInvoice, SetAutoDebit setAutoDebit, FinanceInvoice financeInvoice,
                           AnticipateInstallments anticipateInstallments, DisputePurchase disputePurchase,
                           VirtualCards virtualCards, CardPlastics cardPlastics, AuthorizePurchase authorizePurchase,
-                          InvoiceDocuments invoiceDocuments) {
+                          InvoiceDocuments invoiceDocuments, CreditLimits creditLimits) {
+        this.creditLimits = creditLimits;
         this.invoiceDocuments = invoiceDocuments;
         this.authorizePurchase = authorizePurchase;
         this.virtualCards = virtualCards;
@@ -282,6 +284,48 @@ public class CardController {
     public ResponseEntity<GetInvoice.Output> getInvoice(@PathVariable UUID id, @PathVariable String referenceMonth) {
         accessGuard.checkCard(id);
         return ResponseEntity.ok(getInvoice.execute(new GetInvoice.Input(id, referenceMonth)));
+    }
+
+    /** Limite em uso, limite aprovado, usado e disponível. */
+    @GetMapping("/{id}/credit-limit")
+    public ResponseEntity<CreditLimits.Limits> creditLimit(@PathVariable UUID id) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(creditLimits.limits(id));
+    }
+
+    /** Ajusta o limite em uso: para baixo na hora; para cima, até o limite aprovado. */
+    @PatchMapping("/{id}/credit-limit")
+    public ResponseEntity<CreditLimits.Limits> adjustCreditLimit(@PathVariable UUID id, @RequestBody CreditLimitRequest request) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(creditLimits.adjust(id, request.amount()));
+    }
+
+    /** Pede uma análise de aumento agora: aprovada, vem a oferta; recusada, os motivos. */
+    @PostMapping("/{id}/credit-limit/review")
+    public ResponseEntity<CreditLimits.ReviewOutput> requestLimitReview(@PathVariable UUID id) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(creditLimits.requestReview(id));
+    }
+
+    @GetMapping("/{id}/credit-limit/offers")
+    public ResponseEntity<List<CreditLimits.OfferOutput>> limitOffers(@PathVariable UUID id) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(creditLimits.offers(id));
+    }
+
+    @PostMapping("/{id}/credit-limit/offers/{offerId}/accept")
+    public ResponseEntity<CreditLimits.Limits> acceptLimitOffer(@PathVariable UUID id, @PathVariable UUID offerId) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(creditLimits.accept(id, offerId));
+    }
+
+    @PostMapping("/{id}/credit-limit/offers/{offerId}/decline")
+    public ResponseEntity<CreditLimits.OfferOutput> declineLimitOffer(@PathVariable UUID id, @PathVariable UUID offerId) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(creditLimits.decline(id, offerId));
+    }
+
+    public record CreditLimitRequest(BigDecimal amount) {
     }
 
     /** Fatura fechada em PDF: lançamentos, total, mínimo, vencimento, limite e as taxas de juros. */

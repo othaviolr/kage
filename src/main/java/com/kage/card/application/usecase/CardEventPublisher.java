@@ -5,6 +5,7 @@ import com.kage.card.domain.entity.Dispute;
 import com.kage.card.domain.entity.Invoice;
 import com.kage.shared.domain.valueobject.Money;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /** Porta de saída dos eventos da fatura. A implementação grava no outbox. */
@@ -59,4 +60,7 @@ public interface CardEventPublisher {
      * transação própria: a da compra já sofreu rollback quando a recusa aparece.
      */
     void publishPurchaseDeclined(UUID cardId, String description, Money amount, String reason, String virtualCardNickname);
+
+    /** Oferta de aumento de limite. Chamar dentro da transação da análise. */
+    void publishLimitOffered(UUID cardId, UUID offerId, Money offeredLimit, LocalDateTime expiresAt);
 }

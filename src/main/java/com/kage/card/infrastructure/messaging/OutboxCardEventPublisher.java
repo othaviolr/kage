@@ -84,6 +84,12 @@ public class OutboxCardEventPublisher implements CardEventPublisher {
     }
 
     @Override
+    public void publishLimitOffered(UUID cardId, UUID offerId, Money offeredLimit, java.time.LocalDateTime expiresAt) {
+        outbox.publish(CardEvents.EXCHANGE, CardEvents.LIMIT_OFFERED, new CardEvents.LimitOfferedEvent(
+                cardId, offerId, offeredLimit.amount(), expiresAt, DomainTime.instant()));
+    }
+
+    @Override
     @Transactional
     public void publishPurchaseDeclined(UUID cardId, String description, Money amount, String reason,
                                         String virtualCardNickname) {

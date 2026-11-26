@@ -13,11 +13,16 @@ public class Card {
 
     private static final int MIN_DAY = 1;
     private static final int MAX_DAY = 28;
+    /** Menor limite que o cliente pode escolher. */
+    public static final Money MIN_LIMIT = Money.of("50.00");
 
     private final UUID id;
     private final UUID customerId;
     private final UUID accountId;
+    /** Limite em uso: o que o cliente escolheu, até o aprovado. */
     private Money creditLimit;
+    /** Limite aprovado: o teto que a análise de crédito do banco concedeu. */
+    private Money approvedLimit;
     private Money usedLimit;
     private final int closingDay;
     private final int dueDay;
@@ -31,10 +36,11 @@ public class Card {
     private LocalDateTime updatedAt;
     private final Long version;
 
-    private Card(UUID id, UUID customerId, UUID accountId, Money creditLimit,
+    private Card(UUID id, UUID customerId, UUID accountId, Money creditLimit, Money approvedLimit,
                  Money usedLimit, int closingDay, int dueDay, CardStatus status, boolean autoDebit,
                  Money revolvingPrincipal, Money revolvingCharges,
                  LocalDateTime createdAt, LocalDateTime updatedAt, Long version) {
+        this.approvedLimit = approvedLimit;
         this.revolvingPrincipal = revolvingPrincipal;
         this.revolvingCharges = revolvingCharges;
         this.id = id;
@@ -59,15 +65,43 @@ public class Card {
         validateDay(dueDay, "Dia de vencimento");
 
         LocalDateTime now = DomainTime.now();
-        return new Card(UUID.randomUUID(), customerId, accountId, creditLimit, Money.ZERO, closingDay, dueDay, CardStatus.ACTIVE, false, Money.ZERO, Money.ZERO, now, now, null);
+        return new Card(UUID.randomUUID(), customerId, accountId, creditLimit, creditLimit, Money.ZERO, closingDay, dueDay,
+                CardStatus.ACTIVE, false, Money.ZERO, Money.ZERO, now, now, null);
     }
 
-    public static Card reconstitute(UUID id, UUID customerId, UUID accountId, Money creditLimit,
+    public static Card reconstitute(UUID id, UUID customerId, UUID accountId, Money creditLimit, Money approvedLimit,
                                     Money usedLimit, int closingDay, int dueDay, CardStatus status, boolean autoDebit,
                                     Money revolvingPrincipal, Money revolvingCharges,
                                     LocalDateTime createdAt, LocalDateTime updatedAt, Long version) {
-        return new Card(id, customerId, accountId, creditLimit, usedLimit,
+        return new Card(id, customerId, accountId, creditLimit, approvedLimit, usedLimit,
                 closingDay, dueDay, status, autoDebit, revolvingPrincipal, revolvingCharges, createdAt, updatedAt, version);
+    }
+
+    /**
+     * O cliente ajusta o limite em uso: para baixo vale na hora (proteção, controle de gastos); para
+     * cima, até o limite aprovado — acima disso, só com uma nova análise do banco.
+     */
+    public void adjustLimit(Money newLimit) {
+        if (this.status == CardStatus.CANCELLED) throw new BusinessRuleException("Cartão cancelado");
+        if (newLimit.isLessThan(MIN_LIMIT)) throw new ValidationException("O limite mínimo é " + MIN_LIMIT.amount());
+        if (newLimit.isGreaterThan(this.approvedLimit)) {
+            throw new BusinessRuleException("Acima do limite aprovado (" + this.approvedLimit.amount()
+                    + "): peça uma análise de aumento");
+        }
+        if (newLimit.isLessThan(this.usedLimit)) {
+            throw new BusinessRuleException("Abaixo do que já está em uso (" + this.usedLimit.amount() + ")");
+        }
+        this.creditLimit = newLimit;
+        this.updatedAt = DomainTime.now();
+    }
+
+    /** Oferta de aumento aceita: o limite aprovado sobe, e o limite em uso vai junto. */
+    public void raiseApprovedLimit(Money newApproved) {
+        if (this.status == CardStatus.CANCELLED) throw new BusinessRuleException("Cartão cancelado");
+        if (!newApproved.isGreaterThan(this.approvedLimit)) throw new BusinessRuleException("O novo limite precisa ser maior");
+        this.approvedLimit = newApproved;
+        this.creditLimit = newApproved;
+        this.updatedAt = DomainTime.now();
     }
 
     /** Zero quando os encargos do rotativo levaram a dívida além do limite. */
@@ -222,6 +256,7 @@ public class Card {
     public UUID getCustomerId() { return customerId; }
     public UUID getAccountId() { return accountId; }
     public Money getCreditLimit() { return creditLimit; }
+    public Money getApprovedLimit() { return approvedLimit; }
     public Money getUsedLimit() { return usedLimit; }
     public int getClosingDay() { return closingDay; }
     public int getDueDay() { return dueDay; }

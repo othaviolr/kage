@@ -11,6 +11,7 @@ public class CardMapper {
         entity.setCustomerId(card.getCustomerId());
         entity.setAccountId(card.getAccountId());
         entity.setCreditLimit(card.getCreditLimit().amount());
+        entity.setApprovedLimit(card.getApprovedLimit().amount());
         entity.setUsedLimit(card.getUsedLimit().amount());
         entity.setClosingDay(card.getClosingDay());
         entity.setDueDay(card.getDueDay());
@@ -30,6 +31,7 @@ public class CardMapper {
                 entity.getCustomerId(),
                 entity.getAccountId(),
                 Money.of(entity.getCreditLimit()),
+                Money.of(entity.getApprovedLimit()),
                 Money.of(entity.getUsedLimit()),
                 entity.getClosingDay(),
                 entity.getDueDay(),

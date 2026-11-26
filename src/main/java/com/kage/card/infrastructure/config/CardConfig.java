@@ -7,6 +7,7 @@ import com.kage.account.infrastructure.CardBillingAccountServiceImpl;
 import com.kage.card.domain.service.CardBillingAccountService;
 import com.kage.card.application.usecase.*;
 import com.kage.card.domain.repository.CardPlasticRepository;
+import com.kage.card.domain.repository.LimitOfferRepository;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.DisputeRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
@@ -64,6 +65,42 @@ public class CardConfig {
                                CardAccountValidationService cardAccountValidationService,
                                CardPlastics cardPlastics) {
         return new IssueCard(cardRepository, cardCustomerValidationService, cardAccountValidationService, cardPlastics);
+    }
+
+    @Bean
+    public LimitOfferRepository limitOfferRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcLimitOfferRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public CreditLimits creditLimits(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                                     LimitOfferRepository limitOfferRepository, CardEventPublisher cardEventPublisher,
+                                     org.springframework.transaction.PlatformTransactionManager transactionManager) {
+        return new CreditLimits(cardRepository, invoiceRepository, limitOfferRepository, cardEventPublisher,
+                new org.springframework.transaction.support.TransactionTemplate(transactionManager));
+    }
+
+    /** Análise de limite de todos os cartões ativos: todo dia 1º. Os testes desligam. */
+    @Bean
+    @ConditionalOnProperty(name = "kage.card-limits.scheduler-enabled", havingValue = "true", matchIfMissing = true)
+    public CreditLimitReviewScheduler creditLimitReviewScheduler(CreditLimits creditLimits, Clock clock) {
+        return new CreditLimitReviewScheduler(creditLimits, clock);
+    }
+
+    public static class CreditLimitReviewScheduler {
+        private final CreditLimits creditLimits;
+        private final Clock clock;
+
+        CreditLimitReviewScheduler(CreditLimits creditLimits, Clock clock) {
+            this.creditLimits = creditLimits;
+            this.clock = clock;
+        }
+
+        @org.springframework.scheduling.annotation.Scheduled(cron = "${kage.card-limits.cron:0 0 9 1 * *}",
+                zone = "${kage.card-limits.zone:America/Sao_Paulo}")
+        public void run() {
+            creditLimits.runReviews(java.time.LocalDate.now(clock));
+        }
     }
 
     @Bean

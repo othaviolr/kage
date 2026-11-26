@@ -153,6 +153,12 @@ public class NotificationEventConsumer {
                 e.description(), e.amount(), e.reason(), e.virtualCardNickname()), null, messageId);
     }
 
+    @RabbitListener(queues = "notification.card.limit.offered.queue")
+    public void onLimitOffered(InboundEvents.LimitOffered e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toCardOwner(e.cardId(), NotificationType.CARD_LIMIT_OFFERED,
+                NotificationTemplates.limitOffered(e.offeredLimit(), e.expiresAt()), e.offerId(), messageId);
+    }
+
     @RabbitListener(queues = "notification.card.reissued.queue")
     public void onCardReissued(InboundEvents.CardReissued e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toCardOwner(e.cardId(), NotificationType.CARD_REISSUED,
