@@ -49,7 +49,7 @@ public class SendPix {
         }
 
         accountValidationService.validateBalanceAndLimits(input.sourceAccountId(), input.amount(),
-                () -> limitUsage(input.sourceAccountId()));
+                nightStartHour -> limitUsage(input.sourceAccountId(), nightStartHour));
 
         PixTransaction transaction = PixTransaction.create(input.sourceAccountId(), input.targetPixKey(), input.amount(), input.description(), TransactionType.IMMEDIATE, null);
 
@@ -72,8 +72,8 @@ public class SendPix {
         return output;
     }
 
-    private PixLimitUsage limitUsage(UUID sourceAccountId) {
-        return new PixLimitCalculator(pixTransactionRepository, clock).usageOf(sourceAccountId);
+    private PixLimitUsage limitUsage(UUID sourceAccountId, int nightStartHour) {
+        return new PixLimitCalculator(pixTransactionRepository, clock).usageOf(sourceAccountId, nightStartHour);
     }
 
     public record Input(UUID sourceAccountId, String targetPixKey, Money amount, String description) {}

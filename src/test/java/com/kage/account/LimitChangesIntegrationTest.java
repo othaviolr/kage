@@ -156,6 +156,27 @@ class LimitChangesIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void janelaNoturna_comecarAs22h_soDepoisDe24h_eVoltarParaAs20h_naHora() {
+        Setup s = account("100.00");
+
+        LimitChanges.View requested = limitChanges.change(new LimitChanges.Input(s.accountId(), null, null, null, null, null, 22));
+
+        assertThat(requested.pixNightStartHour()).isEqualTo(20);
+        assertThat(requested.pending()).extracting(LimitChanges.PendingView::type).containsExactly("PIX_NIGHT_START");
+        awaitUntil(() -> listNotifications.execute(new ListNotifications.Input(s.customerId(), false)).notifications().stream()
+                .anyMatch(n -> n.title().equals("Pedido para mudar a janela noturna do PIX")), Duration.ofSeconds(15));
+
+        passTheDay(s.accountId());
+        assertThat(limitChanges.view(s.accountId()).pixNightStartHour()).isEqualTo(22);
+        assertThat(jdbcTemplate.queryForObject("SELECT pix_night_start_hour FROM accounts WHERE id = ?", Integer.class,
+                s.accountId())).isEqualTo(22);
+
+        LimitChanges.View back = limitChanges.change(new LimitChanges.Input(s.accountId(), null, null, null, null, null, 20));
+        assertThat(back.pixNightStartHour()).isEqualTo(20); // mais proteção vale já
+        assertThat(back.pending()).isEmpty();
+    }
+
+    @Test
     void validacoes() {
         Setup s = account("100.00");
 

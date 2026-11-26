@@ -52,7 +52,7 @@ class AccountValidationServiceImplTest {
             return Optional.of(account);
         });
 
-        validation.validateBalanceAndLimits(account.getId(), Money.of("100.00"), () -> {
+        validation.validateBalanceAndLimits(account.getId(), Money.of("100.00"), nightStartHour -> {
             calls.add("usage");
             return new PixLimitUsage(Money.ZERO, Money.ZERO, false);
         });
@@ -69,9 +69,25 @@ class AccountValidationServiceImplTest {
         when(accountRepository.findByIdForUpdate(account.getId())).thenReturn(Optional.of(account));
 
         assertThatThrownBy(() -> validation.validateBalanceAndLimits(account.getId(), Money.of("100.00"),
-                () -> new PixLimitUsage(Money.of("1950.00"), Money.ZERO, false)))
+                nightStartHour -> new PixLimitUsage(Money.of("1950.00"), Money.ZERO, false)))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("limite diário de PIX");
+    }
+
+    @Test
+    void validate_devePassarOInicioDaJanelaNoturnaDaConta() {
+        Account account = Account.create(UUID.randomUUID(), AccountType.CHECKING, "00001", "1");
+        account.credit(Money.of("1000.00"));
+        account.updateLimits(account.getLimits().with(com.kage.account.domain.enums.LimitType.PIX_NIGHT_START, Money.of("22")));
+        when(accountRepository.findByIdForUpdate(account.getId())).thenReturn(Optional.of(account));
+        List<Integer> received = new ArrayList<>();
+
+        validation.validateBalanceAndLimits(account.getId(), Money.of("100.00"), nightStartHour -> {
+            received.add(nightStartHour);
+            return new PixLimitUsage(Money.ZERO, Money.ZERO, false);
+        });
+
+        assertThat(received).containsExactly(22);
     }
 
     @Test
@@ -79,7 +95,7 @@ class AccountValidationServiceImplTest {
         UUID accountId = UUID.randomUUID();
         when(accountRepository.findByIdForUpdate(accountId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> validation.validateBalanceAndLimits(accountId, Money.of("10.00"), () -> {
+        assertThatThrownBy(() -> validation.validateBalanceAndLimits(accountId, Money.of("10.00"), nightStartHour -> {
             throw new AssertionError("não deveria calcular o uso");
         })).isInstanceOf(NotFoundException.class);
     }

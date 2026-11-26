@@ -30,14 +30,23 @@ import java.util.UUID;
  */
 public class LimitChanges {
 
+    /** @param pixNightStartHour hora em que a janela noturna do PIX começa (20 a 22) */
     public record Input(UUID accountId, BigDecimal pixDailyLimit, BigDecimal pixNightLimit,
-                        BigDecimal dailyWithdrawalLimit, BigDecimal dailyTransferLimit, BigDecimal monthlyTransferLimit) {}
+                        BigDecimal dailyWithdrawalLimit, BigDecimal dailyTransferLimit, BigDecimal monthlyTransferLimit,
+                        Integer pixNightStartHour) {
+        public Input(UUID accountId, BigDecimal pixDailyLimit, BigDecimal pixNightLimit, BigDecimal dailyWithdrawalLimit,
+                     BigDecimal dailyTransferLimit, BigDecimal monthlyTransferLimit) {
+            this(accountId, pixDailyLimit, pixNightLimit, dailyWithdrawalLimit, dailyTransferLimit, monthlyTransferLimit, null);
+        }
+    }
 
+    /** Para PIX_NIGHT_START, os valores são a hora (21 = 21h). */
     public record PendingView(UUID id, String type, BigDecimal currentAmount, BigDecimal requestedAmount,
                               LocalDateTime requestedAt, LocalDateTime effectiveAt) {}
 
     public record View(UUID accountId, BigDecimal pixDailyLimit, BigDecimal pixNightLimit, BigDecimal dailyWithdrawalLimit,
-                       BigDecimal dailyTransferLimit, BigDecimal monthlyTransferLimit, List<PendingView> pending) {}
+                       BigDecimal dailyTransferLimit, BigDecimal monthlyTransferLimit, int pixNightStartHour,
+                       List<PendingView> pending) {}
 
     private final AccountRepository accountRepository;
     private final LimitChangeRepository repository;
@@ -72,6 +81,9 @@ public class LimitChanges {
         put(requested, LimitType.DAILY_WITHDRAWAL, input.dailyWithdrawalLimit());
         put(requested, LimitType.DAILY_TRANSFER, input.dailyTransferLimit());
         put(requested, LimitType.MONTHLY_TRANSFER, input.monthlyTransferLimit());
+        if (input.pixNightStartHour() != null) {
+            requested.put(LimitType.PIX_NIGHT_START, Money.of(BigDecimal.valueOf(input.pixNightStartHour())));
+        }
 
         Limits current = account.getLimits();
         LimitPolicy.Plan plan = LimitPolicy.plan(current, requested);
@@ -89,7 +101,8 @@ public class LimitChanges {
             UUID id = UUID.randomUUID();
             repository.insert(new LimitChangeRequest(id, saved.getId(), type, current.get(type), value, now, effectiveAt,
                     Status.PENDING));
-            eventPublisher.publishLimitIncreaseRequested(id, saved.getId(), type.label(), value.amount(), effectiveAt);
+            eventPublisher.publishLimitIncreaseRequested(id, saved.getId(), type.name(), type.label(), value.amount(),
+                    effectiveAt);
         });
         return view(saved);
     }
@@ -140,7 +153,7 @@ public class LimitChanges {
                 .toList();
         return new View(account.getId(), limits.pixDailyLimit().amount(), limits.pixNightLimit().amount(),
                 limits.dailyWithdrawalLimit().amount(), limits.dailyTransferLimit().amount(),
-                limits.monthlyTransferLimit().amount(), pending);
+                limits.monthlyTransferLimit().amount(), limits.pixNightStartHour(), pending);
     }
 
     private static void put(Map<LimitType, Money> requested, LimitType type, BigDecimal value) {

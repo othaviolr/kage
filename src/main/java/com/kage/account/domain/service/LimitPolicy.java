@@ -15,7 +15,9 @@ import java.util.Map;
  * - diminuir vale na hora — o cliente se protege sem esperar;
  * - aumentar só vale depois de {@link #INCREASE_DELAY}: quem pegou o celular desbloqueado de alguém
  *   não consegue subir o limite e esvaziar a conta na mesma noite, e o dono tem tempo de cancelar;
- * - cada limite tem um teto, e o noturno do PIX nunca passa do diurno.
+ * - cada limite tem um teto, e o noturno do PIX nunca passa do diurno;
+ * - a janela noturna começa entre 20h e 22h. Começar mais tarde conta como aumento (mais horas com o
+ *   limite diurno, maior); começar mais cedo, como redução.
  */
 public final class LimitPolicy {
 
@@ -34,7 +36,13 @@ public final class LimitPolicy {
             LimitType type = entry.getKey();
             Money value = entry.getValue();
             if (value == null) continue;
-            if (value.isGreaterThan(type.ceiling())) {
+            if (type.isHour()) {
+                boolean wholeHour = value.amount().stripTrailingZeros().scale() <= 0;
+                if (!wholeHour || value.isLessThan(type.floor()) || value.isGreaterThan(type.ceiling())) {
+                    throw new ValidationException("O " + type.label() + " vai das " + type.floor().amount().intValue()
+                            + "h às " + type.ceiling().amount().intValue() + "h, em hora cheia");
+                }
+            } else if (value.isGreaterThan(type.ceiling())) {
                 throw new ValidationException("O " + type.label() + " pode ser de até " + type.ceiling().amount());
             }
             if (value.isGreaterThan(current.get(type))) {

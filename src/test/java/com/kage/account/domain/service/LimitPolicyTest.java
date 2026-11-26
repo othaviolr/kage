@@ -64,6 +64,27 @@ class LimitPolicyTest {
     }
 
     @Test
+    void janelaNoturna_comecarMaisTardeEAumento_maisCedoValeNaHora() {
+        LimitPolicy.Plan later = LimitPolicy.plan(DEFAULT, ask(LimitType.PIX_NIGHT_START, "22"));
+        assertThat(later.immediate().pixNightStartHour()).isEqualTo(20); // ainda não
+        assertThat(later.increases()).containsOnlyKeys(LimitType.PIX_NIGHT_START);
+
+        Limits at22 = DEFAULT.with(LimitType.PIX_NIGHT_START, Money.of("22"));
+        LimitPolicy.Plan earlier = LimitPolicy.plan(at22, ask(LimitType.PIX_NIGHT_START, "21"));
+        assertThat(earlier.immediate().pixNightStartHour()).isEqualTo(21); // protege na hora
+        assertThat(earlier.increases()).isEmpty();
+    }
+
+    @Test
+    void janelaNoturna_soDas20hAs22h_emHoraCheia() {
+        for (String invalid : new String[]{"19", "23", "21.5"}) {
+            assertThatThrownBy(() -> LimitPolicy.plan(DEFAULT, ask(LimitType.PIX_NIGHT_START, invalid)))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessage("O início da janela noturna do PIX vai das 20h às 22h, em hora cheia");
+        }
+    }
+
+    @Test
     void aplicarAumento_noturnoParaNoDiario_seODiarioBaixouNoMeioTempo() {
         Limits lowered = DEFAULT.with(LimitType.PIX_DAILY, Money.of("1500.00"));
 
