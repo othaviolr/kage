@@ -2,6 +2,7 @@ package com.kage.notification.infrastructure.messaging;
 
 import com.kage.notification.application.usecase.NotificationTemplates;
 import com.kage.notification.application.usecase.Notify;
+import com.kage.notification.application.usecase.SendInvoiceEmail;
 import com.kage.notification.domain.enums.NotificationType;
 import com.kage.notification.domain.service.RecipientDirectory;
 import org.slf4j.Logger;
@@ -26,10 +27,26 @@ public class NotificationEventConsumer {
 
     private final Notify notify;
     private final RecipientDirectory recipients;
+    private final SendInvoiceEmail sendInvoiceEmail;
 
     public NotificationEventConsumer(Notify notify, RecipientDirectory recipients) {
+        this(notify, recipients, null);
+    }
+
+    public NotificationEventConsumer(Notify notify, RecipientDirectory recipients, SendInvoiceEmail sendInvoiceEmail) {
         this.notify = notify;
         this.recipients = recipients;
+        this.sendInvoiceEmail = sendInvoiceEmail;
+    }
+
+    /**
+     * Fila própria para o e-mail da fatura (mesmo evento do push): gerar o PDF ou enviar pode falhar e
+     * ser reentregue sem duplicar o push — e o push não espera o PDF.
+     */
+    @RabbitListener(queues = NotificationRabbitMQConfig.INVOICE_EMAIL_QUEUE)
+    public void onInvoiceClosedEmail(InboundEvents.InvoiceClosed e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        sendInvoiceEmail.execute(new SendInvoiceEmail.Input(e.cardId(), e.invoiceId(), e.referenceMonth(), e.total(),
+                e.dueDate(), messageId));
     }
 
     @RabbitListener(queues = "notification.account.deposit.made.queue")

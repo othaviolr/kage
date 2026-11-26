@@ -9,4 +9,7 @@ public interface RecipientDirectory {
     Optional<UUID> customerOfAccount(UUID accountId);
 
     Optional<UUID> customerOfCard(UUID cardId);
+
+    /** E-mail de cadastro do cliente (fatura digital). */
+    Optional<String> emailOf(UUID customerId);
 }
