@@ -73,6 +73,21 @@ public record InvoiceItem(UUID id, UUID purchaseId, String description, Money am
         return new InvoiceItem(UUID.randomUUID(), id, description, amount, at, InvoiceItemKind.ANTICIPATION, null, null);
     }
 
+    /**
+     * Crédito (contestação ou saldo credor trazido): {@code sourceId} é a contestação ou a fatura de
+     * origem, então o mesmo crédito não entra duas vezes.
+     */
+    public static InvoiceItem credit(InvoiceItemKind kind, UUID sourceId, String description, Money amount,
+                                     LocalDateTime at) {
+        if (kind == null || !kind.isCredit()) throw new ValidationException("Lançamento não é um crédito");
+        return new InvoiceItem(UUID.randomUUID(), deterministicId(kind, sourceId), description, amount, at, kind,
+                null, null);
+    }
+
+    public boolean isCredit() {
+        return kind.isCredit();
+    }
+
     private static UUID deterministicId(InvoiceItemKind kind, UUID sourceInvoiceId) {
         return UUID.nameUUIDFromBytes((kind.name() + ":" + sourceInvoiceId).getBytes());
     }

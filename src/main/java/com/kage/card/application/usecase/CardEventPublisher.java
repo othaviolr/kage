@@ -1,5 +1,6 @@
 package com.kage.card.application.usecase;
 
+import com.kage.card.domain.entity.Dispute;
 import com.kage.card.domain.entity.Invoice;
 import com.kage.shared.domain.valueobject.Money;
 
@@ -31,4 +32,10 @@ public interface CardEventPublisher {
      * pagamento já sofreu rollback quando a falha aparece.
      */
     void publishAutoDebitFailed(UUID cardId, String referenceMonth, String reason);
+
+    /** Compra contestada: a cobrança dela está suspensa. Chamar dentro da transação da abertura. */
+    void publishDisputeOpened(Dispute dispute);
+
+    /** Contestação procedente ou negada. Chamar dentro da transação da resolução. */
+    void publishDisputeResolved(Dispute dispute);
 }

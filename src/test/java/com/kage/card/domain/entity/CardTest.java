@@ -220,4 +220,27 @@ class CardTest {
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("fatura em aberto");
     }
+
+    // ---------- contestação ----------
+
+    @Test
+    void absorbCredit_devolveLimite_semFicarNegativo() {
+        card.authorizePurchase(Money.of("100.00"));
+
+        card.absorbCredit(Money.of("30.00"));
+        assertThat(card.getUsedLimit().amount()).isEqualByComparingTo("70.00");
+
+        card.absorbCredit(Money.of("500.00"));
+        assertThat(card.getUsedLimit().amount()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
+    void reinstateCharge_voltaADivida_mesmoComCartaoBloqueadoOuAlemDoLimite() {
+        card.block();
+
+        card.reinstateCharge(card.getCreditLimit().add(Money.of("10.00")));
+
+        assertThat(card.availableLimit().amount()).isEqualByComparingTo("0.00");
+        assertThat(card.getUsedLimit().isGreaterThan(card.getCreditLimit())).isTrue();
+    }
 }

@@ -78,9 +78,15 @@ public class CloseInvoice {
             }
         }
 
+        boolean credited = settleCredits(invoice, card);
+
         invoice.close();
+        if (credited && invoice.remaining().isZero()) {
+            invoice.pay(); // os créditos cobriram tudo: quitada sem pagamento
+            if (invoice.hasPreviousBalance()) card.settleRevolving();
+        }
         Invoice saved = invoiceRepository.save(invoice);
-        if (rolled) cardRepository.save(card);
+        if (rolled || credited) cardRepository.save(card);
         eventPublisher.publishInvoiceClosed(saved);
 
         return new Output(saved.getId(), saved.getCardId(), saved.getReferenceMonth().toString(),
@@ -114,6 +120,28 @@ public class CloseInvoice {
 
         invoiceRepository.save(previous);
         eventPublisher.publishInvoiceRolledOver(previous, target, carried, interest.add(fine).add(lateInterest), proposed.late());
+    }
+
+    /**
+     * Créditos (contestação, saldo credor): o que abateu cobranças desta fatura reduz a dívida e devolve
+     * limite; o que passou do total vai para a fatura seguinte como saldo credor.
+     *
+     * @return se havia algum crédito
+     */
+    private boolean settleCredits(Invoice invoice, Card card) {
+        if (invoice.credits().isZero()) return false;
+        card.absorbCredit(invoice.absorbedCredits());
+
+        Money leftover = invoice.creditBalance();
+        if (!leftover.isZero()) {
+            YearMonth month = invoice.getReferenceMonth().plusMonths(1);
+            Invoice next = invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), month)
+                    .orElseGet(() -> Invoice.open(card.getId(), month, card.getClosingDay(), card.getDueDay()));
+            next.addCredit(InvoiceItemKind.CREDIT_BALANCE, invoice.getId(),
+                    "Saldo credor da fatura de " + invoice.getReferenceMonth().format(MONTH), leftover, DomainTime.now());
+            invoiceRepository.save(next);
+        }
+        return true;
     }
 
     private static Money take(Money wanted, Money available) {

@@ -45,6 +45,14 @@ public final class InboundEvents {
                                   BigDecimal installmentAmount, BigDecimal total, boolean automatic) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record DisputeOpened(UUID cardId, UUID disputeId, String description, BigDecimal amount,
+                                BigDecimal creditedAmount, String creditMonth, boolean cardBlocked) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record DisputeResolved(UUID cardId, UUID disputeId, String description, BigDecimal amount, String status,
+                                  String resolutionNote, String reversalMonth) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record ScheduledPixFailed(UUID transactionId, UUID sourceAccountId, BigDecimal amount, LocalDate scheduledDate,
                                      String reason) {}
 

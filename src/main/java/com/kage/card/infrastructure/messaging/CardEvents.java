@@ -18,6 +18,17 @@ public final class CardEvents {
     public static final String INVOICE_PARTIALLY_PAID = "card.invoice.partially-paid";
     public static final String INVOICE_ROLLED_OVER = "card.invoice.rolled-over";
     public static final String INVOICE_FINANCED = "card.invoice.financed";
+    public static final String DISPUTE_OPENED = "card.dispute.opened";
+    public static final String DISPUTE_RESOLVED = "card.dispute.resolved";
+
+    /** @param creditMonth fatura que recebeu o crédito do que já tinha sido cobrado; nulo se nada tinha */
+    public record DisputeOpenedEvent(UUID cardId, UUID disputeId, String description, BigDecimal amount,
+                                     BigDecimal creditedAmount, String creditMonth, String reason, boolean cardBlocked,
+                                     Instant occurredAt) {}
+
+    /** @param reversalMonth negada: fatura em que a compra volta a ser cobrada */
+    public record DisputeResolvedEvent(UUID cardId, UUID disputeId, String description, BigDecimal amount,
+                                       String status, String resolutionNote, String reversalMonth, Instant occurredAt) {}
 
     /** @param automatic parcelado pela regra do Bacen (rotativo não pago por dois ciclos), não pelo cliente */
     public record InvoiceFinancedEvent(UUID cardId, UUID invoiceId, String referenceMonth, int installments,

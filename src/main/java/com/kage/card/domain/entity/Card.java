@@ -89,6 +89,27 @@ public class Card {
         this.updatedAt = DomainTime.now();
     }
 
+    /**
+     * Crédito (de contestação) que abateu cobranças no fechamento: a dívida diminuiu, o limite volta.
+     * O crédito só devolve limite quando é usado — enquanto ele está parado na fatura aberta, a dívida
+     * que ele vai abater ainda existe.
+     */
+    public void absorbCredit(Money amount) {
+        if (amount.isZero()) return;
+        this.usedLimit = amount.isGreaterThan(this.usedLimit) ? Money.ZERO : this.usedLimit.subtract(amount);
+        this.updatedAt = DomainTime.now();
+    }
+
+    /**
+     * Contestação negada: a compra volta a ser dívida. Não passa pela autorização — o cliente já fez a
+     * compra; pode ultrapassar o limite (aí novas compras ficam bloqueadas até pagar).
+     */
+    public void reinstateCharge(Money amount) {
+        if (amount.isZero()) return;
+        this.usedLimit = this.usedLimit.add(amount);
+        this.updatedAt = DomainTime.now();
+    }
+
     public void block() {
         if (this.status == CardStatus.CANCELLED) throw new BusinessRuleException("Cartão já está cancelado");
         if (this.status == CardStatus.BLOCKED) throw new BusinessRuleException("Cartão já está bloqueado");

@@ -14,5 +14,16 @@ public enum InvoiceItemKind {
     /** Parcela do parcelamento de uma fatura anterior (com juros). */
     INVOICE_INSTALLMENT,
     /** Parcelas futuras trazidas para esta fatura (antecipação), já com o desconto dos juros. */
-    ANTICIPATION
+    ANTICIPATION,
+    /** Crédito de uma compra contestada que já tinha sido cobrada em fatura fechada (abate o total). */
+    DISPUTE_CREDIT,
+    /** Contestação negada: a compra volta a ser cobrada, à vista. */
+    DISPUTE_REVERSAL,
+    /** Crédito que sobrou da fatura anterior (os créditos dela passaram do que ela cobrava). */
+    CREDIT_BALANCE;
+
+    /** Linha que abate o total da fatura em vez de somar. */
+    public boolean isCredit() {
+        return this == DISPUTE_CREDIT || this == CREDIT_BALANCE;
+    }
 }

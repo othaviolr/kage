@@ -108,6 +108,19 @@ public class NotificationEventConsumer {
                 e.referenceMonth(), e.installments(), e.installmentAmount(), e.total(), e.automatic()), e.invoiceId(), messageId);
     }
 
+    @RabbitListener(queues = "notification.card.dispute.opened.queue")
+    public void onDisputeOpened(InboundEvents.DisputeOpened e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toCardOwner(e.cardId(), NotificationType.CARD_DISPUTE_OPENED, NotificationTemplates.disputeOpened(
+                e.description(), e.amount(), e.creditedAmount(), e.creditMonth(), e.cardBlocked()), e.disputeId(), messageId);
+    }
+
+    @RabbitListener(queues = "notification.card.dispute.resolved.queue")
+    public void onDisputeResolved(InboundEvents.DisputeResolved e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toCardOwner(e.cardId(), NotificationType.CARD_DISPUTE_RESOLVED, NotificationTemplates.disputeResolved(
+                e.description(), e.amount(), "ACCEPTED".equals(e.status()), e.resolutionNote(), e.reversalMonth()),
+                e.disputeId(), messageId);
+    }
+
     @RabbitListener(queues = "notification.pix.scheduled.failed.queue")
     public void onScheduledPixFailed(InboundEvents.ScheduledPixFailed e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toAccountOwner(e.sourceAccountId(), NotificationType.PIX_SCHEDULED_FAILED,
