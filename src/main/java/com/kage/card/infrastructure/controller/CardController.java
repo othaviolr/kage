@@ -40,6 +40,7 @@ public class CardController {
     private final AuthorizePurchase authorizePurchase;
     private final InvoiceDocuments invoiceDocuments;
     private final CreditLimits creditLimits;
+    private final Cashbacks cashbacks;
 
     /**
      * Emissão é do ADMIN: o limite de crédito é decisão da análise de crédito do banco, não do cliente.
@@ -53,7 +54,8 @@ public class CardController {
                           PayInvoice payInvoice, SetAutoDebit setAutoDebit, FinanceInvoice financeInvoice,
                           AnticipateInstallments anticipateInstallments, DisputePurchase disputePurchase,
                           VirtualCards virtualCards, CardPlastics cardPlastics, AuthorizePurchase authorizePurchase,
-                          InvoiceDocuments invoiceDocuments, CreditLimits creditLimits) {
+                          InvoiceDocuments invoiceDocuments, CreditLimits creditLimits, Cashbacks cashbacks) {
+        this.cashbacks = cashbacks;
         this.creditLimits = creditLimits;
         this.invoiceDocuments = invoiceDocuments;
         this.authorizePurchase = authorizePurchase;
@@ -284,6 +286,13 @@ public class CardController {
     public ResponseEntity<GetInvoice.Output> getInvoice(@PathVariable UUID id, @PathVariable String referenceMonth) {
         accessGuard.checkCard(id);
         return ResponseEntity.ok(getInvoice.execute(new GetInvoice.Input(id, referenceMonth)));
+    }
+
+    /** Cashback: quanto rendeu (1% das faturas pagas em dia), quanto foi estornado e por fatura. */
+    @GetMapping("/{id}/cashback")
+    public ResponseEntity<Cashbacks.Summary> cashback(@PathVariable UUID id) {
+        accessGuard.checkCard(id);
+        return ResponseEntity.ok(cashbacks.summary(id));
     }
 
     /** Limite em uso, limite aprovado, usado e disponível. */

@@ -24,10 +24,14 @@ public enum InvoiceItemKind {
     /** Contestação procedente: devolução dos juros e encargos que a compra gerou. */
     DISPUTE_INTEREST_REFUND,
     /** IOF do rotativo ou do parcelamento da fatura (imposto: fora do teto da Lei 14.690). */
-    IOF;
+    IOF,
+    /** Cashback da fatura anterior, paga inteira até o vencimento (abate o total). */
+    CASHBACK,
+    /** Compra que rendeu cashback foi contestada com sucesso: o cashback dela volta a ser cobrado. */
+    CASHBACK_REVERSAL;
 
     /** Linha que abate o total da fatura em vez de somar. */
     public boolean isCredit() {
-        return this == DISPUTE_CREDIT || this == CREDIT_BALANCE || this == DISPUTE_INTEREST_REFUND;
+        return this == DISPUTE_CREDIT || this == CREDIT_BALANCE || this == DISPUTE_INTEREST_REFUND || this == CASHBACK;
     }
 }

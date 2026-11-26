@@ -186,6 +186,11 @@ public final class NotificationTemplates {
                 + "Deixe o saldo disponível.");
     }
 
+    public static Text cashbackEarned(String referenceMonth, BigDecimal amount) {
+        return new Text("Você ganhou cashback", "A fatura de " + month(referenceMonth) + " foi paga em dia: "
+                + money(amount) + " de cashback (1% das compras) já estão abatendo a próxima fatura.");
+    }
+
     public static Text limitOffered(BigDecimal offeredLimit, java.time.LocalDateTime expiresAt) {
         return new Text("Seu limite pode aumentar", "Pelo seu histórico de pagamentos em dia, o limite do seu cartão "
                 + "pode ir para " + money(offeredLimit) + ". Aceite pelo app até "

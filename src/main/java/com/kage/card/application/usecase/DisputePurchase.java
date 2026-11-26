@@ -69,15 +69,23 @@ public class DisputePurchase {
     private final DisputeRepository disputeRepository;
     private final CardEventPublisher eventPublisher;
     private final VirtualCards virtualCards;
+    private final Cashbacks cashbacks;
 
     public DisputePurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
                            DisputeRepository disputeRepository, CardEventPublisher eventPublisher,
                            VirtualCards virtualCards) {
+        this(cardRepository, invoiceRepository, disputeRepository, eventPublisher, virtualCards, null);
+    }
+
+    public DisputePurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                           DisputeRepository disputeRepository, CardEventPublisher eventPublisher,
+                           VirtualCards virtualCards, Cashbacks cashbacks) {
         this.cardRepository = cardRepository;
         this.invoiceRepository = invoiceRepository;
         this.disputeRepository = disputeRepository;
         this.eventPublisher = eventPublisher;
         this.virtualCards = virtualCards;
+        this.cashbacks = cashbacks;
     }
 
     @Transactional
@@ -217,12 +225,18 @@ public class DisputePurchase {
         List<Invoice> invoices = new ArrayList<>(invoiceRepository.findByCardId(card.getId()));
         DisputeInterestPolicy.Refund refund = DisputeInterestPolicy.refundFor(invoices, dispute.purchaseId());
         Dispute accepted = dispute.accept(note, refund.total()); // valida o parecer antes de mexer na fatura
+        Invoice current = currentInvoice(card, invoices);
+        boolean changed = false;
         if (!refund.total().isZero()) {
-            Invoice current = currentInvoice(card, invoices);
             current.addCredit(InvoiceItemKind.DISPUTE_INTEREST_REFUND, dispute.id(),
                     "Estorno de juros, encargos e IOF: " + dispute.description(), refund.total(), DomainTime.now());
-            invoiceRepository.save(current);
             card.refundRevolvingCharges(refund.charges()); // o IOF não estava no teto
+            changed = true;
+        }
+        // a compra não valeu: o cashback que ela já tinha rendido volta
+        if (cashbacks != null && !cashbacks.reverseFor(card, dispute, invoices, current).isZero()) changed = true;
+        if (changed) {
+            invoiceRepository.save(current);
             cardRepository.save(card);
         }
         return accepted;

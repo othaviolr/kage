@@ -102,12 +102,18 @@ class DisputeIntegrationTest extends AbstractIntegrationTest {
         assertThat(opened.creditMonth()).isEqualTo("2035-04");
         assertThat(opened.cardBlocked()).isFalse();
 
-        // as parcelas de abril e maio saíram (maio ficou vazia e sumiu); a 1ª, já paga, volta como crédito
+        // as parcelas de abril e maio saíram (maio ficou vazia e sumiu); a 1ª, já paga, volta como crédito.
+        // Abril também tem o cashback de março (1% dos 400, paga em dia ANTES da contestação existir)
         assertThat(months(s.cardId())).containsExactlyInAnyOrder("2035-03", "2035-04");
         GetInvoice.Output april = invoice(s.cardId(), "2035-04");
-        assertThat(april.items()).singleElement().satisfies(item -> {
+        assertThat(april.items()).hasSize(2);
+        assertThat(april.items()).anySatisfy(item -> {
             assertThat(item.kind()).isEqualTo("DISPUTE_CREDIT");
             assertThat(item.amount()).isEqualByComparingTo("400.00");
+        });
+        assertThat(april.items()).anySatisfy(item -> {
+            assertThat(item.kind()).isEqualTo("CASHBACK");
+            assertThat(item.amount()).isEqualByComparingTo("4.00");
         });
         assertThat(april.total()).isEqualByComparingTo("0.00");
         assertThat(availableLimit(s.cardId())).isEqualByComparingTo("5000.00"); // as parcelas suspensas devolveram limite
@@ -123,7 +129,7 @@ class DisputeIntegrationTest extends AbstractIntegrationTest {
         GetInvoice.Output may = invoice(s.cardId(), "2035-05");
         assertThat(may.items()).singleElement().satisfies(item -> {
             assertThat(item.kind()).isEqualTo("CREDIT_BALANCE");
-            assertThat(item.amount()).isEqualByComparingTo("300.00");
+            assertThat(item.amount()).isEqualByComparingTo("304.00"); // 400 + 4 de cashback - 100 da padaria
         });
 
         // negada: a compra inteira volta, à vista, na fatura atual (maio)
@@ -138,8 +144,8 @@ class DisputeIntegrationTest extends AbstractIntegrationTest {
             assertThat(item.kind()).isEqualTo("DISPUTE_REVERSAL");
             assertThat(item.amount()).isEqualByComparingTo("1200.00");
         });
-        assertThat(mayAfter.total()).isEqualByComparingTo("900.00"); // 1200 - 300 de saldo credor
-        // o cliente pagou 400 e deve 900: 1300 = notebook + padaria
+        assertThat(mayAfter.total()).isEqualByComparingTo("896.00"); // 1200 - 304 de saldo credor
+        // o cliente pagou 400 e deve 896: 1300 (notebook + padaria) - 4 de cashback da parcela paga em dia
         closeInvoice.execute(new CloseInvoice.Input(s.cardId(), "2035-05"));
         payInvoice.execute(new PayInvoice.Input(s.cardId(), "2035-05"));
         assertThat(availableLimit(s.cardId())).isEqualByComparingTo("5000.00");

@@ -61,6 +61,9 @@ public interface CardEventPublisher {
      */
     void publishPurchaseDeclined(UUID cardId, String description, Money amount, String reason, String virtualCardNickname);
 
+    /** Cashback creditado na fatura seguinte. Chamar dentro da transação do pagamento. */
+    void publishCashbackEarned(UUID cardId, String referenceMonth, Money amount);
+
     /** Oferta de aumento de limite. Chamar dentro da transação da análise. */
     void publishLimitOffered(UUID cardId, UUID offerId, Money offeredLimit, LocalDateTime expiresAt);
 }
