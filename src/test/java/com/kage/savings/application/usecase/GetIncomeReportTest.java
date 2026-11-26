@@ -26,6 +26,7 @@ class GetIncomeReportTest {
     /** Fonte em memória que registra o período pedido. */
     private static class FakeSource implements IncomeReportSource {
         LocalDateTime from, to;
+        List<LoanFigures> loans = List.of();
 
         @Override
         public Optional<Holder> holder(UUID customerId) {
@@ -48,6 +49,44 @@ class GetIncomeReportTest {
                     new BoxFigures(UUID.randomUUID(), "B", "CLOSED", new BigDecimal("300.00"), new BigDecimal("0.00"),
                             new BigDecimal("10.00"), new BigDecimal("3.00"), new BigDecimal("1.57")));
         }
+
+        @Override
+        public List<LoanFigures> loans(UUID customerId, LocalDateTime from, LocalDateTime to) {
+            return loans;
+        }
+    }
+
+    private static IncomeReportSource.LoanFigures loan(String status, String before, String after, String paid) {
+        return new IncomeReportSource.LoanFigures(UUID.randomUUID(), LocalDate.of(2024, 6, 3), status,
+                new BigDecimal("12180.00"), 24, new BigDecimal("787.51"), new BigDecimal(before), new BigDecimal(after),
+                new BigDecimal(paid));
+    }
+
+    @Test
+    void loansGoToDebtsWithBalancesAndWhatWasPaid_onlyAbove5000MustBeDeclared() {
+        FakeSource source = new FakeSource();
+        source.loans = List.of(
+                loan("ACTIVE", "10100.00", "5000.01", "9450.12"),   // passa de 5 mil em 31/12
+                loan("ACTIVE", "0.00", "5000.00", "800.00"),        // exatamente 5 mil: dispensada
+                loan("PAID", "6200.00", "0.00", "6000.00"));        // declarada ano passado: entra zerada para dar baixa
+        var out = new GetIncomeReport(source, CLOCK).execute(new GetIncomeReport.Input(CUSTOMER, 2025));
+
+        assertThat(out.debts()).extracting(GetIncomeReport.DebtLine::mustDeclare).containsExactly(true, false, true);
+        assertThat(out.debts().get(0).description()).isEqualTo(
+                "Empréstimo pessoal contratado no Kage em 03/06/2024: R$ 12.180,00 financiados (IOF incluso) em 24 parcelas de R$ 787,51.");
+        assertThat(out.debts().get(2).description()).endsWith("Quitado.");
+        assertThat(out.totals().debtYearEnd()).isEqualByComparingTo("10000.01");
+        assertThat(out.totals().debtPaidInYear()).isEqualByComparingTo("16250.12");
+        assertThat(out.guide().debts()).contains("código 11").contains("2 empréstimos precisam ser declarados.");
+    }
+
+    @Test
+    void withoutLoansTheGuideSaysThereIsNothingToDeclare() {
+        var out = new GetIncomeReport(new FakeSource(), CLOCK).execute(new GetIncomeReport.Input(CUSTOMER, 2025));
+
+        assertThat(out.debts()).isEmpty();
+        assertThat(out.totals().debtYearEnd()).isEqualByComparingTo("0.00");
+        assertThat(out.guide().debts()).contains("nada a informar");
     }
 
     @Test
