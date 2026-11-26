@@ -118,9 +118,16 @@ public class GetIncomeReport {
     }
 
     private static DebtLine debtLine(IncomeReportSource.LoanFigures loan) {
-        String description = "Empréstimo pessoal contratado no Kage em " + loan.contractDate().format(DATE) + ": "
-                + brl(loan.financed()) + " financiados (IOF incluso) em " + loan.installments() + " parcelas de "
-                + brl(loan.installmentAmount()) + (loan.status().equals("PAID") ? ". Quitado." : ".");
+        String description = ("RENEGOTIATION".equals(loan.origin())
+                ? "Acordo de renegociação de empréstimo no Kage em " + loan.contractDate().format(DATE) + ": "
+                + brl(loan.financed()) + " renegociados (IOF incluso) em "
+                : "Empréstimo pessoal contratado no Kage em " + loan.contractDate().format(DATE) + ": "
+                + brl(loan.financed()) + " financiados (IOF incluso) em ")
+                + loan.installments() + " parcelas de " + brl(loan.installmentAmount()) + switch (loan.status()) {
+                    case "PAID" -> ". Quitado.";
+                    case "RENEGOTIATED" -> ". Renegociado: o saldo passou para o acordo.";
+                    default -> ".";
+                };
         boolean mustDeclare = loan.balanceAtCutoff().compareTo(DEBT_DECLARATION_THRESHOLD) > 0
                 || loan.balanceBefore().compareTo(DEBT_DECLARATION_THRESHOLD) > 0;
         return new DebtLine(loan.loanId(), loan.status(), loan.contractDate(), description, loan.balanceBefore(),

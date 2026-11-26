@@ -177,6 +177,13 @@ public class NotificationEventConsumer {
                 e.loanId(), messageId);
     }
 
+    @RabbitListener(queues = "notification.loan.renegotiated.queue")
+    public void onLoanRenegotiated(InboundEvents.LoanRenegotiated e,
+                                   @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toAccountOwner(e.accountId(), NotificationType.LOAN_RENEGOTIATED, NotificationTemplates.loanRenegotiated(e.debt(),
+                e.downPayment(), e.installments(), e.installmentAmount(), e.firstDueDate()), e.loanId(), messageId);
+    }
+
     @RabbitListener(queues = "notification.loan.withdrawn.queue")
     public void onLoanWithdrawn(InboundEvents.LoanWithdrawn e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toAccountOwner(e.accountId(), NotificationType.LOAN_WITHDRAWN, NotificationTemplates.loanWithdrawn(e.returned()),

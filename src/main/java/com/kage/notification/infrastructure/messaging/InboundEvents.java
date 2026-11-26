@@ -73,6 +73,10 @@ public final class InboundEvents {
     public record LoanPaidOff(UUID loanId, UUID accountId, BigDecimal paid, BigDecimal discount) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record LoanRenegotiated(UUID loanId, UUID originalLoanId, UUID accountId, BigDecimal debt, BigDecimal downPayment,
+                                   int installments, BigDecimal installmentAmount, java.time.LocalDate firstDueDate) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record LoanWithdrawn(UUID loanId, UUID accountId, BigDecimal returned) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

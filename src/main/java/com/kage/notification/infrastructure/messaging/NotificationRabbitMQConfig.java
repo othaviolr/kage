@@ -63,6 +63,7 @@ public class NotificationRabbitMQConfig {
             Map.entry("loan.installment.failed", LOAN_EXCHANGE),
             Map.entry("loan.paid-off", LOAN_EXCHANGE),
             Map.entry("loan.withdrawn", LOAN_EXCHANGE),
+            Map.entry("loan.renegotiated", LOAN_EXCHANGE),
             Map.entry("loan.installment.due-soon", LOAN_EXCHANGE)
     );
 

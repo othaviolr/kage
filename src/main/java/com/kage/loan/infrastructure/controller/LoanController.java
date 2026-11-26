@@ -78,6 +78,33 @@ public class LoanController {
         return ResponseEntity.ok(personalLoans.payOff(accountId, loanId));
     }
 
+    /**
+     * Proposta de renegociação da dívida em atraso: o que se deve hoje, a entrada e as parcelas novas (com
+     * IOF complementar e CET). Não muda nada.
+     */
+    @GetMapping("/{loanId}/renegotiation")
+    public ResponseEntity<PersonalLoans.Renegotiation> renegotiationQuote(@PathVariable UUID accountId,
+                                                                         @PathVariable UUID loanId,
+                                                                         @RequestParam Integer installments,
+                                                                         @RequestParam(required = false) Integer dueDay,
+                                                                         @RequestParam(required = false) BigDecimal downPayment) {
+        accessGuard.checkAccount(accountId);
+        return ResponseEntity.ok(personalLoans.renegotiationQuote(accountId, loanId, installments, dueDay, downPayment));
+    }
+
+    /** Fecha o acordo: a entrada sai da conta e o acordo substitui o empréstimo atrasado. */
+    @PostMapping("/{loanId}/renegotiation")
+    public ResponseEntity<PersonalLoans.Output> renegotiate(@PathVariable UUID accountId, @PathVariable UUID loanId,
+                                                            @RequestBody RenegotiationRequest request) {
+        accessGuard.checkAccount(accountId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(personalLoans.renegotiate(accountId, loanId,
+                request.installments(), request.dueDay(), request.downPayment()));
+    }
+
+    /** @param downPayment entrada (opcional), debitada da conta na hora */
+    public record RenegotiationRequest(Integer installments, Integer dueDay, BigDecimal downPayment) {
+    }
+
     /** Arrependimento (CDC, art. 49): em até 7 dias, devolve o que recebeu, sem juros nem IOF. */
     @PostMapping("/{loanId}/withdrawal")
     public ResponseEntity<PersonalLoans.Payment> withdraw(@PathVariable UUID accountId, @PathVariable UUID loanId) {

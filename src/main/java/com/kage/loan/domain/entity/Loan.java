@@ -1,11 +1,13 @@
 package com.kage.loan.domain.entity;
 
+import com.kage.card.domain.service.IofPolicy;
 import com.kage.loan.domain.service.LoanPolicy;
 import com.kage.shared.domain.DomainTime;
 import com.kage.shared.domain.exception.BusinessRuleException;
 import com.kage.shared.domain.valueobject.Money;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -17,11 +19,15 @@ import java.util.UUID;
 
 /**
  * Empréstimo pessoal contratado: o que foi liberado, o IOF financiado, a taxa, o CET e as parcelas.
- * ACTIVE → PAID (todas pagas) ou CANCELLED (arrependimento em até 7 dias).
+ * ACTIVE → PAID (todas pagas), CANCELLED (arrependimento em até 7 dias) ou RENEGOTIATED (o saldo virou
+ * um acordo, outro Loan com origin RENEGOTIATION).
  */
 public class Loan {
 
-    public enum Status { ACTIVE, PAID, CANCELLED }
+    public enum Status { ACTIVE, PAID, CANCELLED, RENEGOTIATED }
+
+    /** NEW: empréstimo contratado, com dinheiro na conta. RENEGOTIATION: acordo sobre a dívida de outro. */
+    public enum Origin { NEW, RENEGOTIATION }
 
     /**
      * @param paidAmount o que de fato saiu da conta (com desconto de antecipação ou encargos de atraso)
@@ -56,12 +62,17 @@ public class Loan {
     private final LocalDateTime contractedAt;
     private LocalDateTime closedAt;
     private final List<Installment> installments;
+    private final Origin origin;
+    /** O empréstimo que este acordo renegociou; nulo em empréstimo novo. */
+    private final UUID renegotiatedFrom;
+    /** Entrada paga na renegociação; nula em empréstimo novo. */
+    private final Money downPayment;
     private final Long version;
 
     private Loan(UUID id, UUID accountId, UUID customerId, Money released, Money iof, Money financed,
                  BigDecimal monthlyRate, int dueDay, BigDecimal cetMonthly, BigDecimal cetYearly, Status status,
                  LocalDate contractDate, LocalDateTime contractedAt, LocalDateTime closedAt, List<Installment> installments,
-                 Long version) {
+                 Origin origin, UUID renegotiatedFrom, Money downPayment, Long version) {
         this.id = id;
         this.accountId = accountId;
         this.customerId = customerId;
@@ -77,25 +88,75 @@ public class Loan {
         this.contractedAt = contractedAt;
         this.closedAt = closedAt;
         this.installments = new ArrayList<>(installments);
+        this.origin = origin;
+        this.renegotiatedFrom = renegotiatedFrom;
+        this.downPayment = downPayment;
         this.version = version;
     }
 
     public static Loan contract(UUID accountId, UUID customerId, int dueDay, LoanPolicy.Quote quote, LocalDate today) {
-        List<Installment> schedule = quote.schedule().stream()
+        return new Loan(UUID.randomUUID(), accountId, customerId, quote.released(), quote.iof(), quote.financed(),
+                quote.monthlyRate(), dueDay, quote.cetMonthly(), quote.cetYearly(), Status.ACTIVE, today,
+                DomainTime.now(), null, schedule(quote), Origin.NEW, null, null, null);
+    }
+
+    /**
+     * O acordo que substitui {@code original}: {@code quote.released()} é a dívida renegociada (nada cai na
+     * conta). Encerra o original como RENEGOTIATED.
+     */
+    public static Loan renegotiate(Loan original, int dueDay, LoanPolicy.Quote quote, Money downPayment, LocalDate today) {
+        original.requireRenegotiable(today);
+        original.close(Status.RENEGOTIATED);
+        return new Loan(UUID.randomUUID(), original.accountId, original.customerId, quote.released(), quote.iof(),
+                quote.financed(), quote.monthlyRate(), dueDay, quote.cetMonthly(), quote.cetYearly(), Status.ACTIVE, today,
+                DomainTime.now(), null, schedule(quote), Origin.RENEGOTIATION, original.id, downPayment, null);
+    }
+
+    private static List<Installment> schedule(LoanPolicy.Quote quote) {
+        return quote.schedule().stream()
                 .map(i -> new Installment(i.number(), i.dueDate(), i.amount(), i.principal(), i.interest(), false,
                         null, null, null, null))
                 .toList();
-        return new Loan(UUID.randomUUID(), accountId, customerId, quote.released(), quote.iof(), quote.financed(),
-                quote.monthlyRate(), dueDay, quote.cetMonthly(), quote.cetYearly(), Status.ACTIVE, today,
-                DomainTime.now(), null, schedule, null);
     }
 
     public static Loan reconstitute(UUID id, UUID accountId, UUID customerId, Money released, Money iof, Money financed,
                                     BigDecimal monthlyRate, int dueDay, BigDecimal cetMonthly, BigDecimal cetYearly,
                                     Status status, LocalDate contractDate, LocalDateTime contractedAt,
-                                    LocalDateTime closedAt, List<Installment> installments, Long version) {
+                                    LocalDateTime closedAt, List<Installment> installments, Origin origin,
+                                    UUID renegotiatedFrom, Money downPayment, Long version) {
         return new Loan(id, accountId, customerId, released, iof, financed, monthlyRate, dueDay, cetMonthly, cetYearly,
-                status, contractDate, contractedAt, closedAt, installments, version);
+                status, contractDate, contractedAt, closedAt, installments, origin, renegotiatedFrom, downPayment, version);
+    }
+
+    /** Há parcela vencida e não paga (venceu antes de {@code today}). */
+    public boolean hasOverdue(LocalDate today) {
+        return status == Status.ACTIVE && pending().stream().anyMatch(i -> today.isAfter(i.dueDate()));
+    }
+
+    /** Só empréstimo ativo com parcela em atraso se renegocia: em dia, o caminho é antecipar ou quitar. */
+    public void requireRenegotiable(LocalDate today) {
+        requireActive();
+        if (!hasOverdue(today)) {
+            throw new BusinessRuleException("Não há parcela em atraso: a renegociação é para dívida vencida "
+                    + "(em dia, dá para antecipar parcelas ou quitar com desconto)");
+        }
+    }
+
+    /** Principal ainda não pago: a base que já pagou IOF no contrato. */
+    public Money unpaidPrincipal() {
+        return pending().stream().map(Installment::principal).reduce(Money.ZERO, Money::add);
+    }
+
+    /** Dias de IOF já cobrados sobre o principal em aberto: média das parcelas pendentes, ponderada pelo principal. */
+    public long iofCoveredDays() {
+        BigDecimal weighted = BigDecimal.ZERO;
+        BigDecimal total = BigDecimal.ZERO;
+        for (Installment i : pending()) {
+            long days = Math.min(IofPolicy.MAX_DAYS, ChronoUnit.DAYS.between(contractDate, i.dueDate()));
+            weighted = weighted.add(i.principal().amount().multiply(BigDecimal.valueOf(days)));
+            total = total.add(i.principal().amount());
+        }
+        return total.signum() == 0 ? 0 : weighted.divide(total, 0, RoundingMode.DOWN).longValue();
     }
 
     /** A mais antiga em aberto (as parcelas são pagas em ordem). */
@@ -149,6 +210,9 @@ public class Loan {
      */
     public Money withdraw(LocalDate on) {
         requireActive();
+        if (origin == Origin.RENEGOTIATION) {
+            throw new BusinessRuleException("Acordo de renegociação não tem arrependimento: não houve dinheiro novo");
+        }
         if (ChronoUnit.DAYS.between(contractDate, on) > LoanPolicy.WITHDRAWAL_DAYS) {
             throw new BusinessRuleException("O prazo de arrependimento (7 dias) acabou: use a quitação antecipada");
         }
@@ -175,6 +239,7 @@ public class Loan {
     private void requireActive() {
         if (status == Status.PAID) throw new BusinessRuleException("Empréstimo já foi quitado");
         if (status == Status.CANCELLED) throw new BusinessRuleException("Empréstimo foi cancelado");
+        if (status == Status.RENEGOTIATED) throw new BusinessRuleException("Empréstimo foi renegociado: o saldo está no acordo");
     }
 
     public UUID getId() { return id; }
@@ -192,5 +257,8 @@ public class Loan {
     public LocalDateTime getContractedAt() { return contractedAt; }
     public LocalDateTime getClosedAt() { return closedAt; }
     public List<Installment> getInstallments() { return Collections.unmodifiableList(installments); }
+    public Origin getOrigin() { return origin; }
+    public UUID getRenegotiatedFrom() { return renegotiatedFrom; }
+    public Money getDownPayment() { return downPayment; }
     public Long getVersion() { return version; }
 }

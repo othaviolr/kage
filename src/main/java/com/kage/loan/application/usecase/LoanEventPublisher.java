@@ -21,6 +21,9 @@ public interface LoanEventPublisher {
     /** Quitação antecipada. Chamar dentro da transação da quitação. */
     void publishPaidOff(Loan loan, Money paid, Money discount);
 
+    /** Dívida em atraso renegociada: o acordo substitui o original. Chamar dentro da transação do acordo. */
+    void publishRenegotiated(Loan original, Loan agreement, Money downPayment);
+
     /** Arrependimento. Chamar dentro da transação do cancelamento. */
     void publishWithdrawn(Loan loan, Money returned);
 

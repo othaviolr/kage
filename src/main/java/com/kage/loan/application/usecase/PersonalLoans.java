@@ -43,10 +43,28 @@ public class PersonalLoans {
                              BigDecimal totalInterest, BigDecimal cetMonthly, BigDecimal cetYearly,
                              LocalDate firstDueDate, List<InstallmentView> schedule) {}
 
+    /**
+     * @param origin           NEW (empréstimo) ou RENEGOTIATION (acordo; {@code released} é a dívida renegociada, que
+     *                         não caiu na conta)
+     * @param renegotiatedFrom o empréstimo que o acordo substituiu
+     */
     public record Output(UUID loanId, UUID accountId, String status, BigDecimal released, BigDecimal iof,
                          BigDecimal financed, BigDecimal monthlyRate, BigDecimal cetMonthly, BigDecimal cetYearly,
                          int dueDay, LocalDate contractDate, LocalDateTime closedAt, int paidInstallments,
-                         BigDecimal outstanding, List<InstallmentView> installments) {}
+                         BigDecimal outstanding, List<InstallmentView> installments, String origin, UUID renegotiatedFrom,
+                         BigDecimal downPayment) {}
+
+    /**
+     * Proposta de acordo: o que se deve hoje (vencidas com multa e mora, futuras a valor presente), a entrada
+     * e as parcelas novas.
+     *
+     * @param debt         o que se deve hoje
+     * @param overdue      quantas parcelas estão vencidas
+     * @param lateCharges  multa e mora já embutidas nas vencidas
+     * @param renegotiated dívida menos a entrada: o que vai para as parcelas (com o IOF complementar)
+     */
+    public record Renegotiation(UUID loanId, BigDecimal debt, int overdue, BigDecimal lateCharges, BigDecimal downPayment,
+                                BigDecimal renegotiated, Simulation agreement) {}
 
     /** @param amount o que saiu (ou sairia) da conta */
     public record Payment(UUID loanId, String status, BigDecimal amount, Integer installment, BigDecimal lateCharges,
@@ -143,6 +161,64 @@ public class PersonalLoans {
         return new Payment(loanId, loan.getStatus().name(), paid.amount(), null, quote.lateCharges(), quote.discount());
     }
 
+    /** Proposta de renegociação da dívida em atraso. Não muda nada. */
+    public Renegotiation renegotiationQuote(UUID accountId, UUID loanId, Integer installments, Integer dueDay,
+                                            BigDecimal downPayment) {
+        Loan loan = find(accountId, loanId);
+        LocalDate today = DomainTime.today();
+        loan.requireRenegotiable(today);
+        return renegotiation(loan, installments, dueDay, downPayment, today);
+    }
+
+    /**
+     * Fecha o acordo: a entrada sai da conta, o empréstimo atrasado é encerrado (RENEGOTIATED) e o acordo
+     * passa a ser o empréstimo ativo da conta, com débito automático como qualquer outro.
+     */
+    @Transactional
+    public Output renegotiate(UUID accountId, UUID loanId, Integer installments, Integer dueDay, BigDecimal downPayment) {
+        Loan original = find(accountId, loanId);
+        LocalDate today = DomainTime.today();
+        original.requireRenegotiable(today);
+        Renegotiation proposal = renegotiation(original, installments, dueDay, downPayment, today);
+        Money entry = Money.of(proposal.downPayment());
+        LoanPolicy.Quote quote = renegotiationQuote(original, Money.of(proposal.renegotiated()), installments, dueDay, today);
+
+        Loan agreement = Loan.renegotiate(original, dueDay(dueDay), quote, entry, today);
+        loanRepository.update(original); // encerra antes: só pode haver um ativo por conta
+        try {
+            loanRepository.insert(agreement);
+        } catch (DuplicateKeyException e) {
+            throw new ConflictException("Este empréstimo já foi renegociado");
+        }
+        if (!entry.isZero()) accounts.collect(accountId, entry, original.getId());
+        events.publishRenegotiated(original, agreement, entry);
+        return toOutput(agreement);
+    }
+
+    private Renegotiation renegotiation(Loan loan, Integer installments, Integer dueDay, BigDecimal downPayment,
+                                        LocalDate today) {
+        if (installments == null) throw new ValidationException("Informe o número de parcelas (installments)");
+        Money debt = loan.payoffCost(today);
+        Money entry = downPayment == null ? Money.ZERO : Money.of(downPayment.setScale(2, RoundingMode.HALF_UP));
+        if (entry.amount().signum() < 0) throw new ValidationException("A entrada não pode ser negativa");
+        if (!entry.isLessThan(debt)) {
+            throw new BusinessRuleException("Com essa entrada dá para quitar a dívida (" + debt.amount() + "): use a quitação");
+        }
+        List<Loan.Installment> overdue = loan.pending().stream().filter(i -> today.isAfter(i.dueDate())).toList();
+        Money lateCharges = overdue.stream().map(i -> LoanPolicy.lateCharges(i.amount(), i.dueDate(), today))
+                .reduce(Money.ZERO, Money::add);
+        Money renegotiated = debt.subtract(entry);
+        LoanPolicy.Quote quote = renegotiationQuote(loan, renegotiated, installments, dueDay, today);
+        return new Renegotiation(loan.getId(), debt.amount(), overdue.size(), lateCharges.amount(), entry.amount(),
+                renegotiated.amount(), toSimulation(quote));
+    }
+
+    private static LoanPolicy.Quote renegotiationQuote(Loan loan, Money renegotiated, Integer installments, Integer dueDay,
+                                                       LocalDate today) {
+        return LoanPolicy.renegotiation(renegotiated, installments, dueDay(dueDay), today, loan.getMonthlyRate(),
+                loan.getContractDate(), loan.unpaidPrincipal(), loan.iofCoveredDays());
+    }
+
     /** Arrependimento em até 7 dias: devolve o que recebeu, sem juros nem IOF. */
     @Transactional
     public Payment withdraw(UUID accountId, UUID loanId) {
@@ -200,7 +276,7 @@ public class PersonalLoans {
         LocalDate today = DomainTime.today();
         List<InstallmentView> installments = loan.getInstallments().stream()
                 .map(i -> new InstallmentView(i.number(), i.dueDate(), i.amount().amount(), i.principal().amount(),
-                        i.interest().amount(), i.paid() ? "PAID" : (today.isAfter(i.dueDate()) ? "LATE" : "PENDING"),
+                        i.interest().amount(), installmentStatus(loan, i, today),
                         i.paidAt(), i.paidAmount() == null ? null : i.paidAmount().amount(),
                         i.lateCharges() == null ? null : i.lateCharges().amount(),
                         i.discount() == null ? null : i.discount().amount()))
@@ -211,6 +287,15 @@ public class PersonalLoans {
         return new Output(loan.getId(), loan.getAccountId(), loan.getStatus().name(), loan.getReleased().amount(),
                 loan.getIof().amount(), loan.getFinanced().amount(), loan.getMonthlyRate(), loan.getCetMonthly(),
                 loan.getCetYearly(), loan.getDueDay(), loan.getContractDate(), loan.getClosedAt(), paidCount,
-                loan.getStatus() == Loan.Status.ACTIVE ? outstanding : BigDecimal.ZERO, installments);
+                loan.getStatus() == Loan.Status.ACTIVE ? outstanding : BigDecimal.ZERO, installments,
+                loan.getOrigin().name(), loan.getRenegotiatedFrom(),
+                loan.getDownPayment() == null ? null : loan.getDownPayment().amount());
+    }
+
+    /** Parcela não paga de empréstimo renegociado não está mais "atrasada": o saldo foi para o acordo. */
+    private static String installmentStatus(Loan loan, Loan.Installment i, LocalDate today) {
+        if (i.paid()) return "PAID";
+        if (loan.getStatus() == Loan.Status.RENEGOTIATED) return "RENEGOTIATED";
+        return today.isAfter(i.dueDate()) ? "LATE" : "PENDING";
     }
 }

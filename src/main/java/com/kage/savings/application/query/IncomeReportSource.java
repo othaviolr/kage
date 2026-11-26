@@ -27,10 +27,11 @@ public interface IncomeReportSource {
     /**
      * Empréstimo nos cortes: saldo devedor = principal das parcelas ainda não pagas em cada corte (o que
      * a amortização da Price ainda não abateu), e o que foi pago entre os cortes (com encargos e descontos).
+     * Renegociado: saldo zero depois do acordo (a dívida passou para o acordo, que é outro empréstimo).
      */
     record LoanFigures(UUID loanId, LocalDate contractDate, String status, BigDecimal financed, int installments,
                        BigDecimal installmentAmount, BigDecimal balanceBefore, BigDecimal balanceAtCutoff,
-                       BigDecimal paidInPeriod) {}
+                       BigDecimal paidInPeriod, String origin) {}
 
     Optional<Holder> holder(UUID customerId);
 
