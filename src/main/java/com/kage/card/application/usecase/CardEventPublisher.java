@@ -86,6 +86,15 @@ public interface CardEventPublisher {
                                 Money creditLimit, Money approvedLimit, Money availableLimit);
 
     /**
+     * Gasto de uma categoria atingiu uma faixa do orçamento ({@code threshold}: 80 ou 100) nesta fatura.
+     * Chamar dentro da transação da compra.
+     *
+     * @param usagePercent percentual do orçamento gasto agora (pode passar da faixa)
+     */
+    void publishCategoryBudgetAlert(UUID cardId, String referenceMonth, String category, String categoryLabel,
+                                    int threshold, int usagePercent, Money budget, java.math.BigDecimal spent);
+
+    /**
      * Dia de vencimento trocado. {@code transitionMonth}, {@code transitionDueDate} e
      * {@code transitionDays} são nulos quando não havia fatura aberta. Chamar dentro da transação da troca.
      */

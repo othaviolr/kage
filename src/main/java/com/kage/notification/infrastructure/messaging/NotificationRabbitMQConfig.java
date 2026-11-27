@@ -49,6 +49,7 @@ public class NotificationRabbitMQConfig {
             Map.entry("card.limit.offered", CARD_EXCHANGE),
             Map.entry("card.cashback.earned", CARD_EXCHANGE),
             Map.entry("card.limit.usage-alert", CARD_EXCHANGE),
+            Map.entry("card.budget.alert", CARD_EXCHANGE),
             Map.entry("card.due-day.changed", CARD_EXCHANGE),
             Map.entry("card.purchase.approved", CARD_EXCHANGE),
             Map.entry("card.purchase.declined", CARD_EXCHANGE),

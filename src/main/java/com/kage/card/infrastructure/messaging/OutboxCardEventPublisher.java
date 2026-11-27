@@ -98,6 +98,14 @@ public class OutboxCardEventPublisher implements CardEventPublisher {
     }
 
     @Override
+    public void publishCategoryBudgetAlert(UUID cardId, String referenceMonth, String category, String categoryLabel,
+                                           int threshold, int usagePercent, Money budget, java.math.BigDecimal spent) {
+        outbox.publish(CardEvents.EXCHANGE, CardEvents.BUDGET_ALERT, new CardEvents.CategoryBudgetAlertEvent(
+                cardId, referenceMonth, category, categoryLabel, threshold, usagePercent, budget.amount(), spent,
+                DomainTime.instant()));
+    }
+
+    @Override
     public void publishDueDayChanged(UUID cardId, int dueDay, int closingDay, String transitionMonth,
                                      java.time.LocalDate transitionDueDate, Long transitionDays) {
         outbox.publish(CardEvents.EXCHANGE, CardEvents.DUE_DAY_CHANGED, new CardEvents.DueDayChangedEvent(

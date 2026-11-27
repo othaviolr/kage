@@ -26,6 +26,7 @@ public final class CardEvents {
     public static final String LIMIT_OFFERED = "card.limit.offered";
     public static final String CASHBACK_EARNED = "card.cashback.earned";
     public static final String LIMIT_USAGE_ALERT = "card.limit.usage-alert";
+    public static final String BUDGET_ALERT = "card.budget.alert";
     public static final String DUE_DAY_CHANGED = "card.due-day.changed";
 
     /** @param transitionMonth fatura de transição; nula (com as outras duas) se não havia fatura aberta */
@@ -36,6 +37,11 @@ public final class CardEvents {
     public record LimitUsageAlertEvent(UUID cardId, String referenceMonth, int threshold, int usagePercent,
                                        BigDecimal usedLimit, BigDecimal creditLimit, BigDecimal approvedLimit,
                                        BigDecimal availableLimit, Instant occurredAt) {}
+
+    /** @param threshold faixa do orçamento atingida (80 ou 100); {@code usagePercent} é o de agora */
+    public record CategoryBudgetAlertEvent(UUID cardId, String referenceMonth, String category, String categoryLabel,
+                                           int threshold, int usagePercent, BigDecimal budget, BigDecimal spent,
+                                           Instant occurredAt) {}
 
     /** @param referenceMonth fatura que rendeu o cashback (ele entra na seguinte) */
     public record CashbackEarnedEvent(UUID cardId, String referenceMonth, BigDecimal amount, String destination,
