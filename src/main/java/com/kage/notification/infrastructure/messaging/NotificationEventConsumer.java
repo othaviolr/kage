@@ -203,6 +203,12 @@ public class NotificationEventConsumer {
                 null, messageId);
     }
 
+    @RabbitListener(queues = "notification.card.due-day.changed.queue")
+    public void onDueDayChanged(InboundEvents.DueDayChanged e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toCardOwner(e.cardId(), NotificationType.CARD_DUE_DAY_CHANGED, NotificationTemplates.dueDayChanged(
+                e.dueDay(), e.closingDay(), e.transitionMonth(), e.transitionDueDate(), e.transitionDays()), null, messageId);
+    }
+
     @RabbitListener(queues = "notification.card.limit.usage-alert.queue")
     public void onLimitUsageAlert(InboundEvents.LimitUsageAlert e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toCardOwner(e.cardId(), NotificationType.CARD_LIMIT_USAGE_ALERT, NotificationTemplates.limitUsageAlert(

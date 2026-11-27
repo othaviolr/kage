@@ -26,6 +26,11 @@ public final class CardEvents {
     public static final String LIMIT_OFFERED = "card.limit.offered";
     public static final String CASHBACK_EARNED = "card.cashback.earned";
     public static final String LIMIT_USAGE_ALERT = "card.limit.usage-alert";
+    public static final String DUE_DAY_CHANGED = "card.due-day.changed";
+
+    /** @param transitionMonth fatura de transição; nula (com as outras duas) se não havia fatura aberta */
+    public record DueDayChangedEvent(UUID cardId, int dueDay, int closingDay, String transitionMonth,
+                                     LocalDate transitionDueDate, Long transitionDays, Instant occurredAt) {}
 
     /** @param threshold faixa atingida (80 ou 100); {@code usagePercent} é o uso de agora */
     public record LimitUsageAlertEvent(UUID cardId, String referenceMonth, int threshold, int usagePercent,

@@ -219,6 +219,16 @@ public final class NotificationTemplates {
                 + money(creditLimit) + " no seu cartão." + raise);
     }
 
+    /** Sem fatura de transição ({@code transitionMonth} nulo): só os dias novos. */
+    public static Text dueDayChanged(int dueDay, int closingDay, String transitionMonth, LocalDate transitionDueDate,
+                                     Long transitionDays) {
+        String days = "Suas faturas passam a vencer todo dia " + dueDay + " e a fechar no dia " + closingDay + ".";
+        if (transitionMonth == null) return new Text("Vencimento da fatura alterado", days);
+        return new Text("Vencimento da fatura alterado", days + " A de " + month(transitionMonth)
+                + " é a de transição: vence em " + transitionDueDate.format(DATE) + ", com " + transitionDays
+                + " dias de compras.");
+    }
+
     public static Text limitOffered(BigDecimal offeredLimit, java.time.LocalDateTime expiresAt) {
         return new Text("Seu limite pode aumentar", "Pelo seu histórico de pagamentos em dia, o limite do seu cartão "
                 + "pode ir para " + money(offeredLimit) + ". Aceite pelo app até "

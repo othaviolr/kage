@@ -155,6 +155,13 @@ public class CardConfig {
     }
 
     @Bean
+    public DueDays dueDays(CardRepository cardRepository, InvoiceRepository invoiceRepository, JdbcTemplate jdbcTemplate,
+                           CardEventPublisher cardEventPublisher) {
+        return new DueDays(cardRepository, invoiceRepository, new JdbcDueDayChangeRepository(jdbcTemplate),
+                cardEventPublisher);
+    }
+
+    @Bean
     public LimitAlertRepository limitAlertRepository(JdbcTemplate jdbcTemplate) {
         return new JdbcLimitAlertRepository(jdbcTemplate);
     }

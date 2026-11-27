@@ -23,6 +23,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -249,7 +250,12 @@ public class DisputePurchase {
      * ela já fechou, a primeira aberta depois dela (criada se não existir).
      */
     private static Invoice currentInvoice(Card card, List<Invoice> invoices) {
-        YearMonth month = Invoice.referenceMonthFor(DomainTime.today(), card.getClosingDay());
+        LocalDate today = DomainTime.today();
+        YearMonth month = Invoice.referenceMonthFor(today, card.getClosingDay());
+        // troca de vencimento: a fatura do mês anterior pode seguir aberta com o fechamento antigo, mais tarde
+        YearMonth before = month.minusMonths(1);
+        Invoice previous = invoices.stream().filter(i -> i.getReferenceMonth().equals(before)).findFirst().orElse(null);
+        if (previous != null && previous.acceptsPurchaseOn(today)) return previous;
         while (true) {
             YearMonth wanted = month;
             Invoice existing = invoices.stream().filter(i -> i.getReferenceMonth().equals(wanted)).findFirst().orElse(null);

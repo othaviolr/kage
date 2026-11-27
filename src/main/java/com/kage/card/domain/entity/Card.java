@@ -25,8 +25,8 @@ public class Card {
     /** Limite aprovado: o teto que a análise de crédito do banco concedeu. */
     private Money approvedLimit;
     private Money usedLimit;
-    private final int closingDay;
-    private final int dueDay;
+    private int closingDay;
+    private int dueDay;
     private CardStatus status;
     private boolean autoDebit;
     /** Dívida original que entrou no rotativo (base do teto da Lei 14.690/2023); zero sem rotativo. */
@@ -256,6 +256,20 @@ public class Card {
         if (destination == null) throw new ValidationException("Destino do cashback é obrigatório (INVOICE ou ACCOUNT)");
         if (this.status == CardStatus.CANCELLED) throw new BusinessRuleException("Cartão cancelado");
         this.cashbackDestination = destination;
+        this.updatedAt = DomainTime.now();
+    }
+
+    /**
+     * Troca do dia de vencimento (e do fechamento, que acompanha). Vale para as faturas que ainda vão
+     * abrir; quem reprograma as abertas é o use case.
+     */
+    public void changeBillingDays(int closingDay, int dueDay) {
+        if (this.status == CardStatus.CANCELLED) throw new BusinessRuleException("Cartão cancelado");
+        validateDay(closingDay, "Dia de fechamento");
+        validateDay(dueDay, "Dia de vencimento");
+        if (dueDay == this.dueDay) throw new BusinessRuleException("A fatura já vence no dia " + dueDay);
+        this.closingDay = closingDay;
+        this.dueDay = dueDay;
         this.updatedAt = DomainTime.now();
     }
 

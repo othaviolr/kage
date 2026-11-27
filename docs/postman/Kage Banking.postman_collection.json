@@ -25775,10 +25775,646 @@
       ]
     },
     {
-      "name": "31. Estorno de juros na contestação",
+      "name": "31. Troca de vencimento",
       "item": [
         {
           "name": "31.1.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Troca de Vencimento\",\n  \"cpf\": \"{{tvCpf}}\",\n  \"email\": \"{{tvEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('tvCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('tvEmail', `kage.tv+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('tvCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31.1.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{tvCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{tvCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31.1.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{tvCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('tvAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31.2 Emitir cartão (fecha 10, vence 20)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{tvCustomerId}}\",\n  \"accountId\": \"{{tvAccountId}}\",\n  \"creditLimit\": 5000,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('tvCardId', pm.response.json().cardId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31.3 Dias que dá para escolher",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{tvCardId}}/due-day",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{tvCardId}}",
+                "due-day"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json();",
+                  "pm.test('Vence dia 20 e pode trocar', () => { pm.expect(s.dueDay).to.eql(20); pm.expect(s.closingDay).to.eql(10); pm.expect(s.canChange).to.eql(true); pm.expect(s.blockedReason).to.be.null; });",
+                  "pm.test('27 opções; fecha 10 dias antes (no máximo dia 28)', () => {",
+                  "  pm.expect(s.options).to.have.length(27);",
+                  "  pm.expect(s.options.find(o => o.dueDay === 5).closingDay).to.eql(25);",
+                  "  pm.expect(s.options.find(o => o.dueDay === 10).closingDay).to.eql(28);",
+                  "  pm.expect(s.options.find(o => o.dueDay === 20)).to.be.undefined;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31.4 Compra de 300 em 3x (outubro/2036)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{tvCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{tvCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Compra\",\n  \"amount\": 300,\n  \"purchasedAt\": \"2036-10-05T10:00:00\",\n  \"installments\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Cai na fatura de 2036-10', () => pm.expect(pm.response.json().referenceMonth).to.eql('2036-10'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31.5 Trocar para o dia 5",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{tvCardId}}/due-day",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{tvCardId}}",
+                "due-day"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dueDay\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json();",
+                  "pm.test('Vence dia 5, fecha dia 25', () => { pm.expect(c.dueDay).to.eql(5); pm.expect(c.closingDay).to.eql(25); pm.expect(c.previousDueDay).to.eql(20); });",
+                  "pm.test('Transição: novembro, de 11/10 a 25/11 (46 dias), vence 05/12', () => {",
+                  "  const t = c.transition;",
+                  "  pm.expect(t.referenceMonth).to.eql('2036-11'); pm.expect(t.periodStart).to.eql('2036-10-11');",
+                  "  pm.expect(t.closingDate).to.eql('2036-11-25'); pm.expect(t.dueDate).to.eql('2036-12-05'); pm.expect(t.purchaseDays).to.eql(46);",
+                  "  pm.expect(t.note).to.include('mais longa que o normal');",
+                  "});",
+                  "pm.test('Próxima troca só daqui a 180 dias', () => pm.expect(c.nextChangeAllowedOn).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31.6 A fatura atual não muda",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{tvCardId}}/invoices/2036-10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{tvCardId}}",
+                "invoices",
+                "2036-10"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Fecha em 2036-10-10 e vence em 2036-10-20', () => { const i = pm.response.json(); pm.expect(i.closingDate).to.eql('2036-10-10'); pm.expect(i.dueDate).to.eql('2036-10-20'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31.7 A de dezembro (já existia, pela parcela) vai para as datas novas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{tvCardId}}/invoices/2036-12",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{tvCardId}}",
+                "invoices",
+                "2036-12"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Fecha em 2036-12-25 e vence em 2037-01-05', () => { const i = pm.response.json(); pm.expect(i.closingDate).to.eql('2036-12-25'); pm.expect(i.dueDate).to.eql('2037-01-05'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31.8 Compra no dia 08/10: ainda outubro (fechamento antigo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{tvCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{tvCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Compra\",\n  \"amount\": 50,\n  \"purchasedAt\": \"2036-10-08T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Cai na fatura de 2036-10', () => pm.expect(pm.response.json().referenceMonth).to.eql('2036-10'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31.9 Compra no dia 15/10: já é a de transição",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{tvCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{tvCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Compra\",\n  \"amount\": 70,\n  \"purchasedAt\": \"2036-10-15T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Cai na fatura de 2036-11', () => pm.expect(pm.response.json().referenceMonth).to.eql('2036-11'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31.10 O cartão mostra os dias novos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{tvCardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{tvCardId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Fecha 25, vence 5', () => { pm.expect(pm.response.json().closingDay).to.eql(25); pm.expect(pm.response.json().dueDay).to.eql(5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31.11 Trocar de novo -> 422 (uma a cada 180 dias)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{tvCardId}}/due-day",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{tvCardId}}",
+                "due-day"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dueDay\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Diz a partir de quando', () => pm.expect(JSON.stringify(pm.response.json())).to.include('a próxima troca pode ser a partir de'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31.12 Dia 29 -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{tvCardId}}/due-day",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{tvCardId}}",
+                "due-day"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dueDay\": 29\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31.13 Aviso na caixa de entrada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{tvCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{tvCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const n = pm.response.json().notifications.find(x => x.type === 'CARD_DUE_DAY_CHANGED');",
+                  "pm.test('Vencimento da fatura alterado', () => {",
+                  "  pm.expect(n, 'chega pelo RabbitMQ; se falhar, rode de novo').to.exist;",
+                  "  pm.expect(n.message).to.eql('Suas faturas passam a vencer todo dia 5 e a fechar no dia 25. A de 11/2036 é a de transição: vence em 05/12, com 46 dias de compras.');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "32. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "32.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -25835,7 +26471,7 @@
           ]
         },
         {
-          "name": "31.1.2 Aprovar KYC",
+          "name": "32.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -25866,7 +26502,7 @@
           ]
         },
         {
-          "name": "31.1.3 Abrir conta",
+          "name": "32.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -25909,7 +26545,7 @@
           ]
         },
         {
-          "name": "31.1.4 Depositar 3000",
+          "name": "32.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -25953,7 +26589,7 @@
           ]
         },
         {
-          "name": "31.2 Emitir cartão",
+          "name": "32.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -25996,7 +26632,7 @@
           ]
         },
         {
-          "name": "31.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "32.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -26049,7 +26685,7 @@
           ]
         },
         {
-          "name": "31.4 Outras compras: 600",
+          "name": "32.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -26093,7 +26729,7 @@
           ]
         },
         {
-          "name": "31.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "32.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -26129,7 +26765,7 @@
           ]
         },
         {
-          "name": "31.6 Paga só 400 de 1000",
+          "name": "32.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -26176,7 +26812,7 @@
           ]
         },
         {
-          "name": "31.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "32.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -26212,7 +26848,7 @@
           ]
         },
         {
-          "name": "31.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "32.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -26245,7 +26881,7 @@
           ]
         },
         {
-          "name": "31.9 Contestar a compra de 400",
+          "name": "32.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -26293,7 +26929,7 @@
           ]
         },
         {
-          "name": "31.10 Procedente: devolve os juros que a compra gerou",
+          "name": "32.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -26342,7 +26978,7 @@
           ]
         },
         {
-          "name": "31.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "32.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],

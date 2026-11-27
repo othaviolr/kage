@@ -98,6 +98,13 @@ public class OutboxCardEventPublisher implements CardEventPublisher {
     }
 
     @Override
+    public void publishDueDayChanged(UUID cardId, int dueDay, int closingDay, String transitionMonth,
+                                     java.time.LocalDate transitionDueDate, Long transitionDays) {
+        outbox.publish(CardEvents.EXCHANGE, CardEvents.DUE_DAY_CHANGED, new CardEvents.DueDayChangedEvent(
+                cardId, dueDay, closingDay, transitionMonth, transitionDueDate, transitionDays, DomainTime.instant()));
+    }
+
+    @Override
     public void publishLimitOffered(UUID cardId, UUID offerId, Money offeredLimit, java.time.LocalDateTime expiresAt) {
         outbox.publish(CardEvents.EXCHANGE, CardEvents.LIMIT_OFFERED, new CardEvents.LimitOfferedEvent(
                 cardId, offerId, offeredLimit.amount(), expiresAt, DomainTime.instant()));

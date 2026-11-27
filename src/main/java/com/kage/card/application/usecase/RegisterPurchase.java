@@ -13,6 +13,7 @@ import com.kage.shared.domain.valueobject.Money;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import com.kage.card.domain.service.InstallmentPolicy;
@@ -108,7 +109,8 @@ public class RegisterPurchase {
         Invoice first = null;
         YearMonth month = Invoice.referenceMonthFor(input.purchasedAt().toLocalDate(), card.getClosingDay());
         for (int number = 1; number <= installments; number++) {
-            Invoice invoice = findOpenInvoiceFrom(card, month);
+            // só a 1ª parcela segue a data da compra; as seguintes vão para os meses depois dela
+            Invoice invoice = findOpenInvoiceFrom(card, month, number == 1 ? input.purchasedAt().toLocalDate() : null);
             String description = installments == 1
                     ? input.description()
                     : input.description() + " (" + number + "/" + installments + ")";
@@ -136,16 +138,26 @@ public class RegisterPurchase {
      * fatura seguinte que ainda esteja aberta, criando-a se não existir. É o que um banco faz com a
      * compra que chega depois do fechamento — e é assim que as faturas futuras de uma compra
      * parcelada passam a existir.
+     *
+     * Com {@code purchaseDate}, vale o fechamento gravado em cada fatura, não o dia do cartão: depois de
+     * uma troca de vencimento, a fatura atual fecha no dia antigo. Se ele é mais tarde que o novo, a
+     * compra ainda cabe na fatura do mês anterior; se é mais cedo, a fatura do mês já fechou para ela.
      */
-    private Invoice findOpenInvoiceFrom(Card card, YearMonth from) {
+    private Invoice findOpenInvoiceFrom(Card card, YearMonth from, LocalDate purchaseDate) {
+        if (purchaseDate != null) {
+            Optional<Invoice> previous = invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), from.minusMonths(1));
+            if (previous.isPresent() && previous.get().acceptsPurchaseOn(purchaseDate)) return previous.get();
+        }
         YearMonth month = from;
         while (true) {
             Optional<Invoice> existing = invoiceRepository.findByCardIdAndReferenceMonth(card.getId(), month);
             if (existing.isEmpty()) {
                 return Invoice.open(card.getId(), month, card.getClosingDay(), card.getDueDay());
             }
-            if (existing.get().getStatus() == InvoiceStatus.OPEN) {
-                return existing.get();
+            Invoice invoice = existing.get();
+            if (invoice.getStatus() == InvoiceStatus.OPEN
+                    && (purchaseDate == null || invoice.acceptsPurchaseOn(purchaseDate))) {
+                return invoice;
             }
             month = month.plusMonths(1);
         }

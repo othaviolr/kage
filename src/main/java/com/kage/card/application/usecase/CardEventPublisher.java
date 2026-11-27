@@ -76,6 +76,13 @@ public interface CardEventPublisher {
     void publishLimitUsageAlert(UUID cardId, String referenceMonth, int threshold, int usagePercent, Money usedLimit,
                                 Money creditLimit, Money approvedLimit, Money availableLimit);
 
+    /**
+     * Dia de vencimento trocado. {@code transitionMonth}, {@code transitionDueDate} e
+     * {@code transitionDays} são nulos quando não havia fatura aberta. Chamar dentro da transação da troca.
+     */
+    void publishDueDayChanged(UUID cardId, int dueDay, int closingDay, String transitionMonth,
+                              java.time.LocalDate transitionDueDate, Long transitionDays);
+
     /** Oferta de aumento de limite. Chamar dentro da transação da análise. */
     void publishLimitOffered(UUID cardId, UUID offerId, Money offeredLimit, LocalDateTime expiresAt);
 }

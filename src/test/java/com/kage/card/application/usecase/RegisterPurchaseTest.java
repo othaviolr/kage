@@ -45,6 +45,9 @@ class RegisterPurchaseTest {
     @BeforeEach
     void setUp() {
         card = Card.create(UUID.randomUUID(), UUID.randomUUID(), Money.of("1000.00"), 10, 20);
+        // mês sem fatura: o padrão do repositório; a compra também olha a fatura do mês anterior (que,
+        // depois de uma troca de vencimento, pode seguir aberta com o fechamento antigo)
+        lenient().when(invoiceRepository.findByCardIdAndReferenceMonth(any(), any())).thenReturn(Optional.empty());
     }
 
     @Test

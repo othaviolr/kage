@@ -21,10 +21,10 @@ public class InvoiceJpaEntity {
     @Column(name = "reference_month", nullable = false, updatable = false, length = 7)
     private String referenceMonth;
 
-    @Column(name = "closing_date", nullable = false, updatable = false)
+    @Column(name = "closing_date", nullable = false)
     private LocalDate closingDate;
 
-    @Column(name = "due_date", nullable = false, updatable = false)
+    @Column(name = "due_date", nullable = false)
     private LocalDate dueDate;
 
     @Enumerated(EnumType.STRING)
