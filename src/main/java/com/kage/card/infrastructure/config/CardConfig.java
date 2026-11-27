@@ -124,6 +124,13 @@ public class CardConfig {
     }
 
     @Bean
+    public CardTransactions cardTransactions(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                                             VirtualCardRepository virtualCardRepository,
+                                             CardPlasticRepository cardPlasticRepository) {
+        return new CardTransactions(cardRepository, invoiceRepository, virtualCardRepository, cardPlasticRepository);
+    }
+
+    @Bean
     public CardPlasticRepository cardPlasticRepository(JdbcTemplate jdbcTemplate) {
         return new JdbcCardPlasticRepository(jdbcTemplate);
     }
