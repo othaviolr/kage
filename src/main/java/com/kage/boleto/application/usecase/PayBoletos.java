@@ -5,6 +5,7 @@ import com.kage.boleto.domain.repository.BoletoPaymentRepository;
 import com.kage.boleto.domain.repository.BoletoPaymentRepository.Kind;
 import com.kage.boleto.domain.repository.BoletoPaymentRepository.Payment;
 import com.kage.boleto.domain.repository.BoletoRepository;
+import com.kage.boleto.domain.service.BillingBoletoGateway;
 import com.kage.boleto.domain.service.BoletoAccountGateway;
 import com.kage.boleto.domain.service.BoletoChargePolicy;
 import com.kage.boleto.domain.valueobject.BoletoCode;
@@ -30,6 +31,9 @@ import java.util.UUID;
  * <ul>
  *   <li><b>Boleto do Kage</b> (código do nosso banco): o registro diz quem recebe, o valor e os
  *       encargos de hoje; o pagamento debita o pagador e credita o beneficiário na mesma transação.</li>
+ *   <li><b>Boleto da fatura do cartão Kage</b> (o que a fatura gera para pagar de outro banco): pago
+ *       aqui, o débito do pagador e o pagamento da fatura vão na mesma transação, sem esperar a
+ *       compensação. Vale até o vencimento da fatura, sem encargos ({@link BillingBoletoGateway}).</li>
  *   <li><b>Boleto de outro banco</b>: o valor e o vencimento vêm do próprio código. O débito é na
  *       hora e o dinheiro segue para a compensação (simulada). Sem a consulta à CIP, encargos de
  *       atraso de boleto de fora não são calculados aqui.</li>
@@ -57,11 +61,18 @@ public class PayBoletos {
     private final BoletoPaymentRepository payments;
     private final BoletoAccountGateway accounts;
     private final BoletoEventPublisher events;
+    private final BillingBoletoGateway billing;
     private final String bankCode;
     private final Clock clock;
 
     public PayBoletos(BoletoRepository boletos, BoletoPaymentRepository payments, BoletoAccountGateway accounts,
                       BoletoEventPublisher events, String bankCode, Clock clock) {
+        this(boletos, payments, accounts, events, null, bankCode, clock);
+    }
+
+    public PayBoletos(BoletoRepository boletos, BoletoPaymentRepository payments, BoletoAccountGateway accounts,
+                      BoletoEventPublisher events, BillingBoletoGateway billing, String bankCode, Clock clock) {
+        this.billing = billing;
         this.boletos = boletos;
         this.payments = payments;
         this.accounts = accounts;
@@ -74,6 +85,16 @@ public class PayBoletos {
         BoletoCode code = BoletoCode.parse(rawCode);
         LocalDate today = today();
         boolean alreadyPaid = payments.existsByBarcode(code.barcode());
+
+        Optional<BillingBoletoGateway.Billing> bill = billingOf(code);
+        if (bill.isPresent()) {
+            BillingBoletoGateway.Billing b = bill.get();
+            String reason = alreadyPaid ? "Boleto já foi pago" : b.notPayableReason();
+            BigDecimal zero = BigDecimal.ZERO.setScale(2);
+            return new Lookup(code.barcode(), code.formattedDigitableLine(), code.bankCode(), Kind.CARD_INVOICE.name(),
+                    b.beneficiaryName(), null, b.description(), b.amount(), b.dueDate(), b.dueDate(), zero, zero,
+                    b.amount(), false, reason == null, reason);
+        }
 
         if (isOurs(code)) {
             Boleto boleto = registered(code);
@@ -112,8 +133,22 @@ public class PayBoletos {
         LocalDate today = today();
         UUID paymentId = UUID.randomUUID();
         Payment payment;
+        Optional<BillingBoletoGateway.Billing> bill = billingOf(code);
 
-        if (isOurs(code)) {
+        if (bill.isPresent()) {
+            BillingBoletoGateway.Billing b = bill.get();
+            if (b.notPayableReason() != null) throw new BusinessRuleException(b.notPayableReason());
+            if (amount != null && amount.compareTo(b.amount()) != 0) {
+                throw new ValidationException("Boleto com valor impresso: pague " + b.amount().toPlainString());
+            }
+            Money value = Money.of(b.amount());
+            accounts.debitPayment(payerAccountId, value, paymentId);
+            billing.settle(b.chargeId()); // a fatura recebe na hora, na mesma transação do débito
+            BigDecimal zero = BigDecimal.ZERO.setScale(2);
+            payment = new Payment(paymentId, payerAccountId, code.barcode(), code.bankCode(), Kind.CARD_INVOICE, null,
+                    b.beneficiaryName(), b.dueDate(), value.amount(), zero, zero, value.amount(), LocalDateTime.now(clock));
+            insert(payment);
+        } else if (isOurs(code)) {
             Boleto boleto = registered(code);
             if (boleto.getBeneficiaryAccountId().equals(payerAccountId)) {
                 throw new BusinessRuleException("Não dá para pagar um boleto emitido pela própria conta");
@@ -174,6 +209,11 @@ public class PayBoletos {
             throw new ValidationException("Boleto com valor impresso: pague " + face.toPlainString());
         }
         return Money.of(face);
+    }
+
+    private Optional<BillingBoletoGateway.Billing> billingOf(BoletoCode code) {
+        if (billing == null || !isOurs(code)) return Optional.empty();
+        return billing.find(code.barcode());
     }
 
     private boolean isOurs(BoletoCode code) {

@@ -125,6 +125,12 @@ public class InvoiceCharges {
         return charges.findByInvoiceId(invoice.getId()).stream().map(c -> view(c, now)).toList();
     }
 
+    /** O boleto de fatura com esse código de barras, como o cliente o vê agora. */
+    public java.util.Optional<ChargeView> findBoleto(String barcode) {
+        LocalDateTime now = DomainTime.now();
+        return charges.findBoletoByBarcode(barcode).map(c -> view(c, now));
+    }
+
     @Transactional
     public ChargeView cancel(UUID cardId, UUID chargeId) {
         InvoiceCharge charge = findCharge(chargeId);

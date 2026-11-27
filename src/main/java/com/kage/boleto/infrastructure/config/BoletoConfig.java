@@ -9,6 +9,7 @@ import com.kage.boleto.application.usecase.IssueBoletos;
 import com.kage.boleto.application.usecase.PayBoletos;
 import com.kage.boleto.domain.repository.BoletoPaymentRepository;
 import com.kage.boleto.domain.repository.BoletoRepository;
+import com.kage.boleto.domain.service.BillingBoletoGateway;
 import com.kage.boleto.domain.service.BoletoAccountGateway;
 import com.kage.boleto.infrastructure.messaging.BoletoEvents;
 import com.kage.boleto.infrastructure.messaging.OutboxBoletoEventPublisher;
@@ -66,9 +67,9 @@ public class BoletoConfig {
     @Bean
     public PayBoletos payBoletos(BoletoRepository boletoRepository, BoletoPaymentRepository boletoPaymentRepository,
                                  BoletoAccountGateway boletoAccountGateway, BoletoEventPublisher boletoEventPublisher,
-                                 Clock clock) {
+                                 BillingBoletoGateway billingBoletoGateway, Clock clock) {
         return new PayBoletos(boletoRepository, boletoPaymentRepository, boletoAccountGateway, boletoEventPublisher,
-                bankCode, clock);
+                billingBoletoGateway, bankCode, clock);
     }
 
     @Bean

@@ -21,6 +21,9 @@ public interface InvoiceChargeRepository {
     /** Da fatura, da mais nova para a mais antiga. */
     List<InvoiceCharge> findByInvoiceId(UUID invoiceId);
 
+    /** O boleto de fatura com esse código de barras (44 dígitos). */
+    Optional<InvoiceCharge> findBoletoByBarcode(String barcode);
+
     /** Próximo nosso número dos boletos de fatura. */
     long nextOurNumber();
 }

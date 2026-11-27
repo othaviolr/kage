@@ -9,7 +9,8 @@ import java.util.UUID;
 /** Pagamentos de boleto feitos por clientes do Kage (de boletos daqui ou de outros bancos). */
 public interface BoletoPaymentRepository {
 
-    enum Kind { INTERNAL, EXTERNAL }
+    /** INTERNAL: boleto de cliente do Kage; EXTERNAL: de outro banco; CARD_INVOICE: fatura do cartão Kage. */
+    enum Kind { INTERNAL, EXTERNAL, CARD_INVOICE }
 
     record Payment(UUID id, UUID payerAccountId, String barcode, String bankCode, Kind kind, UUID boletoId,
                    String beneficiaryName, LocalDate dueDate, BigDecimal faceAmount, BigDecimal fine,

@@ -52,6 +52,12 @@ public class JdbcInvoiceChargeRepository implements InvoiceChargeRepository {
     }
 
     @Override
+    public Optional<InvoiceCharge> findBoletoByBarcode(String barcode) {
+        return jdbcTemplate.query("SELECT " + COLUMNS + " FROM card_invoice_charges WHERE method = 'BOLETO' AND code = ?",
+                this::map, barcode).stream().findFirst();
+    }
+
+    @Override
     public long nextOurNumber() {
         Long next = jdbcTemplate.queryForObject("SELECT nextval('card_invoice_charge_our_number_seq')", Long.class);
         return next == null ? 1 : next;
