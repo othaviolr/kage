@@ -8,4 +8,6 @@ public interface CardJpaRepository extends JpaRepository<CardJpaEntity, UUID> {
 
     @org.springframework.data.jpa.repository.Query("SELECT c.id FROM CardJpaEntity c WHERE c.status = com.kage.card.domain.enums.CardStatus.ACTIVE")
     java.util.List<UUID> findActiveIds();
+
+    java.util.List<CardJpaEntity> findByCustomerIdOrderByCreatedAt(UUID customerId);
 }

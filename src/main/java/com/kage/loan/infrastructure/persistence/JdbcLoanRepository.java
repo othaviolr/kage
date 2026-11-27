@@ -73,6 +73,12 @@ public class JdbcLoanRepository implements LoanRepository {
     }
 
     @Override
+    public List<Loan> findByCustomerId(UUID customerId) {
+        return jdbcTemplate.query("SELECT " + COLUMNS + " FROM loans WHERE customer_id = ? ORDER BY contracted_at DESC",
+                (rs, n) -> map(rs), customerId);
+    }
+
+    @Override
     public Optional<Loan> findActiveByAccountId(UUID accountId) {
         return jdbcTemplate.query("SELECT " + COLUMNS + " FROM loans WHERE account_id = ? AND status = 'ACTIVE'",
                 (rs, n) -> map(rs), accountId).stream().findFirst();

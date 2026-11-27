@@ -13,4 +13,7 @@ public interface CardRepository {
 
     /** Ids dos cartões ativos (para a análise de limite do banco). */
     List<UUID> findActiveIds();
+
+    /** Todos os cartões do cliente, inclusive bloqueados e cancelados. */
+    List<Card> findByCustomerId(UUID customerId);
 }

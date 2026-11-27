@@ -25189,10 +25189,596 @@
       ]
     },
     {
-      "name": "30. Estorno de juros na contestação",
+      "name": "30. Minhas dívidas",
       "item": [
         {
           "name": "30.1.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Minhas Dívidas\",\n  \"cpf\": \"{{mdCpf}}\",\n  \"email\": \"{{mdEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('mdCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('mdEmail', `kage.md+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('mdCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30.1.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{mdCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{mdCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30.1.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{mdCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('mdAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30.1.4 Depositar 6000",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{mdAccountId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{mdAccountId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 6000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30.2 Sem dívidas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{mdCustomerId}}/debts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{mdCustomerId}}",
+                "debts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Lista vazia e totais zerados', () => { pm.expect(d.debts).to.have.length(0); pm.expect(d.totals.outstanding).to.eql(0); });",
+                  "pm.test('Você não deve nada no Kage', () => pm.expect(d.advice).to.eql('Você não deve nada no Kage.'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30.3 Emitir cartão",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{mdCustomerId}}\",\n  \"accountId\": \"{{mdAccountId}}\",\n  \"creditLimit\": 5000,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('mdCardId', pm.response.json().cardId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30.4 Notebook: 1200 em 3x",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{mdCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{mdCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Notebook\",\n  \"amount\": 1200,\n  \"purchasedAt\": \"2036-08-05T10:00:00\",\n  \"installments\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30.5 Mercado: 600",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{mdCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{mdCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Mercado\",\n  \"amount\": 600,\n  \"purchasedAt\": \"2036-08-06T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30.6 Fechar 2036-08 (backoffice)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{mdCardId}}/invoices/2036-08/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{mdCardId}}",
+                "invoices",
+                "2036-08",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30.7 Parcelar a fatura de 2036-08 em 3x",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{mdCardId}}/invoices/2036-08/installment-plan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{mdCardId}}",
+                "invoices",
+                "2036-08",
+                "installment-plan"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"installments\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30.8 Contratar empréstimo de 3000 em 6x",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{mdAccountId}}/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{mdAccountId}}",
+                "loans"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 3000,\n  \"installments\": 6,\n  \"dueDay\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('mdLoanId', pm.response.json().loanId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30.9 Limite em uso do cartão",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{mdCardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{mdCardId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('mdUsedLimit', pm.response.json().usedLimit);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30.10 Minhas dívidas: do mais caro ao mais barato",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{mdCustomerId}}/debts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{mdCustomerId}}",
+                "debts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "const kind = k => d.debts.find(x => x.kind === k);",
+                  "pm.test('Parcelamento (8,99%), empréstimo (3,99%), fatura atual e parcelas sem juros', () => pm.expect(d.debts.map(x => x.kind))",
+                  "  .to.eql(['CARD_INVOICE_FINANCING', 'LOAN', 'CARD_CURRENT_INVOICE', 'CARD_PURCHASE_INSTALLMENTS']));",
+                  "pm.test('A fatura parcelada não aparece de novo como fatura', () => pm.expect(kind('CARD_INVOICE')).to.be.undefined);",
+                  "pm.test('O cartão soma exatamente o limite em uso', () => {",
+                  "  const card = d.debts.filter(x => x.cardId).reduce((s, x) => s + x.outstanding, 0);",
+                  "  pm.expect(Math.round(card * 100)).to.eql(Math.round(Number(pm.collectionVariables.get('mdUsedLimit')) * 100));",
+                  "});",
+                  "pm.test('Parcelamento: 2 parcelas futuras, com CET, e antecipar dá desconto', () => {",
+                  "  const f = kind('CARD_INVOICE_FINANCING');",
+                  "  pm.expect(f.remainingInstallments).to.eql(2); pm.expect(f.monthlyRate).to.eql(0.0899); pm.expect(f.cetYearly).to.be.above(0.0899 * 12);",
+                  "  pm.expect(f.payoffToday).to.be.below(f.outstanding); pm.expect(f.note).to.include('Antecipando todas hoje');",
+                  "});",
+                  "pm.test('Notebook: a 3/3 sem juros, sem desconto', () => {",
+                  "  const n = kind('CARD_PURCHASE_INSTALLMENTS');",
+                  "  pm.expect(n.description).to.eql('Notebook'); pm.expect(n.outstanding).to.eql(400); pm.expect(n.payoffToday).to.eql(400); pm.expect(n.cetYearly).to.be.null;",
+                  "});",
+                  "pm.test('Empréstimo: 6 parcelas, quitar hoje sai mais barato', () => {",
+                  "  const l = kind('LOAN');",
+                  "  pm.expect(l.referenceId).to.eql(pm.collectionVariables.get('mdLoanId')); pm.expect(l.remainingInstallments).to.eql(6);",
+                  "  pm.expect(l.payoffToday).to.be.below(l.outstanding); pm.expect(l.note).to.match(/^6 parcelas a 3,99% a\\.m\\. \\(CET de /);",
+                  "});",
+                  "pm.test('Fatura atual: 09/2036', () => pm.expect(kind('CARD_CURRENT_INVOICE').description).to.eql('Fatura atual (09/2036)'));",
+                  "pm.test('Totais batem com a lista', () => {",
+                  "  pm.expect(Math.round(d.totals.outstanding * 100)).to.eql(Math.round(d.debts.reduce((s, x) => s + x.outstanding, 0) * 100));",
+                  "  pm.expect(d.totals.payoffToday).to.be.below(d.totals.outstanding);",
+                  "});",
+                  "pm.test('Dica: começar pelo parcelamento da fatura', () => pm.expect(d.advice).to.include('A mais cara é parcelamento da fatura de 08/2036, a 8,99% a.m.'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30.11 Cliente inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{$guid}}/debts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{$guid}}",
+                "debts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "31. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "31.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -25249,7 +25835,7 @@
           ]
         },
         {
-          "name": "30.1.2 Aprovar KYC",
+          "name": "31.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -25280,7 +25866,7 @@
           ]
         },
         {
-          "name": "30.1.3 Abrir conta",
+          "name": "31.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -25323,7 +25909,7 @@
           ]
         },
         {
-          "name": "30.1.4 Depositar 3000",
+          "name": "31.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -25367,7 +25953,7 @@
           ]
         },
         {
-          "name": "30.2 Emitir cartão",
+          "name": "31.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -25410,7 +25996,7 @@
           ]
         },
         {
-          "name": "30.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "31.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -25463,7 +26049,7 @@
           ]
         },
         {
-          "name": "30.4 Outras compras: 600",
+          "name": "31.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -25507,7 +26093,7 @@
           ]
         },
         {
-          "name": "30.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "31.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -25543,7 +26129,7 @@
           ]
         },
         {
-          "name": "30.6 Paga só 400 de 1000",
+          "name": "31.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -25590,7 +26176,7 @@
           ]
         },
         {
-          "name": "30.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "31.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -25626,7 +26212,7 @@
           ]
         },
         {
-          "name": "30.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "31.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -25659,7 +26245,7 @@
           ]
         },
         {
-          "name": "30.9 Contestar a compra de 400",
+          "name": "31.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -25707,7 +26293,7 @@
           ]
         },
         {
-          "name": "30.10 Procedente: devolve os juros que a compra gerou",
+          "name": "31.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -25756,7 +26342,7 @@
           ]
         },
         {
-          "name": "30.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "31.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],
