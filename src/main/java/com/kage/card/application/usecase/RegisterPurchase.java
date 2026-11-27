@@ -5,6 +5,7 @@ import com.kage.card.domain.entity.Invoice;
 import com.kage.card.domain.entity.VirtualCard;
 import com.kage.card.domain.enums.CardStatus;
 import com.kage.card.domain.enums.InvoiceStatus;
+import com.kage.card.domain.enums.PurchaseChannel;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
 import com.kage.shared.domain.exception.NotFoundException;
@@ -28,8 +29,17 @@ public class RegisterPurchase {
      * @param installments      parcelas sem juros (1 = à vista; nulo também)
      * @param virtualCardNumber compra feita com o número de um cartão virtual deste cartão; nulo = o físico
      */
+    /**
+     * @param channel CHIP, CONTACTLESS ou ONLINE; nulo = CHIP no físico, ONLINE no virtual
+     * @param country país do estabelecimento (ISO, 2 letras); nulo = BR
+     */
     public record Input(UUID cardId, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
-                        Integer installments, String virtualCardNumber) {
+                        Integer installments, String virtualCardNumber, String channel, String country) {
+        public Input(UUID cardId, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
+                     Integer installments, String virtualCardNumber) {
+            this(cardId, purchaseId, description, amount, purchasedAt, installments, virtualCardNumber, null, null);
+        }
+
         public Input(UUID cardId, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
                      Integer installments) {
             this(cardId, purchaseId, description, amount, purchasedAt, installments, null);
@@ -51,9 +61,15 @@ public class RegisterPurchase {
     private final CardPlastics plastics;
     private final CardEventPublisher eventPublisher;
     private final LimitUsageAlerts limitUsageAlerts;
+    private final CardPurchaseControls purchaseControls;
 
     public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
         this(cardRepository, invoiceRepository, null, null, null, null);
+    }
+
+    public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository, VirtualCards virtualCards,
+                            CardPlastics plastics, CardEventPublisher eventPublisher, LimitUsageAlerts limitUsageAlerts) {
+        this(cardRepository, invoiceRepository, virtualCards, plastics, eventPublisher, limitUsageAlerts, null);
     }
 
     public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository, VirtualCards virtualCards,
@@ -62,7 +78,9 @@ public class RegisterPurchase {
     }
 
     public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository, VirtualCards virtualCards,
-                            CardPlastics plastics, CardEventPublisher eventPublisher, LimitUsageAlerts limitUsageAlerts) {
+                            CardPlastics plastics, CardEventPublisher eventPublisher, LimitUsageAlerts limitUsageAlerts,
+                            CardPurchaseControls purchaseControls) {
+        this.purchaseControls = purchaseControls;
         this.cardRepository = cardRepository;
         this.invoiceRepository = invoiceRepository;
         this.virtualCards = virtualCards;
@@ -96,6 +114,14 @@ public class RegisterPurchase {
         } else if (plastics != null && card.getStatus() == CardStatus.ACTIVE) {
             // cartão bloqueado/cancelado: a recusa é a do cartão (authorizePurchase); ativo, falta checar o plástico
             plastics.requirePhysicalUsable(card.getId()); // 2ª via a caminho ou plástico cancelado
+        }
+
+        // o que o cliente desligou (online no físico, internacional, aproximação); cartão bloqueado ou
+        // cancelado recusa pelo próprio status logo abaixo
+        PurchaseChannel channel = channelOf(input.channel(), virtualCardId != null);
+        boolean abroad = !"BR".equals(countryOf(input.country()));
+        if (purchaseControls != null && card.getStatus() == CardStatus.ACTIVE) {
+            purchaseControls.authorize(card.getId(), channel, abroad, virtualCardId != null);
         }
 
         int installments = input.installments() == null ? 1 : input.installments();
@@ -161,6 +187,28 @@ public class RegisterPurchase {
             }
             month = month.plusMonths(1);
         }
+    }
+
+    private static PurchaseChannel channelOf(String raw, boolean virtualCard) {
+        if (raw == null) return virtualCard ? PurchaseChannel.ONLINE : PurchaseChannel.CHIP;
+        PurchaseChannel channel;
+        try {
+            channel = PurchaseChannel.valueOf(raw.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Canal da compra inválido: use CHIP, CONTACTLESS ou ONLINE");
+        }
+        // o virtual não existe em plástico: não vai à maquininha
+        if (virtualCard && channel != PurchaseChannel.ONLINE) {
+            throw new ValidationException("Cartão virtual só compra online");
+        }
+        return channel;
+    }
+
+    private static String countryOf(String raw) {
+        if (raw == null) return "BR";
+        String country = raw.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!country.matches("[A-Z]{2}")) throw new ValidationException("País da compra com 2 letras (ISO), ex.: BR, US");
+        return country;
     }
 
     private Output toOutput(Card card, Invoice invoice, UUID purchaseId, boolean duplicate) {

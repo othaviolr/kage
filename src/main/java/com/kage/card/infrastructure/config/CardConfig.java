@@ -149,9 +149,15 @@ public class CardConfig {
     @Bean
     public RegisterPurchase registerPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
                                              VirtualCards virtualCards, CardPlastics cardPlastics,
-                                             CardEventPublisher cardEventPublisher, LimitUsageAlerts limitUsageAlerts) {
+                                             CardEventPublisher cardEventPublisher, LimitUsageAlerts limitUsageAlerts,
+                                             CardPurchaseControls cardPurchaseControls) {
         return new RegisterPurchase(cardRepository, invoiceRepository, virtualCards, cardPlastics, cardEventPublisher,
-                limitUsageAlerts);
+                limitUsageAlerts, cardPurchaseControls);
+    }
+
+    @Bean
+    public CardPurchaseControls cardPurchaseControls(CardRepository cardRepository, JdbcTemplate jdbcTemplate) {
+        return new CardPurchaseControls(cardRepository, new JdbcPurchaseControlsRepository(jdbcTemplate));
     }
 
     /**

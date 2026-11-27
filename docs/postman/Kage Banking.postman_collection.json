@@ -27171,10 +27171,747 @@
       ]
     },
     {
-      "name": "33. Estorno de juros na contestação",
+      "name": "33. Bloqueio por tipo de compra",
       "item": [
         {
           "name": "33.1.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Bloqueio de Compra\",\n  \"cpf\": \"{{bqCpf}}\",\n  \"email\": \"{{bqEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('bqCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('bqEmail', `kage.bq+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('bqCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.1.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{bqCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{bqCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.1.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{bqCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('bqAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.2 Emitir cartão",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{bqCustomerId}}\",\n  \"accountId\": \"{{bqAccountId}}\",\n  \"creditLimit\": 1000,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('bqCardId', pm.response.json().cardId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.3 Cartão virtual",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{bqCardId}}/virtual-cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{bqCardId}}",
+                "virtual-cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nickname\": \"Compras online\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('bqVirtual', pm.response.json().number);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.4 Padrão: tudo ligado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{bqCardId}}/purchase-controls",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{bqCardId}}",
+                "purchase-controls"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const v = pm.response.json();",
+                  "pm.test('Online, internacional e aproximação ligados', () => { pm.expect(v.online).to.eql(true); pm.expect(v.international).to.eql(true); pm.expect(v.contactless).to.eql(true); pm.expect(v.notes).to.have.length(3); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.5 Desligar online e internacional",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{bqCardId}}/purchase-controls",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{bqCardId}}",
+                "purchase-controls"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"online\": false,\n  \"international\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const v = pm.response.json();",
+                  "pm.test('Desligados; aproximação não mudou', () => { pm.expect(v.online).to.eql(false); pm.expect(v.international).to.eql(false); pm.expect(v.contactless).to.eql(true); });",
+                  "pm.test('Os virtuais continuam online', () => pm.expect(v.notes[0]).to.include('Os cartões virtuais continuam comprando online'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.6 Online com o físico -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{bqCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{bqCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Compra\",\n  \"amount\": 50,\n  \"channel\": \"ONLINE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Motivo: Compras online com o cartão físico estão desligadas', () => pm.expect(JSON.stringify(pm.response.json())).to.include('Compras online com o cartão físico estão desligadas'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.7 Online com o virtual: passa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{bqCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{bqCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Compra\",\n  \"amount\": 50,\n  \"virtualCardNumber\": \"{{bqVirtual}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.8 Virtual numa loja dos EUA -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{bqCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{bqCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Compra\",\n  \"amount\": 50,\n  \"virtualCardNumber\": \"{{bqVirtual}}\",\n  \"country\": \"US\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Motivo: Compras internacionais estão desligadas', () => pm.expect(JSON.stringify(pm.response.json())).to.include('Compras internacionais estão desligadas'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.9 Chip no Brasil: passa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{bqCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{bqCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Compra\",\n  \"amount\": 50,\n  \"channel\": \"CHIP\",\n  \"country\": \"BR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.10 Desligar aproximação",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{bqCardId}}/purchase-controls",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{bqCardId}}",
+                "purchase-controls"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactless\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Aproximação desligada', () => pm.expect(pm.response.json().contactless).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.11 Aproximação -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{bqCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{bqCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Compra\",\n  \"amount\": 50,\n  \"channel\": \"CONTACTLESS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Motivo: Compras por aproximação estão desligadas', () => pm.expect(JSON.stringify(pm.response.json())).to.include('Compras por aproximação estão desligadas'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.12 Virtual na maquininha -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{bqCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{bqCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Compra\",\n  \"amount\": 50,\n  \"virtualCardNumber\": \"{{bqVirtual}}\",\n  \"channel\": \"CHIP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.13 Nada informado -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{bqCardId}}/purchase-controls",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{bqCardId}}",
+                "purchase-controls"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.14 Limite: só as duas compras aprovadas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{bqCardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{bqCardId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Disponível: 900', () => pm.expect(pm.response.json().availableLimit).to.eql(900));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33.15 Aviso de compra recusada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{bqCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{bqCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const ds = pm.response.json().notifications.filter(x => x.type === 'CARD_PURCHASE_DECLINED');",
+                  "pm.test('Três recusas avisadas, com o motivo', () => {",
+                  "  pm.expect(ds.length, 'chega pelo RabbitMQ; se falhar, rode de novo').to.eql(3);",
+                  "  pm.expect(ds.some(n => n.message.includes('Compras online com o cartão físico estão desligadas'))).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "34. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "34.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -27231,7 +27968,7 @@
           ]
         },
         {
-          "name": "33.1.2 Aprovar KYC",
+          "name": "34.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -27262,7 +27999,7 @@
           ]
         },
         {
-          "name": "33.1.3 Abrir conta",
+          "name": "34.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -27305,7 +28042,7 @@
           ]
         },
         {
-          "name": "33.1.4 Depositar 3000",
+          "name": "34.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -27349,7 +28086,7 @@
           ]
         },
         {
-          "name": "33.2 Emitir cartão",
+          "name": "34.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -27392,7 +28129,7 @@
           ]
         },
         {
-          "name": "33.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "34.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -27445,7 +28182,7 @@
           ]
         },
         {
-          "name": "33.4 Outras compras: 600",
+          "name": "34.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -27489,7 +28226,7 @@
           ]
         },
         {
-          "name": "33.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "34.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -27525,7 +28262,7 @@
           ]
         },
         {
-          "name": "33.6 Paga só 400 de 1000",
+          "name": "34.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -27572,7 +28309,7 @@
           ]
         },
         {
-          "name": "33.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "34.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -27608,7 +28345,7 @@
           ]
         },
         {
-          "name": "33.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "34.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -27641,7 +28378,7 @@
           ]
         },
         {
-          "name": "33.9 Contestar a compra de 400",
+          "name": "34.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -27689,7 +28426,7 @@
           ]
         },
         {
-          "name": "33.10 Procedente: devolve os juros que a compra gerou",
+          "name": "34.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -27738,7 +28475,7 @@
           ]
         },
         {
-          "name": "33.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "34.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],
