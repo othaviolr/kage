@@ -7,7 +7,11 @@ import com.kage.card.domain.enums.CardStatus;
 import com.kage.card.domain.enums.InvoiceStatus;
 import com.kage.card.domain.enums.InvoiceItemKind;
 import com.kage.card.domain.enums.PurchaseChannel;
+import com.kage.card.domain.enums.PurchaseCategory;
 import com.kage.card.domain.repository.InternationalPurchaseRepository;
+import com.kage.card.domain.repository.PurchaseCategoryRepository;
+import com.kage.card.domain.service.MerchantCategoryPolicy;
+import com.kage.shared.domain.DomainTime;
 import com.kage.card.domain.service.ExchangeRateProvider;
 import com.kage.card.domain.service.InternationalPurchasePolicy;
 import com.kage.card.domain.repository.CardRepository;
@@ -37,10 +41,18 @@ public class RegisterPurchase {
      * @param country           país do estabelecimento (ISO, 2 letras); nulo = BR
      * @param currency          BRL, USD, EUR ou GBP; nulo = BRL. Moeda estrangeira: conversão e IOF
      *                          ({@link InternationalPurchasePolicy})
+     * @param mcc               MCC do estabelecimento (4 dígitos, mandado pela bandeira): dá a categoria
+     *                          ({@link MerchantCategoryPolicy}); nulo = "Outros"
      */
     public record Input(UUID cardId, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
                         Integer installments, String virtualCardNumber, String channel, String country,
-                        String currency) {
+                        String currency, String mcc) {
+        public Input(UUID cardId, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
+                     Integer installments, String virtualCardNumber, String channel, String country, String currency) {
+            this(cardId, purchaseId, description, amount, purchasedAt, installments, virtualCardNumber, channel, country,
+                    currency, null);
+        }
+
         public Input(UUID cardId, UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
                      Integer installments, String virtualCardNumber, String channel, String country) {
             this(cardId, purchaseId, description, amount, purchasedAt, installments, virtualCardNumber, channel, country,
@@ -65,10 +77,11 @@ public class RegisterPurchase {
     /**
      * @param invoiceId     fatura da 1ª parcela; {@code installmentAmount} é o valor dela (em reais)
      * @param international compra em moeda estrangeira: a conversão e o IOF; nulo em reais
+     * @param category      categoria da compra (do MCC); nula sem o cadastro de categorias
      */
     public record Output(UUID cardId, BigDecimal availableLimit, UUID invoiceId, String referenceMonth,
                          BigDecimal invoiceTotal, int installments, BigDecimal installmentAmount, boolean duplicate,
-                         UUID virtualCardId, InternationalPurchasePolicy.Quote international) {}
+                         UUID virtualCardId, InternationalPurchasePolicy.Quote international, String category) {}
 
     private final CardRepository cardRepository;
     private final InvoiceRepository invoiceRepository;
@@ -79,6 +92,7 @@ public class RegisterPurchase {
     private final CardPurchaseControls purchaseControls;
     private final ExchangeRateProvider exchangeRates;
     private final InternationalPurchaseRepository internationalPurchases;
+    private final PurchaseCategoryRepository categories;
 
     public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
         this(cardRepository, invoiceRepository, null, null, null, null);
@@ -105,6 +119,15 @@ public class RegisterPurchase {
                             CardPlastics plastics, CardEventPublisher eventPublisher, LimitUsageAlerts limitUsageAlerts,
                             CardPurchaseControls purchaseControls, ExchangeRateProvider exchangeRates,
                             InternationalPurchaseRepository internationalPurchases) {
+        this(cardRepository, invoiceRepository, virtualCards, plastics, eventPublisher, limitUsageAlerts, purchaseControls,
+                exchangeRates, internationalPurchases, null);
+    }
+
+    public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository, VirtualCards virtualCards,
+                            CardPlastics plastics, CardEventPublisher eventPublisher, LimitUsageAlerts limitUsageAlerts,
+                            CardPurchaseControls purchaseControls, ExchangeRateProvider exchangeRates,
+                            InternationalPurchaseRepository internationalPurchases, PurchaseCategoryRepository categories) {
+        this.categories = categories;
         this.exchangeRates = exchangeRates;
         this.internationalPurchases = internationalPurchases;
         this.purchaseControls = purchaseControls;
@@ -121,6 +144,7 @@ public class RegisterPurchase {
         if (input.amount() == null || input.amount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new ValidationException("Valor da compra deve ser maior que zero");
         }
+        String mcc = MerchantCategoryPolicy.normalize(input.mcc());
 
         Card card = cardRepository.findById(input.cardId())
                 .orElseThrow(() -> new NotFoundException("Cartão não encontrado"));
@@ -196,6 +220,10 @@ public class RegisterPurchase {
         }
 
         Card savedCard = cardRepository.save(card);
+        if (categories != null) {
+            categories.insert(savedCard.getId(), input.purchaseId(), mcc, MerchantCategoryPolicy.categoryOf(mcc),
+                    DomainTime.now());
+        }
         if (fx != null && internationalPurchases != null) {
             internationalPurchases.insert(savedCard.getId(), input.purchaseId(), fx, input.purchasedAt());
         }
@@ -274,8 +302,10 @@ public class RegisterPurchase {
     private Output toOutput(Card card, Invoice invoice, UUID purchaseId, boolean duplicate,
                             InternationalPurchasePolicy.Quote fx) {
         var item = invoice.getItems().stream().filter(i -> i.purchaseId().equals(purchaseId)).findFirst().orElseThrow();
+        String category = categories == null ? null : categories.find(card.getId(), purchaseId)
+                .map(e -> e.category()).orElse(PurchaseCategory.OTHER).name();
         return new Output(card.getId(), card.availableLimit().amount(), invoice.getId(),
                 invoice.getReferenceMonth().toString(), invoice.total().amount(), item.installmentCount(),
-                item.amount().amount(), duplicate, item.virtualCardId(), fx);
+                item.amount().amount(), duplicate, item.virtualCardId(), fx, category);
     }
 }

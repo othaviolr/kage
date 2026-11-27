@@ -21,9 +21,9 @@ class CardTransactionsOfxTest {
     void creditoSaiPositivo_eNomeLongoECortadoEm32() {
         LocalDateTime at = LocalDateTime.of(2034, 2, 3, 9, 30);
         CardTransactions.Line cashback = new CardTransactions.Line(UUID.randomUUID(), at, "2034-02",
-                "Cashback de 1% da fatura de 01/2034", new BigDecimal("-10.00"), "CASHBACK", "CREDITS", null, null, null);
+                "Cashback de 1% da fatura de 01/2034", new BigDecimal("-10.00"), "CASHBACK", "CREDITS", null, null, null, null, null);
         CardTransactions.Output out = new CardTransactions.Output(UUID.randomUUID(), "1234", "2034-02", "2034-02",
-                List.of("CREDITS"), null, List.of(cashback), List.of(), new BigDecimal("-10.00"), at);
+                List.of("CREDITS"), null, null, List.of(cashback), List.of(), new BigDecimal("-10.00"), at);
 
         String ofx = CardTransactionsOfx.write(out);
 

@@ -14,6 +14,9 @@ import com.kage.card.infrastructure.fx.FixedExchangeRateProvider;
 import com.kage.card.domain.repository.LimitOfferRepository;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.DisputeRepository;
+import com.kage.card.domain.repository.PurchaseCategoryRepository;
+import com.kage.card.infrastructure.persistence.JdbcPurchaseCategoryRepository;
+import com.kage.card.application.usecase.PurchaseCategories;
 import com.kage.card.domain.repository.InvoiceRepository;
 import com.kage.card.domain.repository.VirtualCardRepository;
 import com.kage.card.domain.service.CardNumberService;
@@ -126,8 +129,23 @@ public class CardConfig {
     @Bean
     public CardTransactions cardTransactions(CardRepository cardRepository, InvoiceRepository invoiceRepository,
                                              VirtualCardRepository virtualCardRepository,
-                                             CardPlasticRepository cardPlasticRepository) {
-        return new CardTransactions(cardRepository, invoiceRepository, virtualCardRepository, cardPlasticRepository);
+                                             CardPlasticRepository cardPlasticRepository,
+                                             PurchaseCategoryRepository purchaseCategoryRepository,
+                                             DisputeRepository disputeRepository) {
+        return new CardTransactions(cardRepository, invoiceRepository, virtualCardRepository, cardPlasticRepository,
+                purchaseCategoryRepository, disputeRepository);
+    }
+
+    @Bean
+    public PurchaseCategoryRepository purchaseCategoryRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcPurchaseCategoryRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public PurchaseCategories purchaseCategories(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                                                 PurchaseCategoryRepository purchaseCategoryRepository,
+                                                 DisputeRepository disputeRepository) {
+        return new PurchaseCategories(cardRepository, invoiceRepository, purchaseCategoryRepository, disputeRepository);
     }
 
     @Bean
@@ -161,10 +179,11 @@ public class CardConfig {
                                              VirtualCards virtualCards, CardPlastics cardPlastics,
                                              CardEventPublisher cardEventPublisher, LimitUsageAlerts limitUsageAlerts,
                                              CardPurchaseControls cardPurchaseControls,
-                                             ExchangeRateProvider exchangeRateProvider, JdbcTemplate jdbcTemplate) {
+                                             ExchangeRateProvider exchangeRateProvider, JdbcTemplate jdbcTemplate,
+                                             PurchaseCategoryRepository purchaseCategoryRepository) {
         return new RegisterPurchase(cardRepository, invoiceRepository, virtualCards, cardPlastics, cardEventPublisher,
                 limitUsageAlerts, cardPurchaseControls, exchangeRateProvider,
-                new JdbcInternationalPurchaseRepository(jdbcTemplate));
+                new JdbcInternationalPurchaseRepository(jdbcTemplate), purchaseCategoryRepository);
     }
 
     /**

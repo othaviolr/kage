@@ -17,7 +17,8 @@ import java.util.UUID;
 
 /**
  * Extrato do cartão por meses de fatura (até 12; sem período, as últimas 6 até a atual), com filtro por
- * tipo (PURCHASES, FEES, CREDITS, BALANCES; vários separados por vírgula) e por cartão virtual. Em
+ * tipo (PURCHASES, FEES, CREDITS, BALANCES; vários separados por vírgula), por categoria da compra
+ * (SUPERMARKET, RESTAURANTS...) e por cartão virtual. Em
  * JSON, CSV (planilha) ou OFX (app de finanças).
  */
 @RestController
@@ -36,18 +37,20 @@ public class CardTransactionsController {
                                                         @RequestParam(required = false) String from,
                                                         @RequestParam(required = false) String to,
                                                         @RequestParam(required = false) String type,
-                                                        @RequestParam(required = false) UUID virtualCardId) {
+                                                        @RequestParam(required = false) UUID virtualCardId,
+                                                        @RequestParam(required = false) String category) {
         accessGuard.checkCard(id);
-        return ResponseEntity.ok(cardTransactions.list(id, from, to, type, virtualCardId));
+        return ResponseEntity.ok(cardTransactions.list(id, from, to, type, virtualCardId, category));
     }
 
     @GetMapping("/api/cards/{id}/transactions.csv")
     public ResponseEntity<byte[]> csv(@PathVariable UUID id, @RequestParam(required = false) String from,
                                       @RequestParam(required = false) String to,
                                       @RequestParam(required = false) String type,
-                                      @RequestParam(required = false) UUID virtualCardId) {
+                                      @RequestParam(required = false) UUID virtualCardId,
+                                      @RequestParam(required = false) String category) {
         accessGuard.checkCard(id);
-        CardTransactions.Output out = cardTransactions.list(id, from, to, type, virtualCardId);
+        CardTransactions.Output out = cardTransactions.list(id, from, to, type, virtualCardId, category);
         return file(CardTransactionsCsv.CONTENT_TYPE, CardTransactionsCsv.fileName(out, "csv"), CardTransactionsCsv.write(out));
     }
 
@@ -55,9 +58,10 @@ public class CardTransactionsController {
     public ResponseEntity<byte[]> ofx(@PathVariable UUID id, @RequestParam(required = false) String from,
                                       @RequestParam(required = false) String to,
                                       @RequestParam(required = false) String type,
-                                      @RequestParam(required = false) UUID virtualCardId) {
+                                      @RequestParam(required = false) UUID virtualCardId,
+                                      @RequestParam(required = false) String category) {
         accessGuard.checkCard(id);
-        CardTransactions.Output out = cardTransactions.list(id, from, to, type, virtualCardId);
+        CardTransactions.Output out = cardTransactions.list(id, from, to, type, virtualCardId, category);
         return file(CardTransactionsOfx.CONTENT_TYPE, CardTransactionsCsv.fileName(out, "ofx"), CardTransactionsOfx.write(out));
     }
 

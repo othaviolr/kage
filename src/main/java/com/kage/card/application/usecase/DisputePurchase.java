@@ -312,7 +312,7 @@ public class DisputePurchase {
     }
 
     /** Id estável do crédito: a mesma compra não gera dois créditos no mesmo cartão. */
-    private static UUID creditKey(UUID cardId, UUID purchaseId) {
+    static UUID creditKey(UUID cardId, UUID purchaseId) {
         return UUID.nameUUIDFromBytes(("DISPUTE:" + cardId + ":" + purchaseId).getBytes());
     }
 
