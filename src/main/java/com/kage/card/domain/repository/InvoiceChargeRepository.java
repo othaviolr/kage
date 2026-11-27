@@ -24,6 +24,9 @@ public interface InvoiceChargeRepository {
     /** O boleto de fatura com esse código de barras (44 dígitos). */
     Optional<InvoiceCharge> findBoletoByBarcode(String barcode);
 
+    /** O PIX de fatura com exatamente esse copia e cola. */
+    Optional<InvoiceCharge> findPixByCode(String code);
+
     /** Próximo nosso número dos boletos de fatura. */
     long nextOurNumber();
 }

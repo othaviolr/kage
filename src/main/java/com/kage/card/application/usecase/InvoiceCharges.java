@@ -9,7 +9,7 @@ import com.kage.card.domain.enums.InvoiceStatus;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.InvoiceChargeRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
-import com.kage.card.domain.service.PixBrCode;
+import com.kage.shared.domain.pix.PixBrCode;
 import com.kage.shared.domain.DomainTime;
 import com.kage.shared.domain.exception.BusinessRuleException;
 import com.kage.shared.domain.exception.NotFoundException;
@@ -129,6 +129,17 @@ public class InvoiceCharges {
     public java.util.Optional<ChargeView> findBoleto(String barcode) {
         LocalDateTime now = DomainTime.now();
         return charges.findBoletoByBarcode(barcode).map(c -> view(c, now));
+    }
+
+    /** O PIX de fatura com esse copia e cola, como o cliente o vê agora. */
+    public java.util.Optional<ChargeView> findPix(String code) {
+        LocalDateTime now = DomainTime.now();
+        return charges.findPixByCode(code).map(c -> view(c, now));
+    }
+
+    /** A chave PIX do Kage que recebe os pagamentos de fatura. */
+    public String pixKey() {
+        return pixKey;
     }
 
     @Transactional

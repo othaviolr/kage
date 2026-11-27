@@ -3,6 +3,10 @@ package com.kage.payment.infrastructure;
 import com.kage.account.domain.repository.AccountRepository;
 import com.kage.account.infrastructure.AccountHolderDirectoryImpl;
 import com.kage.account.infrastructure.AccountValidationServiceImpl;
+import com.kage.account.infrastructure.PixAccountDebitImpl;
+import com.kage.payment.domain.repository.PixBillingPaymentRepository;
+import com.kage.payment.domain.service.PixAccountDebit;
+import com.kage.payment.domain.service.PixBillingGateway;
 import com.kage.customer.domain.repository.CustomerRepository;
 import com.kage.payment.domain.repository.PixAutomaticRepository;
 import com.kage.payment.domain.service.AccountHolderDirectory;
@@ -34,8 +38,30 @@ public class PaymentConfig {
     }
 
     @Bean
-    public PixTransactionRepository pixTransactionRepository(PixTransactionJpaRepository jpaRepository) {
-        return new PixTransactionRepositoryImpl(jpaRepository);
+    public PixTransactionRepository pixTransactionRepository(PixTransactionJpaRepository jpaRepository,
+                                                             PixBillingPaymentRepository pixBillingPaymentRepository) {
+        return new PixTransactionRepositoryImpl(jpaRepository, pixBillingPaymentRepository);
+    }
+
+    @Bean
+    public PixBillingPaymentRepository pixBillingPaymentRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcPixBillingPaymentRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public PixAccountDebit pixAccountDebit(AccountRepository accountRepository,
+                                           com.kage.account.domain.repository.AccountEntryRepository entryRepository) {
+        return new PixAccountDebitImpl(accountRepository, entryRepository);
+    }
+
+    @Bean
+    public PixCopyPaste pixCopyPaste(PixKeyRepository pixKeyRepository, AccountHolderDirectory accountHolderDirectory,
+                                     SendPix sendPix, PixBillingGateway pixBillingGateway,
+                                     PixBillingPaymentRepository pixBillingPaymentRepository,
+                                     AccountValidationService accountValidationService, PixAccountDebit pixAccountDebit,
+                                     PixTransactionRepository pixTransactionRepository, Clock clock) {
+        return new PixCopyPaste(pixKeyRepository, accountHolderDirectory, sendPix, pixBillingGateway,
+                pixBillingPaymentRepository, accountValidationService, pixAccountDebit, pixTransactionRepository, clock);
     }
 
     @Bean

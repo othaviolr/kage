@@ -1,6 +1,7 @@
 package com.kage.payment.infrastructure.persistence;
 
 import com.kage.payment.domain.entity.PixTransaction;
+import com.kage.payment.domain.repository.PixBillingPaymentRepository;
 import com.kage.payment.domain.repository.PixTransactionRepository;
 import com.kage.payment.infrastructure.persistence.mapper.PixTransactionMapper;
 
@@ -17,9 +18,13 @@ import java.util.UUID;
 public class PixTransactionRepositoryImpl implements PixTransactionRepository {
 
     private final PixTransactionJpaRepository jpaRepository;
+    private final PixBillingPaymentRepository billingPayments;
 
-    public PixTransactionRepositoryImpl(PixTransactionJpaRepository jpaRepository) {
+    /** @param billingPayments cobranças do Kage pagas pelo copia e cola: também consomem o limite de PIX */
+    public PixTransactionRepositoryImpl(PixTransactionJpaRepository jpaRepository,
+                                        PixBillingPaymentRepository billingPayments) {
         this.jpaRepository = jpaRepository;
+        this.billingPayments = billingPayments;
     }
 
     @Override
@@ -43,7 +48,9 @@ public class PixTransactionRepositoryImpl implements PixTransactionRepository {
         // PENDING (agendado ainda não executado), FAILED e CANCELLED não consomem limite.
         BigDecimal sum = jpaRepository.sumAmountSentSince(sourceAccountId, since,
                 List.of(PixTransactionStatus.PROCESSING, PixTransactionStatus.COMPLETED));
-        return sum == null ? Money.ZERO : Money.of(sum); // SUM sem linhas devolve null
+        Money sent = sum == null ? Money.ZERO : Money.of(sum); // SUM sem linhas devolve null
+        // a fatura paga pelo PIX copia e cola também é PIX que saiu da conta
+        return billingPayments == null ? sent : sent.add(billingPayments.sumPaidSince(sourceAccountId, since));
     }
 
     @Override
