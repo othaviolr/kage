@@ -7,6 +7,7 @@ import com.kage.account.infrastructure.CardBillingAccountServiceImpl;
 import com.kage.card.domain.service.CardBillingAccountService;
 import com.kage.card.application.usecase.*;
 import com.kage.card.domain.repository.CardPlasticRepository;
+import com.kage.card.domain.repository.LimitAlertRepository;
 import com.kage.card.domain.repository.LimitOfferRepository;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.DisputeRepository;
@@ -148,8 +149,20 @@ public class CardConfig {
     @Bean
     public RegisterPurchase registerPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
                                              VirtualCards virtualCards, CardPlastics cardPlastics,
+                                             CardEventPublisher cardEventPublisher, LimitUsageAlerts limitUsageAlerts) {
+        return new RegisterPurchase(cardRepository, invoiceRepository, virtualCards, cardPlastics, cardEventPublisher,
+                limitUsageAlerts);
+    }
+
+    @Bean
+    public LimitAlertRepository limitAlertRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcLimitAlertRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public LimitUsageAlerts limitUsageAlerts(LimitAlertRepository limitAlertRepository,
                                              CardEventPublisher cardEventPublisher) {
-        return new RegisterPurchase(cardRepository, invoiceRepository, virtualCards, cardPlastics, cardEventPublisher);
+        return new LimitUsageAlerts(limitAlertRepository, cardEventPublisher);
     }
 
     @Bean

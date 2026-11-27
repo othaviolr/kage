@@ -25,6 +25,12 @@ public final class CardEvents {
     public static final String PURCHASE_DECLINED = "card.purchase.declined";
     public static final String LIMIT_OFFERED = "card.limit.offered";
     public static final String CASHBACK_EARNED = "card.cashback.earned";
+    public static final String LIMIT_USAGE_ALERT = "card.limit.usage-alert";
+
+    /** @param threshold faixa atingida (80 ou 100); {@code usagePercent} é o uso de agora */
+    public record LimitUsageAlertEvent(UUID cardId, String referenceMonth, int threshold, int usagePercent,
+                                       BigDecimal usedLimit, BigDecimal creditLimit, BigDecimal approvedLimit,
+                                       BigDecimal availableLimit, Instant occurredAt) {}
 
     /** @param referenceMonth fatura que rendeu o cashback (ele entra na seguinte) */
     public record CashbackEarnedEvent(UUID cardId, String referenceMonth, BigDecimal amount, String destination,

@@ -24555,10 +24555,644 @@
       ]
     },
     {
-      "name": "29. Estorno de juros na contestação",
+      "name": "29. Alerta de uso do limite",
       "item": [
         {
           "name": "29.1.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Alerta de Limite\",\n  \"cpf\": \"{{laCpf}}\",\n  \"email\": \"{{laEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('laCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('laEmail', `kage.la+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('laCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29.1.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{laCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{laCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29.1.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{laCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('laAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29.1.4 Depositar 2000",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{laAccountId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{laAccountId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 2000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29.2 Emitir cartão (limite 3000)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{laCustomerId}}\",\n  \"accountId\": \"{{laAccountId}}\",\n  \"creditLimit\": 3000,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('laCardId', pm.response.json().cardId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29.3 Baixar o limite em uso para 1000",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{laCardId}}/credit-limit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{laCardId}}",
+                "credit-limit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29.4 Mercado: 700",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{laCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{laCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Mercado\",\n  \"amount\": 700,\n  \"purchasedAt\": \"2036-07-05T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('70% em uso: sem aviso', () => pm.expect(pm.response.json().availableLimit).to.eql(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29.5 Farmácia: 150",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{laCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{laCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Farmácia\",\n  \"amount\": 150,\n  \"purchasedAt\": \"2036-07-05T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('85% em uso', () => pm.expect(pm.response.json().availableLimit).to.eql(150));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29.6 Aviso dos 80% na caixa de entrada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{laCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{laCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const alerts = pm.response.json().notifications.filter(x => x.type === 'CARD_LIMIT_USAGE_ALERT');",
+                  "pm.test('Um aviso só', () => pm.expect(alerts.length, 'chega pelo RabbitMQ; se falhar, rode de novo').to.eql(1));",
+                  "pm.test('Você já usou 85% do limite', () => {",
+                  "  pm.expect(alerts[0].title).to.eql('Você já usou 85% do limite');",
+                  "  pm.expect(alerts[0].message).to.eql('Restam R$ 150,00 de R$ 1.000,00 no seu cartão. Se precisar, dá para subir o limite até R$ 3.000,00 pelo app.');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29.7 Padaria: 50",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{laCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{laCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Padaria\",\n  \"amount\": 50,\n  \"purchasedAt\": \"2036-07-05T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 (90%: os 80% já foram avisados nesta fatura)', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29.8 Posto: 100",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{laCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{laCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Posto\",\n  \"amount\": 100,\n  \"purchasedAt\": \"2036-07-05T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Limite todo em uso', () => pm.expect(pm.response.json().availableLimit).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29.9 Aviso dos 100% (e nenhum outro dos 80%)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{laCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{laCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const alerts = pm.response.json().notifications.filter(x => x.type === 'CARD_LIMIT_USAGE_ALERT');",
+                  "pm.test('Dois avisos no total', () => pm.expect(alerts.length, 'chega pelo RabbitMQ; se falhar, rode de novo').to.eql(2));",
+                  "pm.test('Seu limite acabou', () => {",
+                  "  const n = alerts.find(x => x.title === 'Seu limite acabou');",
+                  "  pm.expect(n).to.exist;",
+                  "  pm.expect(n.message).to.include('Todo o limite de R$ 1.000,00 do seu cartão está em uso').and.include('até R$ 3.000,00');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29.10 Loja: 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{laCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{laCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Loja\",\n  \"amount\": 1,\n  \"purchasedAt\": \"2036-07-05T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sem limite: 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29.11 A recusa não repete o aviso dos 100%",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{laCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{laCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const alerts = pm.response.json().notifications.filter(x => x.type === 'CARD_LIMIT_USAGE_ALERT');",
+                  "pm.test('Ainda dois avisos', () => pm.expect(alerts.length).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "30. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "30.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -24615,7 +25249,7 @@
           ]
         },
         {
-          "name": "29.1.2 Aprovar KYC",
+          "name": "30.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -24646,7 +25280,7 @@
           ]
         },
         {
-          "name": "29.1.3 Abrir conta",
+          "name": "30.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -24689,7 +25323,7 @@
           ]
         },
         {
-          "name": "29.1.4 Depositar 3000",
+          "name": "30.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -24733,7 +25367,7 @@
           ]
         },
         {
-          "name": "29.2 Emitir cartão",
+          "name": "30.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -24776,7 +25410,7 @@
           ]
         },
         {
-          "name": "29.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "30.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -24829,7 +25463,7 @@
           ]
         },
         {
-          "name": "29.4 Outras compras: 600",
+          "name": "30.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -24873,7 +25507,7 @@
           ]
         },
         {
-          "name": "29.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "30.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -24909,7 +25543,7 @@
           ]
         },
         {
-          "name": "29.6 Paga só 400 de 1000",
+          "name": "30.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -24956,7 +25590,7 @@
           ]
         },
         {
-          "name": "29.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "30.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -24992,7 +25626,7 @@
           ]
         },
         {
-          "name": "29.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "30.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -25025,7 +25659,7 @@
           ]
         },
         {
-          "name": "29.9 Contestar a compra de 400",
+          "name": "30.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -25073,7 +25707,7 @@
           ]
         },
         {
-          "name": "29.10 Procedente: devolve os juros que a compra gerou",
+          "name": "30.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -25122,7 +25756,7 @@
           ]
         },
         {
-          "name": "29.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "30.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],
