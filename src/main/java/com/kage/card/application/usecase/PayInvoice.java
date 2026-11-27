@@ -79,8 +79,27 @@ public class PayInvoice {
 
         if (!amount.isZero()) {
             billingAccount.debitInvoicePayment(card.getAccountId(), amount, invoice.getId());
-            card.releaseLimit(amount);
         }
+        return applied(card, invoice, amount);
+    }
+
+    /**
+     * Pagamento que chegou de outro banco (boleto compensado, PIX liquidado): o dinheiro já entrou, então
+     * nada é debitado de conta Kage. {@code paidAt} é quando o cliente pagou lá — é a data que conta para
+     * "pago em dia" (cashback, mínimo), mesmo que o boleto compense depois.
+     */
+    @Transactional
+    public Output receive(UUID cardId, UUID invoiceId, Money amount, LocalDateTime paidAt) {
+        Card card = cardRepository.findById(cardId).orElseThrow(() -> new NotFoundException("Cartão não encontrado"));
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new NotFoundException("Fatura não encontrada"));
+        invoice.registerPayment(amount, paidAt);
+        return applied(card, invoice, amount);
+    }
+
+    /** O que vem depois do dinheiro: limite de volta, fim do rotativo, eventos e cashback. */
+    private Output applied(Card card, Invoice invoice, Money amount) {
+        if (!amount.isZero()) card.releaseLimit(amount);
         // quitou a fatura que carregava o rotativo: a dívida acabou, o teto recomeça do zero
         if (invoice.getStatus() == InvoiceStatus.PAID && invoice.hasPreviousBalance()) {
             card.settleRevolving();
