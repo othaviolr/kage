@@ -28470,6 +28470,338 @@
               }
             }
           ]
+        },
+        {
+          "name": "34.12 Religar compras internacionais",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{ciCardId}}/purchase-controls",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{ciCardId}}",
+                "purchase-controls"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"international\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.13 Loja chinesa: R$ 200 (em reais, estabelecimento da China)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{ciCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{ciCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{ciLoja}}\",\n  \"description\": \"Loja chinesa\",\n  \"amount\": 200,\n  \"purchasedAt\": \"2036-12-07T10:00:00\",\n  \"channel\": \"ONLINE\",\n  \"country\": \"CN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('ciLoja', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const o = pm.response.json();",
+                  "pm.test('Sem conversão, com IOF de 3,5%: R$ 7,00', () => { pm.expect(o.international.currency).to.eql('BRL'); pm.expect(o.international.iof).to.eql(7); });",
+                  "pm.test('Limite: 4.407,98 − 207,00', () => pm.expect(o.availableLimit).to.eql(4200.98));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.14 Em reais lá fora, parcelada -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{ciCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{ciCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Loja chinesa\",\n  \"amount\": 300,\n  \"purchasedAt\": \"2036-12-07T10:00:00\",\n  \"installments\": 3,\n  \"country\": \"CN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.15 Contestar a compra da loja chinesa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{ciCardId}}/disputes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{ciCardId}}",
+                "disputes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{ciLoja}}\",\n  \"reason\": \"NOT_RECEIVED\",\n  \"details\": \"O pedido nunca chegou\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "pm.collectionVariables.set('ciDisputeId', d.disputeId);",
+                  "pm.test('A contestação é da compra (200); o IOF anda à parte', () => pm.expect(d.amount).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.16 O limite volta com o IOF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{ciCardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{ciCardId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Disponível: 4407.98', () => pm.expect(pm.response.json().availableLimit).to.eql(4407.98));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.17 Contestação negada",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{ciCardId}}/disputes/{{ciDisputeId}}/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{ciCardId}}",
+                "disputes",
+                "{{ciDisputeId}}",
+                "resolve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accepted\": false,\n  \"note\": \"O estabelecimento comprovou a entrega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('ciReversalMonth', pm.response.json().reversalMonth);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.18 A compra e o IOF voltam a ser cobrados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{ciCardId}}/invoices/{{ciReversalMonth}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{ciCardId}}",
+                "invoices",
+                "{{ciReversalMonth}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json().items;",
+                  "pm.test('Contestação negada: 200', () => pm.expect(items.some(i => i.kind === 'DISPUTE_REVERSAL' && i.amount === 200)).to.eql(true));",
+                  "pm.test('IOF de 7,00 (contestação negada)', () => pm.expect(items.some(i => i.kind === 'IOF' && i.amount === 7 && i.description.endsWith('(contestação negada)'))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.19 Limite de novo com a compra e o IOF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{ciCardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{ciCardId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Disponível: 4200.98', () => pm.expect(pm.response.json().availableLimit).to.eql(4200.98));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

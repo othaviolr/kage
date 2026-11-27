@@ -67,6 +67,24 @@ class DisputeInterestPolicyTest {
     }
 
     @Test
+    void compraInternacional_oIofDelaTambemEntraNaParte() {
+        // 400 da compra + 14 de IOF dela; 586 de outra compra: 1000 na fatura
+        Invoice january = Invoice.open(cardId, YearMonth.of(2034, 1), 10, 20);
+        january.addItem(disputed, "Amazon", Money.of("400.00"), AT);
+        january.addCharge(InvoiceItemKind.IOF, disputed, "IOF da compra internacional", Money.of("14.00"), AT);
+        january.addItem(UUID.randomUUID(), "Mercado", Money.of("586.00"), AT);
+        january.close();
+        Invoice february = Invoice.open(cardId, YearMonth.of(2034, 2), 10, 20);
+        roll(january, february, "100.00", "0.00");
+        february.close();
+        february.pay();
+
+        // 100 de juros × 414/1000
+        assertThat(DisputeInterestPolicy.refundFor(List.of(january, february), disputed).total().amount())
+                .isEqualByComparingTo("41.40");
+    }
+
+    @Test
     void rotativoQueGirouDeNovo_seguiACorrente() {
         Invoice january = january();
         Invoice february = Invoice.open(cardId, YearMonth.of(2034, 2), 10, 20);

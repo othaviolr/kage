@@ -52,12 +52,20 @@ public final class DisputeInterestPolicy {
             if (invoice.getStatus() == InvoiceStatus.OPEN) continue;
             for (InvoiceItem item : invoice.getItems()) {
                 if (item.isPurchase() && item.purchaseId().equals(purchaseId)) {
-                    attribute(invoices, invoice, item.amount().amount(), 0, total);
+                    // compra internacional: o IOF dela também foi cobrado e também girou no rotativo
+                    attribute(invoices, invoice, item.amount().amount().add(purchaseIof(invoice, purchaseId)), 0, total);
                 }
             }
         }
         return new Refund(Money.of(total.charges.setScale(2, RoundingMode.HALF_UP)),
                 Money.of(total.iof.setScale(2, RoundingMode.HALF_UP)));
+    }
+
+    /** A linha de IOF da compra internacional {@code purchaseId} nesta fatura (zero se não há). */
+    private static BigDecimal purchaseIof(Invoice invoice, UUID purchaseId) {
+        UUID line = InvoiceItem.chargeId(InvoiceItemKind.IOF, purchaseId);
+        return invoice.getItems().stream().filter(i -> i.kind() == InvoiceItemKind.IOF && i.purchaseId().equals(line))
+                .map(i -> i.amount().amount()).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private static final class Accumulator {

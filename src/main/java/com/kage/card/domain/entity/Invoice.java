@@ -207,6 +207,22 @@ public class Invoice {
         return item;
     }
 
+    /**
+     * Tira desta fatura a linha de encargo {@code lineId} (o id determinístico dela, ex.: o IOF de uma
+     * compra internacional contestada). Só fatura aberta.
+     *
+     * @return a linha removida; vazio se ela não está aqui
+     */
+    public java.util.Optional<InvoiceItem> removeCharge(UUID lineId) {
+        if (this.status != InvoiceStatus.OPEN) throw new BusinessRuleException("Só dá para tirar lançamento de fatura aberta");
+        java.util.Optional<InvoiceItem> item = items.stream().filter(i -> i.purchaseId().equals(lineId)).findFirst();
+        item.ifPresent(i -> {
+            this.items.remove(i);
+            this.updatedAt = DomainTime.now();
+        });
+        return item;
+    }
+
     public boolean isEmpty() {
         return items.isEmpty();
     }

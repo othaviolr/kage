@@ -34,6 +34,15 @@ class InternationalPurchasePolicyTest {
     }
 
     @Test
+    void emReaisNumEstabelecimentoDeFora_soOIof() {
+        InternationalPurchasePolicy.Quote q = InternationalPurchasePolicy.inReais(new BigDecimal("200"), LocalDate.of(2034, 1, 5));
+        assertThat(q.currency()).isEqualTo("BRL");
+        assertThat(q.brl()).isEqualByComparingTo("200.00");
+        assertThat(q.iof()).isEqualByComparingTo("7.00");
+        assertThat(q.total()).isEqualByComparingTo("207.00");
+    }
+
+    @Test
     void moedas() {
         assertThat(InternationalPurchasePolicy.currencyOf(null)).isNull();
         assertThat(InternationalPurchasePolicy.currencyOf("brl")).isNull();

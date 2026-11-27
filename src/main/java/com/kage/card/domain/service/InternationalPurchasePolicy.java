@@ -48,6 +48,17 @@ public final class InternationalPurchasePolicy {
         return currency;
     }
 
+    /**
+     * Compra em reais num estabelecimento de fora (site estrangeiro que cobra em reais): não há
+     * conversão, mas é operação internacional — o IOF é o mesmo.
+     */
+    public static Quote inReais(BigDecimal amount, LocalDate date) {
+        if (amount == null || amount.signum() <= 0) throw new ValidationException("Valor deve ser maior que zero");
+        BigDecimal brl = amount.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal iof = brl.multiply(IOF_RATE).setScale(2, RoundingMode.HALF_UP);
+        return new Quote("BRL", brl, BigDecimal.ONE, date, BigDecimal.ZERO, BigDecimal.ONE, brl, iof, brl.add(iof));
+    }
+
     public static Quote quote(String currency, BigDecimal foreignAmount, ExchangeRateProvider.Rate ptax) {
         if (foreignAmount == null || foreignAmount.signum() <= 0) throw new ValidationException("Valor deve ser maior que zero");
         BigDecimal amount = foreignAmount.setScale(2, RoundingMode.HALF_UP);
