@@ -30282,10 +30282,683 @@
       ]
     },
     {
-      "name": "37. Estorno de juros na contestação",
+      "name": "37. Orçamento por categoria",
       "item": [
         {
           "name": "37.1.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Orçamento\",\n  \"cpf\": \"{{obCpf}}\",\n  \"email\": \"{{obEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('obCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('obEmail', `kage.ob+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('obCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.1.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{obCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{obCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.1.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{obCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('obAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.2 Emitir cartão",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{obCustomerId}}\",\n  \"accountId\": \"{{obAccountId}}\",\n  \"creditLimit\": 5000,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('obCardId', pm.response.json().cardId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.3 Orçamento de Mercado: R$ 1.000",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{obCardId}}/budgets/SUPERMARKET",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{obCardId}}",
+                "budgets",
+                "SUPERMARKET"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Mercado, ainda sem gasto', () => { const b = pm.response.json(); pm.expect(b.label).to.eql('Mercado'); pm.expect(b.status).to.eql('OK'); pm.expect(b.spent).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.4 Orçamento de Restaurantes: R$ 300",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{obCardId}}/budgets/restaurants",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{obCardId}}",
+                "budgets",
+                "restaurants"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 300\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.5 Mercado: 850 (MCC 5411)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{obCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{obCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Mercado\",\n  \"amount\": 850,\n  \"purchasedAt\": \"2036-10-05T10:00:00\",\n  \"mcc\": \"5411\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.6 Restaurante: 400 (MCC 5812)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{obCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{obCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Restaurante\",\n  \"amount\": 400,\n  \"purchasedAt\": \"2036-10-05T10:00:00\",\n  \"mcc\": \"5812\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.7 Uber: 50 (sem orçamento)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{obCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{obCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Uber\",\n  \"amount\": 50,\n  \"purchasedAt\": \"2036-10-05T10:00:00\",\n  \"mcc\": \"4121\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.8 Orçamentos da fatura atual",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{obCardId}}/budgets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{obCardId}}",
+                "budgets"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Outubro/2036', () => pm.expect(r.month).to.eql('2036-10'));",
+                  "pm.test('Mercado em 85%', () => { const m = r.budgets.find(b => b.category === 'SUPERMARKET'); pm.expect(m.status).to.eql('WARNING'); pm.expect(m.usagePercent).to.eql(85); pm.expect(m.remaining).to.eql(150); });",
+                  "pm.test('Restaurantes estourado', () => { const m = r.budgets.find(b => b.category === 'RESTAURANTS'); pm.expect(m.status).to.eql('EXCEEDED'); pm.expect(m.remaining).to.eql(-100); });",
+                  "pm.test('Totais só das categorias com orçamento', () => { pm.expect(r.totalBudget).to.eql(1300); pm.expect(r.totalSpent).to.eql(1250); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.9 Avisos na caixa de entrada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{obCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{obCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const alerts = pm.response.json().notifications.filter(x => x.type === 'CARD_BUDGET_ALERT');",
+                  "pm.test('Dois avisos', () => pm.expect(alerts.length, 'chega pelo RabbitMQ; se falhar, rode de novo').to.eql(2));",
+                  "pm.test('85% do Mercado', () => { const n = alerts.find(x => x.title === 'Você já usou 85% do orçamento de Mercado'); pm.expect(n).to.exist; pm.expect(n.message).to.eql('R$ 850,00 de R$ 1.000,00 em Mercado na fatura de 10/2036. Restam R$ 150,00.'); });",
+                  "pm.test('Restaurantes estourado', () => { const n = alerts.find(x => x.title === 'Orçamento de Restaurantes e delivery estourado'); pm.expect(n).to.exist; pm.expect(n.message).to.include('R$ 100,00 acima do orçamento de R$ 300,00'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.10 Orçamento zero -> 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{obCardId}}/budgets/SUPERMARKET",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{obCardId}}",
+                "budgets",
+                "SUPERMARKET"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.11 Categoria inválida -> 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{obCardId}}/budgets/SAQUE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{obCardId}}",
+                "budgets",
+                "SAQUE"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.12 Tirar o orçamento de Restaurantes",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{obCardId}}/budgets/RESTAURANTS",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{obCardId}}",
+                "budgets",
+                "RESTAURANTS"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.13 Tirar de novo -> 404",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{obCardId}}/budgets/RESTAURANTS",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{obCardId}}",
+                "budgets",
+                "RESTAURANTS"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37.14 Só o Mercado ficou",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{obCardId}}/budgets?month=2036-10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{obCardId}}",
+                "budgets"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2036-10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Um orçamento', () => pm.expect(pm.response.json().budgets.map(b => b.category)).to.eql(['SUPERMARKET']));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "38. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "38.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -30342,7 +31015,7 @@
           ]
         },
         {
-          "name": "37.1.2 Aprovar KYC",
+          "name": "38.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -30373,7 +31046,7 @@
           ]
         },
         {
-          "name": "37.1.3 Abrir conta",
+          "name": "38.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -30416,7 +31089,7 @@
           ]
         },
         {
-          "name": "37.1.4 Depositar 3000",
+          "name": "38.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -30460,7 +31133,7 @@
           ]
         },
         {
-          "name": "37.2 Emitir cartão",
+          "name": "38.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -30503,7 +31176,7 @@
           ]
         },
         {
-          "name": "37.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "38.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -30556,7 +31229,7 @@
           ]
         },
         {
-          "name": "37.4 Outras compras: 600",
+          "name": "38.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -30600,7 +31273,7 @@
           ]
         },
         {
-          "name": "37.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "38.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -30636,7 +31309,7 @@
           ]
         },
         {
-          "name": "37.6 Paga só 400 de 1000",
+          "name": "38.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -30683,7 +31356,7 @@
           ]
         },
         {
-          "name": "37.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "38.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -30719,7 +31392,7 @@
           ]
         },
         {
-          "name": "37.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "38.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -30752,7 +31425,7 @@
           ]
         },
         {
-          "name": "37.9 Contestar a compra de 400",
+          "name": "38.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -30800,7 +31473,7 @@
           ]
         },
         {
-          "name": "37.10 Procedente: devolve os juros que a compra gerou",
+          "name": "38.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -30849,7 +31522,7 @@
           ]
         },
         {
-          "name": "37.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "38.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],

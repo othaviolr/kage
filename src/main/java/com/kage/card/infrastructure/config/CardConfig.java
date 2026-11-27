@@ -17,6 +17,8 @@ import com.kage.card.domain.repository.DisputeRepository;
 import com.kage.card.domain.repository.PurchaseCategoryRepository;
 import com.kage.card.infrastructure.persistence.JdbcPurchaseCategoryRepository;
 import com.kage.card.application.usecase.PurchaseCategories;
+import com.kage.card.application.usecase.CategoryBudgets;
+import com.kage.card.infrastructure.persistence.JdbcCategoryBudgetRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
 import com.kage.card.domain.repository.VirtualCardRepository;
 import com.kage.card.domain.service.CardNumberService;
@@ -137,6 +139,14 @@ public class CardConfig {
     }
 
     @Bean
+    public CategoryBudgets categoryBudgets(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                                           JdbcTemplate jdbcTemplate, PurchaseCategoryRepository purchaseCategoryRepository,
+                                           PurchaseCategories purchaseCategories, CardEventPublisher cardEventPublisher) {
+        return new CategoryBudgets(cardRepository, invoiceRepository, new JdbcCategoryBudgetRepository(jdbcTemplate),
+                purchaseCategoryRepository, purchaseCategories, cardEventPublisher);
+    }
+
+    @Bean
     public PurchaseCategoryRepository purchaseCategoryRepository(JdbcTemplate jdbcTemplate) {
         return new JdbcPurchaseCategoryRepository(jdbcTemplate);
     }
@@ -180,10 +190,11 @@ public class CardConfig {
                                              CardEventPublisher cardEventPublisher, LimitUsageAlerts limitUsageAlerts,
                                              CardPurchaseControls cardPurchaseControls,
                                              ExchangeRateProvider exchangeRateProvider, JdbcTemplate jdbcTemplate,
-                                             PurchaseCategoryRepository purchaseCategoryRepository) {
+                                             PurchaseCategoryRepository purchaseCategoryRepository,
+                                             CategoryBudgets categoryBudgets) {
         return new RegisterPurchase(cardRepository, invoiceRepository, virtualCards, cardPlastics, cardEventPublisher,
                 limitUsageAlerts, cardPurchaseControls, exchangeRateProvider,
-                new JdbcInternationalPurchaseRepository(jdbcTemplate), purchaseCategoryRepository);
+                new JdbcInternationalPurchaseRepository(jdbcTemplate), purchaseCategoryRepository, categoryBudgets);
     }
 
     /**

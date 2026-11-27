@@ -93,6 +93,7 @@ public class RegisterPurchase {
     private final ExchangeRateProvider exchangeRates;
     private final InternationalPurchaseRepository internationalPurchases;
     private final PurchaseCategoryRepository categories;
+    private final CategoryBudgets budgets;
 
     public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
         this(cardRepository, invoiceRepository, null, null, null, null);
@@ -127,6 +128,16 @@ public class RegisterPurchase {
                             CardPlastics plastics, CardEventPublisher eventPublisher, LimitUsageAlerts limitUsageAlerts,
                             CardPurchaseControls purchaseControls, ExchangeRateProvider exchangeRates,
                             InternationalPurchaseRepository internationalPurchases, PurchaseCategoryRepository categories) {
+        this(cardRepository, invoiceRepository, virtualCards, plastics, eventPublisher, limitUsageAlerts, purchaseControls,
+                exchangeRates, internationalPurchases, categories, null);
+    }
+
+    public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository, VirtualCards virtualCards,
+                            CardPlastics plastics, CardEventPublisher eventPublisher, LimitUsageAlerts limitUsageAlerts,
+                            CardPurchaseControls purchaseControls, ExchangeRateProvider exchangeRates,
+                            InternationalPurchaseRepository internationalPurchases, PurchaseCategoryRepository categories,
+                            CategoryBudgets budgets) {
+        this.budgets = budgets;
         this.categories = categories;
         this.exchangeRates = exchangeRates;
         this.internationalPurchases = internationalPurchases;
@@ -234,6 +245,10 @@ public class RegisterPurchase {
         if (limitUsageAlerts != null) {
             // "uma vez por fatura": a fatura em que a compra (ou a 1ª parcela) caiu
             limitUsageAlerts.afterPurchase(savedCard, first.getReferenceMonth());
+        }
+        if (budgets != null) {
+            // orçamento da categoria da compra, na mesma fatura do alerta de limite
+            budgets.afterPurchase(savedCard.getId(), input.purchaseId(), first.getReferenceMonth());
         }
         return toOutput(savedCard, first, input.purchaseId(), false, fx);
     }

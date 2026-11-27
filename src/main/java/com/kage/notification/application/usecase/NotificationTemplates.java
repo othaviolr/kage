@@ -228,6 +228,27 @@ public final class NotificationTemplates {
                 + money(creditLimit) + " no seu cartão." + raise);
     }
 
+    /**
+     * 80%: o orçamento da categoria está acabando. 100%: chegou (ou passou) — quanto passou, se passou.
+     * O orçamento é do cliente, não do banco: nada é recusado, é só o aviso.
+     */
+    public static Text categoryBudgetAlert(String categoryLabel, String referenceMonth, int threshold, int usagePercent,
+                                           BigDecimal budget, BigDecimal spent) {
+        String spentText = money(spent) + " de " + money(budget) + " em " + categoryLabel + " na fatura de "
+                + month(referenceMonth) + ".";
+        if (threshold >= 100) {
+            BigDecimal over = spent.subtract(budget);
+            if (over.signum() > 0) {
+                return new Text("Orçamento de " + categoryLabel + " estourado", money(spent) + " em " + categoryLabel
+                        + " na fatura de " + month(referenceMonth) + ": " + money(over) + " acima do orçamento de "
+                        + money(budget) + ".");
+            }
+            return new Text("Orçamento de " + categoryLabel + " atingido", spentText);
+        }
+        return new Text("Você já usou " + usagePercent + "% do orçamento de " + categoryLabel, spentText + " Restam "
+                + money(budget.subtract(spent)) + ".");
+    }
+
     /** Sem fatura de transição ({@code transitionMonth} nulo): só os dias novos. */
     public static Text dueDayChanged(int dueDay, int closingDay, String transitionMonth, LocalDate transitionDueDate,
                                      Long transitionDays) {

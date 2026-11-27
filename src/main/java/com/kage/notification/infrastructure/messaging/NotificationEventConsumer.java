@@ -215,6 +215,12 @@ public class NotificationEventConsumer {
                 e.threshold(), e.usagePercent(), e.creditLimit(), e.approvedLimit(), e.availableLimit()), null, messageId);
     }
 
+    @RabbitListener(queues = "notification.card.budget.alert.queue")
+    public void onCategoryBudgetAlert(InboundEvents.CategoryBudgetAlert e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toCardOwner(e.cardId(), NotificationType.CARD_BUDGET_ALERT, NotificationTemplates.categoryBudgetAlert(
+                e.categoryLabel(), e.referenceMonth(), e.threshold(), e.usagePercent(), e.budget(), e.spent()), null, messageId);
+    }
+
     @RabbitListener(queues = "notification.card.limit.offered.queue")
     public void onLimitOffered(InboundEvents.LimitOffered e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toCardOwner(e.cardId(), NotificationType.CARD_LIMIT_OFFERED,

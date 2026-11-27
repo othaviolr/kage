@@ -97,6 +97,10 @@ public final class InboundEvents {
                                   BigDecimal creditLimit, BigDecimal approvedLimit, BigDecimal availableLimit) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record CategoryBudgetAlert(UUID cardId, String referenceMonth, String categoryLabel, int threshold,
+                                      int usagePercent, BigDecimal budget, BigDecimal spent) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record LimitOffered(UUID cardId, UUID offerId, BigDecimal offeredLimit, java.time.LocalDateTime expiresAt) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

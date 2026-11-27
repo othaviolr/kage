@@ -44,6 +44,8 @@ public enum NotificationType {
     CARD_CASHBACK_EARNED(CARD_PURCHASES, false),
     /** Uso do limite chegou a 80% ou a 100% (uma vez por faixa em cada fatura). */
     CARD_LIMIT_USAGE_ALERT(CARD_PURCHASES, false),
+    /** Gasto de uma categoria chegou a 80% ou a 100% do orçamento (uma vez por faixa em cada fatura). */
+    CARD_BUDGET_ALERT(CARD_PURCHASES, false),
     PASSWORD_CHANGED(SECURITY, true),
     NEW_DEVICE_LOGIN(SECURITY, true),
     LIMIT_INCREASE_REQUESTED(SECURITY, true),
