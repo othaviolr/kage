@@ -27,6 +27,9 @@ public interface LoanRepository {
 
     Optional<Loan> findActiveByAccountId(UUID accountId);
 
+    /** Do cliente (todas as contas), do mais novo para o mais antigo. */
+    List<Loan> findByCustomerId(UUID customerId);
+
     /** Empréstimos ativos com parcela vencida até {@code date} ainda em aberto (para o débito automático). */
     List<UUID> activeWithDueUntil(LocalDate date);
 

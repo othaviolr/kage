@@ -32,6 +32,11 @@ public class CardRepositoryImpl implements CardRepository {
     }
 
     @Override
+    public List<Card> findByCustomerId(UUID customerId) {
+        return cardJpaRepository.findByCustomerIdOrderByCreatedAt(customerId).stream().map(CardMapper::toDomain).toList();
+    }
+
+    @Override
     public Optional<Card> findById(UUID id) {
         return cardJpaRepository.findById(id).map(CardMapper::toDomain);
     }
