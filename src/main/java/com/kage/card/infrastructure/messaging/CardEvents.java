@@ -49,8 +49,9 @@ public final class CardEvents {
                                         int installments, BigDecimal installmentAmount, BigDecimal availableLimit,
                                         String virtualCardNickname, Instant occurredAt) {}
 
+    /** @param currency moeda do {@code amount} na compra internacional; nula = reais */
     public record PurchaseDeclinedEvent(UUID cardId, String description, BigDecimal amount, String reason,
-                                        String virtualCardNickname, Instant occurredAt) {}
+                                        String virtualCardNickname, String currency, Instant occurredAt) {}
 
     /** @param oldNumberCancelled perda, roubo ou fraude: o plástico antigo já não funciona */
     public record CardReissuedEvent(UUID cardId, UUID plasticId, String lastDigits, String reason,

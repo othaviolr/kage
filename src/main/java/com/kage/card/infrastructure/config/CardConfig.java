@@ -8,6 +8,9 @@ import com.kage.card.domain.service.CardBillingAccountService;
 import com.kage.card.application.usecase.*;
 import com.kage.card.domain.repository.CardPlasticRepository;
 import com.kage.card.domain.repository.LimitAlertRepository;
+import com.kage.card.domain.service.ExchangeRateProvider;
+import com.kage.card.infrastructure.fx.BcbPtaxExchangeRateProvider;
+import com.kage.card.infrastructure.fx.FixedExchangeRateProvider;
 import com.kage.card.domain.repository.LimitOfferRepository;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.DisputeRepository;
@@ -150,9 +153,33 @@ public class CardConfig {
     public RegisterPurchase registerPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
                                              VirtualCards virtualCards, CardPlastics cardPlastics,
                                              CardEventPublisher cardEventPublisher, LimitUsageAlerts limitUsageAlerts,
-                                             CardPurchaseControls cardPurchaseControls) {
+                                             CardPurchaseControls cardPurchaseControls,
+                                             ExchangeRateProvider exchangeRateProvider, JdbcTemplate jdbcTemplate) {
         return new RegisterPurchase(cardRepository, invoiceRepository, virtualCards, cardPlastics, cardEventPublisher,
-                limitUsageAlerts, cardPurchaseControls);
+                limitUsageAlerts, cardPurchaseControls, exchangeRateProvider,
+                new JdbcInternationalPurchaseRepository(jdbcTemplate));
+    }
+
+    /**
+     * kage.fx.source: "bcb" = PTAX de venda do Banco Central (API Olinda, só o passado); "fixed" (padrão)
+     * = kage.fx.fixed-rates — determinístico, e permite compras com datas futuras na coleção do Postman.
+     */
+    @Bean
+    public ExchangeRateProvider exchangeRateProvider(@Value("${kage.fx.source:fixed}") String source,
+                                                     @Value("${kage.fx.fixed-rates:USD=5.50,EUR=6.00,GBP=7.00}") String fixedRates,
+                                                     @Value("${kage.fx.bcb-url:https://olinda.bcb.gov.br}") String bcbUrl) {
+        if ("bcb".equalsIgnoreCase(source)) {
+            org.springframework.http.client.SimpleClientHttpRequestFactory factory =
+                    new org.springframework.http.client.SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(java.time.Duration.ofSeconds(5));
+            factory.setReadTimeout(java.time.Duration.ofSeconds(10));
+            return new BcbPtaxExchangeRateProvider(org.springframework.web.client.RestClient.builder()
+                    .baseUrl(bcbUrl).requestFactory(factory).build());
+        }
+        if (!"fixed".equalsIgnoreCase(source)) {
+            throw new IllegalStateException("kage.fx.source deve ser 'bcb' ou 'fixed', não '" + source + "'");
+        }
+        return new FixedExchangeRateProvider(fixedRates);
     }
 
     @Bean

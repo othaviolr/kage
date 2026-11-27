@@ -150,7 +150,7 @@ public class NotificationEventConsumer {
     @RabbitListener(queues = "notification.card.purchase.declined.queue")
     public void onPurchaseDeclined(InboundEvents.PurchaseDeclined e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toCardOwner(e.cardId(), NotificationType.CARD_PURCHASE_DECLINED, NotificationTemplates.purchaseDeclined(
-                e.description(), e.amount(), e.reason(), e.virtualCardNickname()), null, messageId);
+                e.description(), e.amount(), e.reason(), e.virtualCardNickname(), e.currency()), null, messageId);
     }
 
     @RabbitListener(queues = "notification.loan.contracted.queue")

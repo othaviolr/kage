@@ -141,8 +141,17 @@ public final class NotificationTemplates {
     }
 
     public static Text purchaseDeclined(String description, BigDecimal amount, String reason, String virtualCardNickname) {
+        return purchaseDeclined(description, amount, reason, virtualCardNickname, null);
+    }
+
+    /** @param currency compra internacional: a moeda do {@code amount}; nula ou BRL = reais */
+    public static Text purchaseDeclined(String description, BigDecimal amount, String reason, String virtualCardNickname,
+                                        String currency) {
         String where = virtualCardNickname == null ? "" : " no cartão virtual \"" + virtualCardNickname + "\"";
-        return new Text("Compra recusada", "A compra de " + money(amount) + " em " + description + where
+        String value = currency == null || "BRL".equalsIgnoreCase(currency)
+                ? money(amount)
+                : money(amount).replace("R$", currency.toUpperCase(Locale.ROOT)); // "USD 100,00"
+        return new Text("Compra recusada", "A compra de " + value + " em " + description + where
                 + " foi recusada: " + reason + ".");
     }
 
