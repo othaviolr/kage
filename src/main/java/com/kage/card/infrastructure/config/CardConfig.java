@@ -17,6 +17,8 @@ import com.kage.card.domain.repository.DisputeRepository;
 import com.kage.card.domain.repository.PurchaseCategoryRepository;
 import com.kage.card.infrastructure.persistence.JdbcPurchaseCategoryRepository;
 import com.kage.card.application.usecase.PurchaseCategories;
+import com.kage.boleto.domain.service.BillingBoletoGateway;
+import com.kage.card.infrastructure.boleto.InvoiceBillingBoletoGateway;
 import com.kage.card.application.usecase.CategoryBudgets;
 import com.kage.card.infrastructure.persistence.JdbcCategoryBudgetRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
@@ -227,6 +229,11 @@ public class CardConfig {
     /**
      * @param pixKey chave PIX do Kage que recebe os pagamentos de fatura (aleatória, como as de empresa)
      */
+    @Bean
+    public BillingBoletoGateway billingBoletoGateway(InvoiceCharges invoiceCharges) {
+        return new InvoiceBillingBoletoGateway(invoiceCharges);
+    }
+
     @Bean
     public InvoiceCharges invoiceCharges(CardRepository cardRepository, InvoiceRepository invoiceRepository,
                                          JdbcTemplate jdbcTemplate, PayInvoice payInvoice,
