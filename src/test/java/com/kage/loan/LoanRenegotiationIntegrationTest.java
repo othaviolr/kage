@@ -83,8 +83,8 @@ class LoanRenegotiationIntegrationTest extends AbstractIntegrationTest {
         assertThat(quote.agreement().installments()).isEqualTo(12);
         // 1ª parcela a pelo menos 30 dias: 15/06 está a 26, então vai para 15/07
         assertThat(quote.agreement().firstDueDate()).isEqualTo(LocalDate.of(2035, 7, 15));
-        // CET informado (pelas datas reais: a 1ª parcela a 56 dias com juros de um mês deixa o CET abaixo da taxa)
-        assertThat(quote.agreement().cetMonthly()).isPositive();
+        // CET pelas datas reais: com o 1º período (56 dias) a juros pro rata, não fica abaixo da taxa do contrato
+        assertThat(quote.agreement().cetMonthly()).isGreaterThanOrEqualTo(new BigDecimal("0.0399"));
 
         BigDecimal before = balance(s.accountId());
         PersonalLoans.Output agreement = personalLoans.renegotiate(s.accountId(), loanId, 12, 15, new BigDecimal("300.00"));

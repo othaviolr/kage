@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Regras do empréstimo pessoal: Tabela Price a {@link #MONTHLY_RATE}, IOF financiado (calculado sobre o
+ * Regras do empréstimo pessoal: Tabela Price a {@link #MONTHLY_RATE} (1º período com juros pro rata dia), IOF financiado (calculado sobre o
  * valor liberado e somado ao financiado, então o cliente recebe o que pediu), CET sobre o liberado,
  * parcela de no máximo {@link #MAX_COMMITMENT} da renda, encargos de atraso e desconto de juros na
  * antecipação (CDC, art. 52, §2º).
@@ -58,10 +58,10 @@ public final class LoanPolicy {
         List<Long> days = CetPolicy.days(contractDate, dueDates);
 
         // IOF sobre o liberado, com a amortização que ele teria; depois ele é financiado junto
-        List<Installment> base = price(released, installments, dueDates, MONTHLY_RATE);
+        List<Installment> base = price(released, installments, contractDate, dueDates, MONTHLY_RATE);
         Money iof = IofPolicy.installments(released, base.stream().map(Installment::principal).toList(), days);
         Money financed = released.add(iof);
-        List<Installment> schedule = price(financed, installments, dueDates, MONTHLY_RATE);
+        List<Installment> schedule = price(financed, installments, contractDate, dueDates, MONTHLY_RATE);
 
         Money total = schedule.stream().map(Installment::amount).reduce(Money.ZERO, Money::add);
         CetPolicy.Cet cet = CetPolicy.of(released, contractDate,
@@ -70,22 +70,43 @@ public final class LoanPolicy {
                 total.subtract(financed), cet.monthly(), cet.yearly(), schedule);
     }
 
-    /** Price: parcela fixa; a última acerta os centavos para o principal fechar. */
-    static List<Installment> price(Money principal, int n, List<LocalDate> dueDates, BigDecimal monthlyRate) {
+    /**
+     * Price: parcela fixa; a última acerta os centavos para o principal fechar. O 1º período vai da
+     * contratação até a 1ª parcela (de 30 a ~58 dias) e leva juros pro rata dia, (1 + i)^(dias/30) - 1;
+     * os seguintes são mensais. A parcela sai da equivalência: é a Price do saldo levado (ou trazido) até
+     * um mês antes da 1ª parcela, P × (1 + i)^((dias - 30)/30). Com 30 dias, é a Price de sempre. Se os
+     * juros do 1º período passarem da parcela, a 1ª é só juros e o resto deles vai para a seguinte.
+     */
+    static List<Installment> price(Money principal, int n, LocalDate start, List<LocalDate> dueDates,
+                                   BigDecimal monthlyRate) {
         BigDecimal i = monthlyRate;
+        long firstDays = ChronoUnit.DAYS.between(start, dueDates.get(0));
+        BigDecimal carried = principal.amount().multiply(growth(i, firstDays - 30), MC);
         BigDecimal factor = BigDecimal.ONE.add(i).pow(n, MC);
-        BigDecimal pmt = principal.amount().multiply(i).multiply(factor)
+        BigDecimal pmt = carried.multiply(i).multiply(factor)
                 .divide(factor.subtract(BigDecimal.ONE), 2, RoundingMode.HALF_UP);
         BigDecimal balance = principal.amount();
+        // juros que não couberam numa parcela (carência longa em prazo longo: os do 1º período podem passar
+        // da parcela): ficam para a seguinte, rendendo juros, e o principal nunca amortiza negativo
+        BigDecimal deferred = BigDecimal.ZERO;
         List<Installment> result = new ArrayList<>(n);
         for (int k = 1; k <= n; k++) {
-            BigDecimal interest = balance.multiply(i).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal owed = (k == 1
+                    ? balance.multiply(growth(i, firstDays).subtract(BigDecimal.ONE), MC)
+                    : balance.multiply(i).add(deferred.multiply(BigDecimal.ONE.add(i)))).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal interest = k == n ? owed : owed.min(pmt);
+            deferred = owed.subtract(interest);
             BigDecimal amortization = k == n ? balance : pmt.subtract(interest);
             result.add(new Installment(k, dueDates.get(k - 1), Money.of(amortization.add(interest)),
                     Money.of(amortization), Money.of(interest)));
             balance = balance.subtract(amortization);
         }
         return result;
+    }
+
+    /** (1 + i)^(dias/30): juros compostos pro rata dia, mês de 30 dias (o mesmo da antecipação). */
+    static BigDecimal growth(BigDecimal monthlyRate, long days) {
+        return BigDecimal.valueOf(Math.pow(1 + monthlyRate.doubleValue(), days / 30.0));
     }
 
     /**
@@ -107,7 +128,7 @@ public final class LoanPolicy {
         if (!debt.isGreaterThan(Money.ZERO)) throw new ValidationException("Não há saldo para renegociar");
         List<LocalDate> dueDates = dueDates(today, dueDay, installments);
 
-        List<Installment> base = price(debt, installments, dueDates, monthlyRate);
+        List<Installment> base = price(debt, installments, today, dueDates, monthlyRate);
         BigDecimal taxedShare = taxedPrincipal.amount().compareTo(debt.amount()) >= 0 ? BigDecimal.ONE
                 : taxedPrincipal.amount().divide(debt.amount(), MC);
         BigDecimal iofValue = BigDecimal.ZERO;
@@ -119,7 +140,7 @@ public final class LoanPolicy {
         }
         Money iof = Money.of(iofValue.setScale(2, RoundingMode.HALF_UP));
         Money financed = debt.add(iof);
-        List<Installment> schedule = price(financed, installments, dueDates, monthlyRate);
+        List<Installment> schedule = price(financed, installments, today, dueDates, monthlyRate);
 
         Money total = schedule.stream().map(Installment::amount).reduce(Money.ZERO, Money::add);
         CetPolicy.Cet cet = CetPolicy.of(debt, today,
