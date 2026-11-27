@@ -113,7 +113,7 @@ public class CardController {
         LocalDateTime purchasedAt = request.purchasedAt() != null ? request.purchasedAt() : DomainTime.now();
         RegisterPurchase.Output output = authorizePurchase.execute(new RegisterPurchase.Input(
                 id, request.purchaseId(), request.description(), request.amount(), purchasedAt, request.installments(),
-                request.virtualCardNumber()));
+                request.virtualCardNumber(), request.channel(), request.country()));
         return ResponseEntity.status(HttpStatus.CREATED).body(output);
     }
 
@@ -392,7 +392,11 @@ public class CardController {
      * @param installments      parcelas sem juros (1 a 12); omitido = à vista
      * @param virtualCardNumber compra online com o número de um cartão virtual deste cartão; omitido = o físico
      */
+    /**
+     * @param channel CHIP, CONTACTLESS ou ONLINE; nulo = CHIP no físico, ONLINE no virtual
+     * @param country país do estabelecimento (ISO, 2 letras); nulo = BR
+     */
     public record PurchaseRequest(UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
-                                  Integer installments, String virtualCardNumber) {
+                                  Integer installments, String virtualCardNumber, String channel, String country) {
     }
 }
