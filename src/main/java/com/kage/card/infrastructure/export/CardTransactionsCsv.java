@@ -25,16 +25,17 @@ public final class CardTransactionsCsv {
 
     public static String write(CardTransactions.Output out) {
         StringBuilder csv = new StringBuilder(BOM);
-        line(csv, "Data", "Fatura", "Descrição", "Parcela", "Cartão", "Tipo", "Valor (R$)");
+        line(csv, "Data", "Fatura", "Descrição", "Parcela", "Cartão", "Tipo", "Categoria", "Valor (R$)");
         for (CardTransactions.Line l : out.lines()) {
             line(csv, l.date().format(DATE), month(l.invoiceMonth()), l.description(),
                     l.installment() == null ? "" : l.installment(), l.virtualCard() == null ? "" : "Virtual: " + l.virtualCard(),
-                    CardTransactions.Group.valueOf(l.group()).label(), money(l.amount()));
+                    CardTransactions.Group.valueOf(l.group()).label(), l.categoryLabel() == null ? "" : l.categoryLabel(),
+                    money(l.amount()));
         }
         for (CardTransactions.Total t : out.totals()) {
-            line(csv, "", "", "Total — " + t.label() + " (" + t.count() + ")", "", "", "", money(t.amount()));
+            line(csv, "", "", "Total — " + t.label() + " (" + t.count() + ")", "", "", "", "", money(t.amount()));
         }
-        line(csv, "", "", "Total do período", "", "", "", money(out.total()));
+        line(csv, "", "", "Total do período", "", "", "", "", money(out.total()));
         return csv.toString();
     }
 

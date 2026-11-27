@@ -130,11 +130,11 @@ class CardTransactionsIntegrationTest extends AbstractIntegrationTest {
         CardTransactions.Output out = cardTransactions.list(s.cardId(), "2034-01", "2034-01", "PURCHASES", null);
 
         String csv = CardTransactionsCsv.write(out);
-        assertThat(csv).startsWith("﻿Data;Fatura;Descrição;Parcela;Cartão;Tipo;Valor (R$)\r\n")
-                .contains("05/01/2034;01/2034;Mercado;;;Compras;600,00\r\n")
-                .contains("05/01/2034;01/2034;Notebook (1/3);1/3;;Compras;100,00\r\n")
-                .contains(";Virtual: Streaming;Compras;50,00\r\n")
-                .endsWith(";;Total do período;;;;750,00\r\n");
+        assertThat(csv).startsWith("﻿Data;Fatura;Descrição;Parcela;Cartão;Tipo;Categoria;Valor (R$)\r\n")
+                .contains("05/01/2034;01/2034;Mercado;;;Compras;Outros;600,00\r\n")
+                .contains("05/01/2034;01/2034;Notebook (1/3);1/3;;Compras;Outros;100,00\r\n")
+                .contains(";Virtual: Streaming;Compras;Outros;50,00\r\n")
+                .endsWith(";;Total do período;;;;;750,00\r\n");
         assertThat(CardTransactionsCsv.fileName(out, "csv")).isEqualTo("extrato-cartao-kage-2034-01-a-2034-01.csv");
 
         String ofx = CardTransactionsOfx.write(out);

@@ -113,7 +113,8 @@ public class CardController {
         LocalDateTime purchasedAt = request.purchasedAt() != null ? request.purchasedAt() : DomainTime.now();
         RegisterPurchase.Output output = authorizePurchase.execute(new RegisterPurchase.Input(
                 id, request.purchaseId(), request.description(), request.amount(), purchasedAt, request.installments(),
-                request.virtualCardNumber(), request.channel(), request.country(), request.currency()));
+                request.virtualCardNumber(), request.channel(), request.country(), request.currency(),
+                request.mcc()));
         return ResponseEntity.status(HttpStatus.CREATED).body(output);
     }
 
@@ -399,6 +400,6 @@ public class CardController {
      */
     public record PurchaseRequest(UUID purchaseId, String description, BigDecimal amount, LocalDateTime purchasedAt,
                                   Integer installments, String virtualCardNumber, String channel, String country,
-                                  String currency) {
+                                  String currency, String mcc) {
     }
 }

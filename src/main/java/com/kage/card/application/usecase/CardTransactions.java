@@ -5,7 +5,11 @@ import com.kage.card.domain.entity.CardPlastic;
 import com.kage.card.domain.entity.Invoice;
 import com.kage.card.domain.entity.VirtualCard;
 import com.kage.card.domain.enums.InvoiceItemKind;
+import com.kage.card.domain.enums.PurchaseCategory;
 import com.kage.card.domain.repository.CardPlasticRepository;
+import com.kage.card.domain.repository.DisputeRepository;
+import com.kage.card.domain.repository.PurchaseCategoryRepository;
+import com.kage.card.domain.service.MerchantCategoryPolicy;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
 import com.kage.card.domain.repository.VirtualCardRepository;
@@ -75,27 +79,36 @@ public class CardTransactions {
      * @param amount         cobrança positiva, crédito negativo
      * @param installment    "2/10" na compra parcelada; nulo à vista
      * @param virtualCard    apelido do cartão virtual da compra; nulo = físico (ou não é compra)
+     * @param category       categoria da compra (também no crédito da contestação dela); nulo nos
+     *                       encargos, saldos e créditos que não são de compra
      */
     public record Line(UUID id, LocalDateTime date, String invoiceMonth, String description, BigDecimal amount,
-                       String kind, String group, String installment, UUID virtualCardId, String virtualCard) {}
+                       String kind, String group, String installment, UUID virtualCardId, String virtualCard,
+                       String category, String categoryLabel) {}
 
     public record Total(String group, String label, int count, BigDecimal amount) {}
 
     /**
      * @param cardLastDigits últimos dígitos do cartão físico (o OFX identifica a conta por eles)
      * @param groups         grupos incluídos (o filtro); todos, sem filtro
+     * @param categories     categorias do filtro; nulo = sem filtro de categoria
      */
     public record Output(UUID cardId, String cardLastDigits, String fromMonth, String toMonth, List<String> groups,
-                         UUID virtualCardId, List<Line> lines, List<Total> totals, BigDecimal total,
+                         UUID virtualCardId, List<String> categories, List<Line> lines, List<Total> totals, BigDecimal total,
                          LocalDateTime generatedAt) {}
 
     private final CardRepository cardRepository;
     private final InvoiceRepository invoiceRepository;
     private final VirtualCardRepository virtualCards;
     private final CardPlasticRepository plastics;
+    private final PurchaseCategoryRepository categories;
+    private final DisputeRepository disputes;
 
     public CardTransactions(CardRepository cardRepository, InvoiceRepository invoiceRepository,
-                            VirtualCardRepository virtualCards, CardPlasticRepository plastics) {
+                            VirtualCardRepository virtualCards, CardPlasticRepository plastics,
+                            PurchaseCategoryRepository categories, DisputeRepository disputes) {
+        this.categories = categories;
+        this.disputes = disputes;
         this.cardRepository = cardRepository;
         this.invoiceRepository = invoiceRepository;
         this.virtualCards = virtualCards;
@@ -107,6 +120,12 @@ public class CardTransactions {
      * @param virtualCardId só as compras feitas com este cartão virtual
      */
     public Output list(UUID cardId, String fromMonth, String toMonth, String groups, UUID virtualCardId) {
+        return list(cardId, fromMonth, toMonth, groups, virtualCardId, null);
+    }
+
+    /** @param categoryFilter "SUPERMARKET,RESTAURANTS": só as linhas dessas categorias; nulo = todas as linhas */
+    public Output list(UUID cardId, String fromMonth, String toMonth, String groups, UUID virtualCardId,
+                       String categoryFilter) {
         Card card = cardRepository.findById(cardId).orElseThrow(() -> new NotFoundException("Cartão não encontrado"));
         List<Invoice> invoices = invoiceRepository.findByCardId(cardId);
         Map<UUID, String> nicknames = virtualCards.findByCardId(cardId).stream()
@@ -122,11 +141,14 @@ public class CardTransactions {
             throw new ValidationException("Período de até " + MAX_MONTHS + " faturas");
         }
         List<Group> chosen = parseGroups(groups);
+        List<String> chosenCategories = parseCategories(categoryFilter);
+        PurchaseCategoryLookup lookup = PurchaseCategoryLookup.of(cardId, categories, disputes);
 
         List<Line> lines = invoices.stream()
                 .filter(i -> !i.getReferenceMonth().isBefore(from) && !i.getReferenceMonth().isAfter(to))
-                .flatMap(i -> i.getItems().stream().map(item -> line(i, item, nicknames)))
+                .flatMap(i -> i.getItems().stream().map(item -> line(i, item, nicknames, lookup.categoryOf(item))))
                 .filter(l -> chosen.contains(Group.valueOf(l.group())))
+                .filter(l -> chosenCategories == null || chosenCategories.contains(l.category()))
                 .filter(l -> virtualCardId == null || virtualCardId.equals(l.virtualCardId()))
                 .sorted(Comparator.comparing(Line::date).thenComparing(Line::invoiceMonth).thenComparing(Line::description))
                 .toList();
@@ -140,20 +162,21 @@ public class CardTransactions {
                 .or(() -> plastics.findByCardId(cardId).stream().findFirst())
                 .map(CardPlastic::lastDigits).orElse(null);
         return new Output(card.getId(), lastDigits, from.toString(), to.toString(), chosen.stream().map(Enum::name).toList(),
-                virtualCardId, lines, totals, sum(lines), DomainTime.now());
+                virtualCardId, chosenCategories, lines, totals, sum(lines), DomainTime.now());
     }
 
-    private static Line line(Invoice invoice, InvoiceItem item, Map<UUID, String> nicknames) {
+    private static Line line(Invoice invoice, InvoiceItem item, Map<UUID, String> nicknames, PurchaseCategory category) {
         BigDecimal amount = item.isCredit() ? item.amount().amount().negate() : item.amount().amount();
         String installment = item.installmentCount() != null && item.installmentCount() > 1
                 ? item.installmentNumber() + "/" + item.installmentCount() : null;
         return new Line(item.id(), item.purchasedAt(), invoice.getReferenceMonth().toString(), item.description(), amount,
                 item.kind().name(), Group.of(item.kind()).name(), installment, item.virtualCardId(),
-                item.virtualCardId() == null ? null : nicknames.get(item.virtualCardId()));
+                item.virtualCardId() == null ? null : nicknames.get(item.virtualCardId()),
+                category == null ? null : category.name(), category == null ? null : category.label());
     }
 
     /** A fatura atual (a aberta mais antiga) ou, se não há aberta, a mais recente. */
-    private static YearMonth currentMonth(List<Invoice> invoices) {
+    static YearMonth currentMonth(List<Invoice> invoices) {
         return invoices.stream()
                 .filter(i -> i.getStatus() == com.kage.card.domain.enums.InvoiceStatus.OPEN)
                 .map(Invoice::getReferenceMonth).min(Comparator.naturalOrder())
@@ -169,6 +192,12 @@ public class CardTransactions {
         } catch (IllegalArgumentException e) {
             throw new ValidationException("Tipo inválido: use PURCHASES, FEES, CREDITS ou BALANCES");
         }
+    }
+
+    private static List<String> parseCategories(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        return Arrays.stream(raw.split(",")).map(MerchantCategoryPolicy::parse).distinct().sorted().map(Enum::name)
+                .toList();
     }
 
     private static BigDecimal sum(List<Line> lines) {
