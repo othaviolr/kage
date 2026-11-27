@@ -29,8 +29,8 @@ public class Invoice {
     private final UUID id;
     private final UUID cardId;
     private final YearMonth referenceMonth;
-    private final LocalDate closingDate;
-    private final LocalDate dueDate;
+    private LocalDate closingDate;
+    private LocalDate dueDate;
     private InvoiceStatus status;
     private final List<InvoiceItem> items;
     private Money paidAmount;
@@ -79,6 +79,26 @@ public class Invoice {
     /** Vencimento da fatura do mês: no mesmo mês se o dia vem depois do fechamento; senão, no seguinte. */
     public static LocalDate dueDateOf(YearMonth referenceMonth, int closingDay, int dueDay) {
         return dueDay > closingDay ? referenceMonth.atDay(dueDay) : referenceMonth.plusMonths(1).atDay(dueDay);
+    }
+
+    /**
+     * Troca do dia de vencimento: a fatura aberta passa a fechar e vencer nos dias novos. Só fatura
+     * aberta — a fechada já tem o vencimento comunicado ao cliente.
+     */
+    public void reschedule(int closingDay, int dueDay) {
+        if (this.status != InvoiceStatus.OPEN) throw new BusinessRuleException("Só fatura aberta muda de data");
+        this.closingDate = referenceMonth.atDay(closingDay);
+        this.dueDate = dueDateOf(referenceMonth, closingDay, dueDay);
+        this.updatedAt = DomainTime.now();
+    }
+
+    /**
+     * Uma compra feita em {@code date} pode entrar aqui: a fatura está aberta e ainda não passou do
+     * fechamento. Normalmente o mês já garante isso; na troca de vencimento, a fatura atual mantém o
+     * fechamento antigo enquanto o cartão já tem o novo.
+     */
+    public boolean acceptsPurchaseOn(LocalDate date) {
+        return this.status == InvoiceStatus.OPEN && !date.isAfter(this.closingDate);
     }
 
     public static YearMonth referenceMonthFor(LocalDate purchaseDate, int closingDay) {
