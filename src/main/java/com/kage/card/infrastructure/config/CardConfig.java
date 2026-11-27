@@ -275,9 +275,9 @@ public class CardConfig {
     @Bean
     public DisputePurchase disputePurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
                                            DisputeRepository disputeRepository, CardEventPublisher cardEventPublisher,
-                                           VirtualCards virtualCards, Cashbacks cashbacks) {
+                                           VirtualCards virtualCards, Cashbacks cashbacks, JdbcTemplate jdbcTemplate) {
         return new DisputePurchase(cardRepository, invoiceRepository, disputeRepository, cardEventPublisher, virtualCards,
-                cashbacks);
+                cashbacks, new JdbcInternationalPurchaseRepository(jdbcTemplate));
     }
 
     @Bean

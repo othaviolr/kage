@@ -10,8 +10,10 @@ import com.kage.card.domain.enums.InvoiceItemKind;
 import com.kage.card.domain.enums.InvoiceStatus;
 import com.kage.card.domain.repository.CardRepository;
 import com.kage.card.domain.repository.DisputeRepository;
+import com.kage.card.domain.repository.InternationalPurchaseRepository;
 import com.kage.card.domain.repository.InvoiceRepository;
 import com.kage.card.domain.service.DisputeInterestPolicy;
+import com.kage.card.domain.service.InternationalPurchasePolicy;
 import com.kage.card.domain.valueobject.InvoiceItem;
 import com.kage.shared.domain.DomainTime;
 import com.kage.shared.domain.exception.BusinessRuleException;
@@ -71,6 +73,7 @@ public class DisputePurchase {
     private final CardEventPublisher eventPublisher;
     private final VirtualCards virtualCards;
     private final Cashbacks cashbacks;
+    private final InternationalPurchaseRepository internationalPurchases;
 
     public DisputePurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
                            DisputeRepository disputeRepository, CardEventPublisher eventPublisher,
@@ -81,6 +84,14 @@ public class DisputePurchase {
     public DisputePurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
                            DisputeRepository disputeRepository, CardEventPublisher eventPublisher,
                            VirtualCards virtualCards, Cashbacks cashbacks) {
+        this(cardRepository, invoiceRepository, disputeRepository, eventPublisher, virtualCards, cashbacks, null);
+    }
+
+    public DisputePurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                           DisputeRepository disputeRepository, CardEventPublisher eventPublisher,
+                           VirtualCards virtualCards, Cashbacks cashbacks,
+                           InternationalPurchaseRepository internationalPurchases) {
+        this.internationalPurchases = internationalPurchases;
         this.cardRepository = cardRepository;
         this.invoiceRepository = invoiceRepository;
         this.disputeRepository = disputeRepository;
@@ -137,6 +148,25 @@ public class DisputePurchase {
         Money amount = removed.add(billed);
         String description = sample.description().replaceFirst("\\s*\\(\\d+/\\d+\\)$", "");
 
+        // compra internacional: o IOF dela é suspenso junto (sai da fatura aberta ou vira crédito próprio)
+        UUID iofLine = InvoiceItem.chargeId(InvoiceItemKind.IOF, input.purchaseId());
+        Money iofRemoved = Money.ZERO;
+        Money iofBilled = Money.ZERO;
+        for (Invoice invoice : invoices) {
+            InvoiceItem iof = invoice.getItems().stream()
+                    .filter(i -> i.kind() == InvoiceItemKind.IOF && i.purchaseId().equals(iofLine))
+                    .findFirst().orElse(null);
+            if (iof == null) continue;
+            if (invoice.getStatus() == InvoiceStatus.OPEN) {
+                invoice.removeCharge(iofLine);
+                iofRemoved = iofRemoved.add(iof.amount());
+                touched.add(invoice);
+            } else {
+                iofBilled = iofBilled.add(iof.amount());
+            }
+        }
+        removed = removed.add(iofRemoved); // o limite volta com o IOF
+
         // 2. o que já foi cobrado (fatura fechada, paga ou levada adiante) volta como crédito na atual
         Invoice creditInvoice = null;
         if (!billed.isZero()) {
@@ -144,6 +174,12 @@ public class DisputePurchase {
             creditInvoice = currentInvoice(card, invoices);
             creditInvoice.addCredit(InvoiceItemKind.DISPUTE_CREDIT, disputeKey,
                     "Crédito de contestação: " + description, billed, now);
+            touched.add(creditInvoice);
+        }
+        if (!iofBilled.isZero()) {
+            if (creditInvoice == null) creditInvoice = currentInvoice(card, invoices);
+            creditInvoice.addCredit(InvoiceItemKind.DISPUTE_CREDIT, iofCreditKey(card.getId(), input.purchaseId()),
+                    "Crédito de contestação: IOF de " + description, iofBilled, now);
             touched.add(creditInvoice);
         }
 
@@ -208,8 +244,14 @@ public class DisputePurchase {
             resolved = dispute.reject(note, current.getReferenceMonth().toString());
             current.addCharge(InvoiceItemKind.DISPUTE_REVERSAL, dispute.id(),
                     "Contestação negada: " + dispute.description(), dispute.amount(), DomainTime.now());
+            // compra internacional: o IOF, suspenso na abertura, volta a ser cobrado
+            Money iof = internationalPurchases == null ? Money.ZERO : internationalPurchases.find(dispute.purchaseId())
+                    .map(q -> Money.of(q.iof())).orElse(Money.ZERO);
+            current.addCharge(InvoiceItemKind.IOF, dispute.id(), "IOF da compra internacional ("
+                    + InternationalPurchasePolicy.IOF_PERCENT.replace('.', ',') + "%): " + dispute.description()
+                    + " (contestação negada)", iof, DomainTime.now());
             invoiceRepository.save(current);
-            card.reinstateCharge(dispute.amount());
+            card.reinstateCharge(dispute.amount().add(iof));
             cardRepository.save(card);
         }
         if (!disputeRepository.resolve(resolved)) throw new ConflictException("Contestação já foi resolvida");
@@ -272,6 +314,11 @@ public class DisputePurchase {
     /** Id estável do crédito: a mesma compra não gera dois créditos no mesmo cartão. */
     private static UUID creditKey(UUID cardId, UUID purchaseId) {
         return UUID.nameUUIDFromBytes(("DISPUTE:" + cardId + ":" + purchaseId).getBytes());
+    }
+
+    /** Crédito do IOF da compra internacional contestada: uma linha própria, ao lado da compra. */
+    private static UUID iofCreditKey(UUID cardId, UUID purchaseId) {
+        return UUID.nameUUIDFromBytes(("DISPUTE_IOF:" + cardId + ":" + purchaseId).getBytes());
     }
 
     private static DisputeReason parseReason(String reason) {

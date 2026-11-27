@@ -149,9 +149,9 @@ public class RegisterPurchase {
         PurchaseChannel channel = channelOf(input.channel(), virtualCardId != null);
         String currency = InternationalPurchasePolicy.currencyOf(input.currency());
         int installments = input.installments() == null ? 1 : input.installments();
-        if (currency != null && installments != 1) throw new ValidationException("Compra internacional é à vista");
         // moeda estrangeira é compra internacional, mesmo sem o país informado
         boolean abroad = currency != null || !"BR".equals(countryOf(input.country()));
+        if (abroad && installments != 1) throw new ValidationException("Compra internacional é à vista");
         if (purchaseControls != null && card.getStatus() == CardStatus.ACTIVE) {
             purchaseControls.authorize(card.getId(), channel, abroad, virtualCardId != null);
         }
@@ -162,6 +162,9 @@ public class RegisterPurchase {
             if (exchangeRates == null) throw new IllegalStateException("Câmbio não configurado");
             fx = InternationalPurchasePolicy.quote(currency, input.amount(),
                     exchangeRates.sellingRate(currency, input.purchasedAt().toLocalDate()));
+        } else if (abroad) {
+            // em reais num estabelecimento de fora: sem conversão, mas com o IOF da operação internacional
+            fx = InternationalPurchasePolicy.inReais(input.amount(), input.purchasedAt().toLocalDate());
         }
         Money total = fx == null ? new Money(input.amount()) : Money.of(fx.brl());
         Money iof = fx == null ? Money.ZERO : Money.of(fx.iof());
@@ -179,7 +182,7 @@ public class RegisterPurchase {
             String description = installments == 1
                     ? input.description()
                     : input.description() + " (" + number + "/" + installments + ")";
-            if (fx != null) description = input.description() + " (" + foreign(fx) + ")";
+            if (currency != null) description = input.description() + " (" + foreign(fx) + ")";
             invoice.addInstallment(input.purchaseId(), description, parts.get(number - 1), input.purchasedAt(),
                     number, installments, virtualCardId);
             if (fx != null) {
