@@ -114,8 +114,15 @@ public class OutboxCardEventPublisher implements CardEventPublisher {
     @Transactional
     public void publishPurchaseDeclined(UUID cardId, String description, Money amount, String reason,
                                         String virtualCardNickname) {
+        publishPurchaseDeclined(cardId, description, amount, reason, virtualCardNickname, null);
+    }
+
+    @Override
+    @Transactional
+    public void publishPurchaseDeclined(UUID cardId, String description, Money amount, String reason,
+                                        String virtualCardNickname, String currency) {
         outbox.publish(CardEvents.EXCHANGE, CardEvents.PURCHASE_DECLINED, new CardEvents.PurchaseDeclinedEvent(
-                cardId, description, amount.amount(), reason, virtualCardNickname, DomainTime.instant()));
+                cardId, description, amount.amount(), reason, virtualCardNickname, currency, DomainTime.instant()));
     }
 
     @Override

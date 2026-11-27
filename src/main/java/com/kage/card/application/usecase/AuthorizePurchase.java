@@ -34,8 +34,11 @@ public class AuthorizePurchase {
                     ? null
                     : virtualCards.nicknameOf(input.cardId(), input.virtualCardNumber()).orElse(null);
             BigDecimal amount = input.amount() == null ? BigDecimal.ZERO : input.amount();
+            // compra internacional: o valor que chegou está na moeda dela (a conversão pode nem ter acontecido)
+            String currency = input.currency() == null || "BRL".equalsIgnoreCase(input.currency().trim())
+                    ? null : input.currency().trim().toUpperCase(java.util.Locale.ROOT);
             eventPublisher.publishPurchaseDeclined(input.cardId(), input.description(), Money.of(amount),
-                    declined.getMessage(), nickname);
+                    declined.getMessage(), nickname, currency);
             throw declined;
         }
     }

@@ -81,6 +81,11 @@ kage:
     cdi-source: ${KAGE_SAVINGS_CDI_SOURCE:fixed}
     # fração ao ano (0.1415 = 14,15% a.a.), usada pela fonte fixa
     annual-cdi: ${KAGE_ANNUAL_CDI:0.1415}
+  fx:
+    # cotação da compra internacional: "bcb" = PTAX de venda do Banco Central (API Olinda, só o passado);
+    # "fixed" = fixed-rates (determinístico; simula datas futuras)
+    source: ${KAGE_FX_SOURCE:fixed}
+    fixed-rates: ${KAGE_FX_FIXED_RATES:USD=5.50,EUR=6.00,GBP=7.00}
 
 springdoc:
   api-docs:

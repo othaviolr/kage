@@ -54,8 +54,9 @@ public final class InboundEvents {
                                    BigDecimal installmentAmount, BigDecimal availableLimit, String virtualCardNickname) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    /** {@code currency} ausente (evento antigo, compra em reais) = reais. */
     public record PurchaseDeclined(UUID cardId, String description, BigDecimal amount, String reason,
-                                   String virtualCardNickname) {}
+                                   String virtualCardNickname, String currency) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record LoanContracted(UUID loanId, UUID accountId, BigDecimal released, int installments,

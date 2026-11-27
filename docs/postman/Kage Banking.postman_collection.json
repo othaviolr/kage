@@ -27908,10 +27908,576 @@
       ]
     },
     {
-      "name": "34. Estorno de juros na contestação",
+      "name": "34. Compra internacional",
       "item": [
         {
           "name": "34.1.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Compra Internacional\",\n  \"cpf\": \"{{ciCpf}}\",\n  \"email\": \"{{ciEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('ciCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('ciEmail', `kage.ci+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ciCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.1.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{ciCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{ciCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.1.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{ciCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ciAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.2 Emitir cartão",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{ciCustomerId}}\",\n  \"accountId\": \"{{ciAccountId}}\",\n  \"creditLimit\": 5000,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ciCardId', pm.response.json().cardId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.3 Quanto custam USD 100 hoje",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/international-quote?currency=USD&amount=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "international-quote"
+              ],
+              "query": [
+                {
+                  "key": "currency",
+                  "value": "USD"
+                },
+                {
+                  "key": "amount",
+                  "value": "100"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const q = pm.response.json();",
+                  "pm.test('PTAX 5,50 + 4% de spread = 5,72; R$ 572 + R$ 20,02 de IOF (3,5%)', () => {",
+                  "  pm.expect(q.ptax).to.eql(5.5); pm.expect(q.rate).to.eql(5.72); pm.expect(q.brl).to.eql(572);",
+                  "  pm.expect(q.iof).to.eql(20.02); pm.expect(q.total).to.eql(592.02);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.4 Cotação em reais -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/international-quote?currency=BRL&amount=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "international-quote"
+              ],
+              "query": [
+                {
+                  "key": "currency",
+                  "value": "BRL"
+                },
+                {
+                  "key": "amount",
+                  "value": "100"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.5 Amazon: USD 100",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{ciCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{ciCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Amazon\",\n  \"amount\": 100,\n  \"purchasedAt\": \"2036-12-05T10:00:00\",\n  \"channel\": \"ONLINE\",\n  \"country\": \"US\",\n  \"currency\": \"USD\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const o = pm.response.json();",
+                  "pm.test('Convertida: R$ 572,00 + R$ 20,02 de IOF', () => { pm.expect(o.international.brl).to.eql(572); pm.expect(o.international.iof).to.eql(20.02); pm.expect(o.installmentAmount).to.eql(572); });",
+                  "pm.test('Limite consumido com o IOF', () => pm.expect(o.availableLimit).to.eql(4407.98));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.6 Fatura de dezembro: compra e IOF em linhas separadas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{ciCardId}}/invoices/2036-12",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{ciCardId}}",
+                "invoices",
+                "2036-12"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json().items;",
+                  "pm.test('Amazon (USD 100,00 a R$ 5,7200): 572,00', () => pm.expect(items.some(i => i.kind === 'PURCHASE' && i.description === 'Amazon (USD 100,00 a R$ 5,7200)' && i.amount === 572)).to.eql(true));",
+                  "pm.test('IOF: 20,02', () => pm.expect(items.some(i => i.kind === 'IOF' && i.description === 'IOF da compra internacional (3,5%): Amazon' && i.amount === 20.02)).to.eql(true));",
+                  "pm.test('Total 592,02', () => pm.expect(pm.response.json().total).to.eql(592.02));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.7 Parcelada -> 400 (internacional é à vista)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{ciCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{ciCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Loja\",\n  \"amount\": 300,\n  \"purchasedAt\": \"2036-12-05T10:00:00\",\n  \"installments\": 3,\n  \"currency\": \"USD\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.8 Moeda não aceita -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{ciCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{ciCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Tóquio\",\n  \"amount\": 1000,\n  \"purchasedAt\": \"2036-12-05T10:00:00\",\n  \"currency\": \"JPY\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.9 Desligar compras internacionais",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{ciCardId}}/purchase-controls",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{ciCardId}}",
+                "purchase-controls"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"international\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.10 Hotel: EUR 80 -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{ciCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{ciCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Hotel\",\n  \"amount\": 80,\n  \"purchasedAt\": \"2036-12-06T10:00:00\",\n  \"currency\": \"EUR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Moeda estrangeira é internacional, mesmo sem país', () => pm.expect(JSON.stringify(pm.response.json())).to.include('Compras internacionais estão desligadas'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34.11 Aviso: a recusa mostra a moeda da compra",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{ciCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{ciCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const n = pm.response.json().notifications.find(x => x.type === 'CARD_PURCHASE_DECLINED');",
+                  "pm.test('A compra de EUR 80,00 em Hotel foi recusada', () => { pm.expect(n, 'chega pelo RabbitMQ; se falhar, rode de novo').to.exist; pm.expect(n.message).to.match(/^A compra de EUR 80,00 em Hotel foi recusada/); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "35. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "35.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -27968,7 +28534,7 @@
           ]
         },
         {
-          "name": "34.1.2 Aprovar KYC",
+          "name": "35.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -27999,7 +28565,7 @@
           ]
         },
         {
-          "name": "34.1.3 Abrir conta",
+          "name": "35.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -28042,7 +28608,7 @@
           ]
         },
         {
-          "name": "34.1.4 Depositar 3000",
+          "name": "35.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -28086,7 +28652,7 @@
           ]
         },
         {
-          "name": "34.2 Emitir cartão",
+          "name": "35.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -28129,7 +28695,7 @@
           ]
         },
         {
-          "name": "34.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "35.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -28182,7 +28748,7 @@
           ]
         },
         {
-          "name": "34.4 Outras compras: 600",
+          "name": "35.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -28226,7 +28792,7 @@
           ]
         },
         {
-          "name": "34.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "35.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -28262,7 +28828,7 @@
           ]
         },
         {
-          "name": "34.6 Paga só 400 de 1000",
+          "name": "35.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -28309,7 +28875,7 @@
           ]
         },
         {
-          "name": "34.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "35.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -28345,7 +28911,7 @@
           ]
         },
         {
-          "name": "34.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "35.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -28378,7 +28944,7 @@
           ]
         },
         {
-          "name": "34.9 Contestar a compra de 400",
+          "name": "35.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -28426,7 +28992,7 @@
           ]
         },
         {
-          "name": "34.10 Procedente: devolve os juros que a compra gerou",
+          "name": "35.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -28475,7 +29041,7 @@
           ]
         },
         {
-          "name": "34.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "35.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],

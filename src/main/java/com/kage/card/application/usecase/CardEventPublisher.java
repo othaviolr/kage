@@ -62,6 +62,15 @@ public interface CardEventPublisher {
     void publishPurchaseDeclined(UUID cardId, String description, Money amount, String reason, String virtualCardNickname);
 
     /**
+     * Como {@link #publishPurchaseDeclined(UUID, String, Money, String, String)}, para compra em moeda
+     * estrangeira: {@code amount} está em {@code currency} (nulo = reais).
+     */
+    default void publishPurchaseDeclined(UUID cardId, String description, Money amount, String reason,
+                                         String virtualCardNickname, String currency) {
+        publishPurchaseDeclined(cardId, description, amount, reason, virtualCardNickname);
+    }
+
+    /**
      * Cashback creditado na fatura seguinte ou na conta ({@code destination}: INVOICE ou ACCOUNT).
      * Chamar dentro da transação do pagamento.
      */
