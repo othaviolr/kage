@@ -26411,10 +26411,770 @@
       ]
     },
     {
-      "name": "32. Estorno de juros na contestação",
+      "name": "32. Fatura por PIX ou boleto",
       "item": [
         {
           "name": "32.1.1 Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Fatura PIX Boleto\",\n  \"cpf\": \"{{fpCpf}}\",\n  \"email\": \"{{fpEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('fpCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('fpEmail', `kage.fp+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('fpCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.1.2 Aprovar KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{fpCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{fpCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.1.3 Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{fpCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('fpAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.2 Emitir cartão",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{fpCustomerId}}\",\n  \"accountId\": \"{{fpAccountId}}\",\n  \"creditLimit\": 5000,\n  \"closingDay\": 10,\n  \"dueDay\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('fpCardId', pm.response.json().cardId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.3 Compra de 1000 (novembro/2036)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{fpCardId}}/purchases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{fpCardId}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseId\": \"{{$guid}}\",\n  \"description\": \"Mercado\",\n  \"amount\": 1000,\n  \"purchasedAt\": \"2036-11-05T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.4 Fechar 2036-11 (backoffice)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{fpCardId}}/invoices/2036-11/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{fpCardId}}",
+                "invoices",
+                "2036-11",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.5 PIX copia e cola do valor inteiro",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{fpCardId}}/invoices/2036-11/charges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{fpCardId}}",
+                "invoices",
+                "2036-11",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"PIX\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const p = pm.response.json();",
+                  "pm.collectionVariables.set('fpPixId', p.id);",
+                  "pm.test('Pendente, 1000, vale 24 horas', () => { pm.expect(p.status).to.eql('PENDING'); pm.expect(p.amount).to.eql(1000); pm.expect(p.method).to.eql('PIX'); });",
+                  "pm.test('BR Code: uso único, valor e txid', () => {",
+                  "  pm.expect(p.pixCopyPaste).to.match(/^000201010212/); pm.expect(p.pixCopyPaste).to.include('54071000.00');",
+                  "  pm.expect(p.pixCopyPaste).to.include(p.reference); pm.expect(p.pixCopyPaste).to.match(/6304[0-9A-F]{4}$/);",
+                  "  pm.expect(p.barcode).to.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.6 Gerar o código não paga nada: limite ainda em uso",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{fpCardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{fpCardId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Disponível: 4000', () => pm.expect(pm.response.json().availableLimit).to.eql(4000));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.7 Boleto de 300",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{fpCardId}}/invoices/2036-11/charges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{fpCardId}}",
+                "invoices",
+                "2036-11",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"BOLETO\",\n  \"amount\": 300\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('fpBoleto1', b.id);",
+                  "pm.test('Código de barras FEBRABAN (banco 999) e vale até o vencimento da fatura', () => {",
+                  "  pm.expect(b.barcode).to.have.length(44); pm.expect(b.barcode.substring(0, 4)).to.eql('9999');",
+                  "  pm.expect(b.digitableLine).to.be.a('string'); pm.expect(b.expiresAt).to.eql('2036-11-20T23:59:59');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.8 Outro boleto, de 400 (substitui o de 300)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{fpCardId}}/invoices/2036-11/charges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{fpCardId}}",
+                "invoices",
+                "2036-11",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"BOLETO\",\n  \"amount\": 400\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('fpBoleto2', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.9 Cobranças da fatura",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{fpCardId}}/invoices/2036-11/charges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{fpCardId}}",
+                "invoices",
+                "2036-11",
+                "charges"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json();",
+                  "const byId = id => list.find(x => x.id === pm.collectionVariables.get(id));",
+                  "pm.test('Três cobranças; o boleto de 300 foi cancelado', () => {",
+                  "  pm.expect(list).to.have.length(3);",
+                  "  pm.expect(byId('fpBoleto1').status).to.eql('CANCELLED'); pm.expect(byId('fpBoleto2').status).to.eql('PENDING');",
+                  "  pm.expect(byId('fpPixId').status).to.eql('PENDING');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.10 Compensar o boleto cancelado -> 422",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/invoice-charges/{{fpBoleto1}}/settle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "invoice-charges",
+                "{{fpBoleto1}}",
+                "settle"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.11 Compensação do boleto de 400 (backoffice)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/invoice-charges/{{fpBoleto2}}/settle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "invoice-charges",
+                "{{fpBoleto2}}",
+                "settle"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json();",
+                  "pm.test('Pagamento parcial: faltam 600', () => { pm.expect(s.invoiceStatus).to.eql('CLOSED'); pm.expect(s.invoiceRemaining).to.eql(600); pm.expect(s.availableLimit).to.eql(4400); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.12 O PIX de 1000 chega: paga os 600 e sobra crédito",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/invoice-charges/{{fpPixId}}/settle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "invoice-charges",
+                "{{fpPixId}}",
+                "settle"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json();",
+                  "pm.test('600 na fatura de novembro, que fica paga', () => { pm.expect(s.appliedMonth).to.eql('2036-11'); pm.expect(s.appliedAmount).to.eql(600); pm.expect(s.invoiceStatus).to.eql('PAID'); });",
+                  "pm.test('400 viram crédito na fatura de dezembro', () => { pm.expect(s.creditAmount).to.eql(400); pm.expect(s.creditMonth).to.eql('2036-12'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.13 Dezembro: crédito de 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{fpCardId}}/invoices/2036-12",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{fpCardId}}",
+                "invoices",
+                "2036-12"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Linha CREDIT_BALANCE de 400', () => pm.expect(pm.response.json().items.some(i => i.kind === 'CREDIT_BALANCE' && i.amount === 400)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.14 Limite todo de volta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{fpCardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{fpCardId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Disponível: 5000', () => pm.expect(pm.response.json().availableLimit).to.eql(5000));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.15 O mesmo PIX de novo -> 422",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/invoice-charges/{{fpPixId}}/settle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "invoice-charges",
+                "{{fpPixId}}",
+                "settle"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.16 Fatura aberta não gera cobrança -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{fpCardId}}/invoices/2036-12/charges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{fpCardId}}",
+                "invoices",
+                "2036-12",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"PIX\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32.17 Forma de pagamento inválida -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{fpCardId}}/invoices/2036-11/charges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{fpCardId}}",
+                "invoices",
+                "2036-11",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"TED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "33. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "33.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -26471,7 +27231,7 @@
           ]
         },
         {
-          "name": "32.1.2 Aprovar KYC",
+          "name": "33.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -26502,7 +27262,7 @@
           ]
         },
         {
-          "name": "32.1.3 Abrir conta",
+          "name": "33.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -26545,7 +27305,7 @@
           ]
         },
         {
-          "name": "32.1.4 Depositar 3000",
+          "name": "33.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -26589,7 +27349,7 @@
           ]
         },
         {
-          "name": "32.2 Emitir cartão",
+          "name": "33.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -26632,7 +27392,7 @@
           ]
         },
         {
-          "name": "32.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "33.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -26685,7 +27445,7 @@
           ]
         },
         {
-          "name": "32.4 Outras compras: 600",
+          "name": "33.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -26729,7 +27489,7 @@
           ]
         },
         {
-          "name": "32.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "33.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -26765,7 +27525,7 @@
           ]
         },
         {
-          "name": "32.6 Paga só 400 de 1000",
+          "name": "33.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -26812,7 +27572,7 @@
           ]
         },
         {
-          "name": "32.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "33.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -26848,7 +27608,7 @@
           ]
         },
         {
-          "name": "32.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "33.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -26881,7 +27641,7 @@
           ]
         },
         {
-          "name": "32.9 Contestar a compra de 400",
+          "name": "33.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -26929,7 +27689,7 @@
           ]
         },
         {
-          "name": "32.10 Procedente: devolve os juros que a compra gerou",
+          "name": "33.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -26978,7 +27738,7 @@
           ]
         },
         {
-          "name": "32.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "33.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],

@@ -154,6 +154,18 @@ public class CardConfig {
                 limitUsageAlerts);
     }
 
+    /**
+     * @param pixKey chave PIX do Kage que recebe os pagamentos de fatura (aleatória, como as de empresa)
+     */
+    @Bean
+    public InvoiceCharges invoiceCharges(CardRepository cardRepository, InvoiceRepository invoiceRepository,
+                                         JdbcTemplate jdbcTemplate, PayInvoice payInvoice,
+                                         @Value("${kage.boleto.bank-code:999}") String bankCode,
+                                         @Value("${kage.cards.billing-pix-key:5b1e0c6a-2f4d-4c8e-9a7b-3d2f1e0c9b8a}") String pixKey) {
+        return new InvoiceCharges(cardRepository, invoiceRepository, new JdbcInvoiceChargeRepository(jdbcTemplate),
+                payInvoice, bankCode, pixKey);
+    }
+
     @Bean
     public DueDays dueDays(CardRepository cardRepository, InvoiceRepository invoiceRepository, JdbcTemplate jdbcTemplate,
                            CardEventPublisher cardEventPublisher) {
