@@ -67,6 +67,15 @@ public interface CardEventPublisher {
      */
     void publishCashbackEarned(UUID cardId, String referenceMonth, Money amount, String destination);
 
+    /**
+     * Uso do limite atingiu uma faixa ({@code threshold}: 80 ou 100) nesta fatura. Chamar dentro da
+     * transação da compra.
+     *
+     * @param usagePercent percentual em uso agora (pode passar da faixa)
+     */
+    void publishLimitUsageAlert(UUID cardId, String referenceMonth, int threshold, int usagePercent, Money usedLimit,
+                                Money creditLimit, Money approvedLimit, Money availableLimit);
+
     /** Oferta de aumento de limite. Chamar dentro da transação da análise. */
     void publishLimitOffered(UUID cardId, UUID offerId, Money offeredLimit, LocalDateTime expiresAt);
 }

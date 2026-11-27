@@ -88,6 +88,10 @@ public final class InboundEvents {
     public record CashbackEarned(UUID cardId, String referenceMonth, BigDecimal amount, String destination) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record LimitUsageAlert(UUID cardId, String referenceMonth, int threshold, int usagePercent,
+                                  BigDecimal creditLimit, BigDecimal approvedLimit, BigDecimal availableLimit) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record LimitOffered(UUID cardId, UUID offerId, BigDecimal offeredLimit, java.time.LocalDateTime expiresAt) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

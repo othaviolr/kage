@@ -203,6 +203,12 @@ public class NotificationEventConsumer {
                 null, messageId);
     }
 
+    @RabbitListener(queues = "notification.card.limit.usage-alert.queue")
+    public void onLimitUsageAlert(InboundEvents.LimitUsageAlert e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toCardOwner(e.cardId(), NotificationType.CARD_LIMIT_USAGE_ALERT, NotificationTemplates.limitUsageAlert(
+                e.threshold(), e.usagePercent(), e.creditLimit(), e.approvedLimit(), e.availableLimit()), null, messageId);
+    }
+
     @RabbitListener(queues = "notification.card.limit.offered.queue")
     public void onLimitOffered(InboundEvents.LimitOffered e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toCardOwner(e.cardId(), NotificationType.CARD_LIMIT_OFFERED,

@@ -202,6 +202,23 @@ public final class NotificationTemplates {
                 + (toAccount ? "já caíram na sua conta." : "já estão abatendo a próxima fatura."));
     }
 
+    /**
+     * 80%: o limite está acabando. 100%: novas compras vão ser recusadas. Se o limite em uso está
+     * abaixo do aprovado, o cliente pode subir sozinho pelo app — vale lembrar.
+     */
+    public static Text limitUsageAlert(int threshold, int usagePercent, BigDecimal creditLimit, BigDecimal approvedLimit,
+                                       BigDecimal availableLimit) {
+        String raise = approvedLimit != null && approvedLimit.compareTo(creditLimit) > 0
+                ? " Se precisar, dá para subir o limite até " + money(approvedLimit) + " pelo app."
+                : "";
+        if (threshold >= 100) {
+            return new Text("Seu limite acabou", "Todo o limite de " + money(creditLimit) + " do seu cartão está em uso: "
+                    + "novas compras vão ser recusadas até você pagar a fatura ou antecipar parcelas." + raise);
+        }
+        return new Text("Você já usou " + usagePercent + "% do limite", "Restam " + money(availableLimit) + " de "
+                + money(creditLimit) + " no seu cartão." + raise);
+    }
+
     public static Text limitOffered(BigDecimal offeredLimit, java.time.LocalDateTime expiresAt) {
         return new Text("Seu limite pode aumentar", "Pelo seu histórico de pagamentos em dia, o limite do seu cartão "
                 + "pode ir para " + money(offeredLimit) + ". Aceite pelo app até "

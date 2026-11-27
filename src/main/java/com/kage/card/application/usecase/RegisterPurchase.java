@@ -49,18 +49,25 @@ public class RegisterPurchase {
     private final VirtualCards virtualCards;
     private final CardPlastics plastics;
     private final CardEventPublisher eventPublisher;
+    private final LimitUsageAlerts limitUsageAlerts;
 
     public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository) {
-        this(cardRepository, invoiceRepository, null, null, null);
+        this(cardRepository, invoiceRepository, null, null, null, null);
     }
 
     public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository, VirtualCards virtualCards,
                             CardPlastics plastics, CardEventPublisher eventPublisher) {
+        this(cardRepository, invoiceRepository, virtualCards, plastics, eventPublisher, null);
+    }
+
+    public RegisterPurchase(CardRepository cardRepository, InvoiceRepository invoiceRepository, VirtualCards virtualCards,
+                            CardPlastics plastics, CardEventPublisher eventPublisher, LimitUsageAlerts limitUsageAlerts) {
         this.cardRepository = cardRepository;
         this.invoiceRepository = invoiceRepository;
         this.virtualCards = virtualCards;
         this.plastics = plastics;
         this.eventPublisher = eventPublisher;
+        this.limitUsageAlerts = limitUsageAlerts;
     }
 
     @Transactional
@@ -116,6 +123,10 @@ public class RegisterPurchase {
         if (eventPublisher != null) {
             eventPublisher.publishPurchaseApproved(savedCard.getId(), input.purchaseId(), input.description(), total,
                     installments, parts.get(0), savedCard.availableLimit(), virtualNickname);
+        }
+        if (limitUsageAlerts != null) {
+            // "uma vez por fatura": a fatura em que a compra (ou a 1ª parcela) caiu
+            limitUsageAlerts.afterPurchase(savedCard, first.getReferenceMonth());
         }
         return toOutput(savedCard, first, input.purchaseId(), false);
     }

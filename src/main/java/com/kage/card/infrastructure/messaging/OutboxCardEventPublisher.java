@@ -90,6 +90,14 @@ public class OutboxCardEventPublisher implements CardEventPublisher {
     }
 
     @Override
+    public void publishLimitUsageAlert(UUID cardId, String referenceMonth, int threshold, int usagePercent,
+                                       Money usedLimit, Money creditLimit, Money approvedLimit, Money availableLimit) {
+        outbox.publish(CardEvents.EXCHANGE, CardEvents.LIMIT_USAGE_ALERT, new CardEvents.LimitUsageAlertEvent(
+                cardId, referenceMonth, threshold, usagePercent, usedLimit.amount(), creditLimit.amount(),
+                approvedLimit.amount(), availableLimit.amount(), DomainTime.instant()));
+    }
+
+    @Override
     public void publishLimitOffered(UUID cardId, UUID offerId, Money offeredLimit, java.time.LocalDateTime expiresAt) {
         outbox.publish(CardEvents.EXCHANGE, CardEvents.LIMIT_OFFERED, new CardEvents.LimitOfferedEvent(
                 cardId, offerId, offeredLimit.amount(), expiresAt, DomainTime.instant()));
