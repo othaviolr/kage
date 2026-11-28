@@ -136,6 +136,26 @@ class PixBrCodeTest {
                 .isInstanceOf(ValidationException.class).hasMessage(PixBrCode.INVALID);
     }
 
+    @Test
+    void mensagemParaQuemPaga_idaEVolta_semAcento() {
+        String code = PixBrCode.of("maria@kage.com", null, "Maria", "Rio", "KG1", false, "Pão de sábado");
+        PixBrCode.Parsed p = PixBrCode.parse(code);
+        assertThat(p.info()).isEqualTo("Pao de sabado");
+        assertThat(p.amount()).isNull();
+        assertThat(PixBrCode.of("maria@kage.com", null, "Maria", "Rio", "KG1", false, "  "))
+                .isEqualTo(PixBrCode.of("maria@kage.com", null, "Maria", "Rio", "KG1", false));
+    }
+
+    @Test
+    void mensagemCabeNoQueSobraDaContaDoRecebedor() {
+        String key = "123e4567-e12b-12d1-a456-426655440000"; // 36
+        int room = PixBrCode.maxInfoLength(key);
+        assertThat(room).isEqualTo(99 - 18 - 4 - 36 - 4);
+        assertThat(PixBrCode.parse(PixBrCode.of(key, null, "A", "B", null, false, "x".repeat(room))).info()).hasSize(room);
+        assertThatThrownBy(() -> PixBrCode.of(key, null, "A", "B", null, false, "x".repeat(room + 1)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
     private static String withCrc(String payload) {
         return payload + "6304" + PixBrCode.crc16(payload + "6304");
     }

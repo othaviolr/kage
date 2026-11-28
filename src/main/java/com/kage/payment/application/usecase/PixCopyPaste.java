@@ -4,6 +4,7 @@ import com.kage.payment.domain.entity.PixKey;
 import com.kage.payment.domain.enums.PixKeyStatus;
 import com.kage.payment.domain.repository.PixBillingPaymentRepository;
 import com.kage.payment.domain.repository.PixBillingPaymentRepository.Payment;
+import com.kage.payment.domain.repository.PixChargeRepository;
 import com.kage.payment.domain.repository.PixKeyRepository;
 import com.kage.payment.domain.repository.PixTransactionRepository;
 import com.kage.payment.domain.service.AccountHolderDirectory;
@@ -38,6 +39,9 @@ import java.util.UUID;
  *       fatura vão na mesma transação, sem esperar a liquidação ({@link PixBillingGateway}). O valor é o
  *       da cobrança, ela vale até expirar e é paga uma vez só. Conta no limite de PIX da conta.</li>
  * </ul>
+ *
+ * Se o código é uma cobrança gerada no Kage ({@link PixCharges}), o pagamento fica registrado nela, e a
+ * cobrança cancelada, a de uso único já paga ou o código alterado não pagam.
  *
  * Chave de outro banco ainda não dá para pagar: o Kage só envia PIX entre contas Kage.
  */
@@ -74,11 +78,13 @@ public class PixCopyPaste {
     private final PixAccountDebit accountDebit;
     private final PixTransactionRepository transactions;
     private final Clock clock;
+    private final PixCharges pixCharges;
 
     public PixCopyPaste(PixKeyRepository pixKeys, AccountHolderDirectory holders, SendPix sendPix,
                         PixBillingGateway billing, PixBillingPaymentRepository billingPayments,
                         AccountValidationService accountValidation, PixAccountDebit accountDebit,
-                        PixTransactionRepository transactions, Clock clock) {
+                        PixTransactionRepository transactions, Clock clock, PixCharges pixCharges) {
+        this.pixCharges = pixCharges;
         this.pixKeys = pixKeys;
         this.holders = holders;
         this.sendPix = sendPix;
@@ -105,6 +111,10 @@ public class PixCopyPaste {
         Optional<PixKey> key = pixKeys.findByKeyValue(parsed.pixKey());
         String reason = key.isEmpty() ? NOT_FOUND_KEY
                 : key.get().getKeyStatus() != PixKeyStatus.ACTIVE ? "Chave PIX destino não está ativa" : null;
+        if (reason == null) {
+            // cobrança gerada no Kage (o txid é dela): cancelada, já paga ou código alterado não paga
+            reason = pixCharges.forCode(parsed).map(c -> pixCharges.notPayableReason(c, code.strip())).orElse(null);
+        }
         Optional<AccountHolderDirectory.Holder> holder = key.flatMap(k -> holders.holderOf(k.getAccountId()));
         return preview(parsed, KIND_PIX_KEY, holder.map(AccountHolderDirectory.Holder::name).orElse(null),
                 holder.map(h -> DocumentMask.mask(h.document())).orElse(null), parsed.info(), parsed.amount(), null, reason);
@@ -119,9 +129,17 @@ public class PixCopyPaste {
         PixBrCode.Parsed parsed = PixBrCode.parse(code);
         if (billing.receives(parsed.pixKey())) return payBilling(sourceAccountId, code.strip(), amount);
 
+        Optional<PixChargeRepository.Charge> charge = pixCharges.forCode(parsed).map(c -> pixCharges.lock(c.id()));
+        if (charge.isPresent()) {
+            String reason = pixCharges.notPayableReason(charge.get(), code.strip());
+            if (reason != null) throw new BusinessRuleException(reason);
+        }
         BigDecimal value = valueToPay(parsed.amount(), amount);
         SendPix.Output sent = sendPix.execute(new SendPix.Input(sourceAccountId, parsed.pixKey(), Money.of(value),
                 description != null && !description.isBlank() ? description : parsed.info()));
+        // quem cobrou passa a ver este pagamento na cobrança
+        charge.ifPresent(c -> pixCharges.recordPayment(c, sent.transactionId(), sourceAccountId, sent.amount(),
+                DomainTime.now()));
         String receiver = holders.holderOf(sent.targetAccountId()).map(AccountHolderDirectory.Holder::name).orElse(null);
         return new Paid(KIND_PIX_KEY, sent.transactionId(), null, sent.status(), sent.amount(), receiver,
                 description != null && !description.isBlank() ? description : parsed.info(),

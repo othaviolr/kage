@@ -32757,10 +32757,1057 @@
       ]
     },
     {
-      "name": "40. Estorno de juros na contestação",
+      "name": "40. Cobrar com PIX copia e cola",
       "item": [
         {
-          "name": "40.1.1 Criar cliente",
+          "name": "40.1.1 Criar quem cobra",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Que Cobra\",\n  \"cpf\": \"{{qrCpf}}\",\n  \"email\": \"{{qrEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('qrCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('qrEmail', `kage.qr+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('qrCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.1.2 Aprovar KYC de quem cobra",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{qrCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{qrCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.1.3 Abrir conta de quem cobra",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{qrCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('qrAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.1.4 Chave aleatória de quem cobra",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/keys",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "keys"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{qrAccountId}}\",\n  \"keyType\": \"RANDOM\",\n  \"keyValue\": \"{{qrPixKey}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('qrPixKey', 'cobra-' + pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.1.5 Criar quem paga",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Que Paga\",\n  \"cpf\": \"{{qpCpf}}\",\n  \"email\": \"{{qpEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('qpCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('qpEmail', `kage.qp+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('qpCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.1.6 Aprovar KYC de quem paga",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{qpCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{qpCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.1.7 Abrir conta de quem paga",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{qpCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('qpAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.1.8 Depositar 500 para quem paga",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{qpAccountId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{qpAccountId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.2 Cobrar 80 (uso único)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/charges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{qrAccountId}}\",\n  \"pixKey\": \"{{qrPixKey}}\",\n  \"amount\": 80,\n  \"message\": \"Pizza de sexta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const ch = pm.response.json();",
+                  "pm.test('Aberta, uso único, com txid', () => { pm.expect(ch.status).to.eql('OPEN'); pm.expect(ch.singleUse).to.eql(true); pm.expect(ch.amount).to.eql(80); pm.expect(ch.txid).to.match(/^KG[0-9A-F]{23}$/); pm.expect(ch.pixCopyPaste).to.match(/6304[0-9A-F]{4}$/); });",
+                  "pm.collectionVariables.set('qrChargeId', ch.id);",
+                  "pm.collectionVariables.set('qrCode', ch.pixCopyPaste);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.3 Quem paga lê o código",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/copy-paste/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "copy-paste",
+                "read"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{qrCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Quem cobra, valor e mensagem', () => { pm.expect(r.kind).to.eql('PIX_KEY'); pm.expect(r.receiverName).to.eql('Cliente Que Cobra'); pm.expect(r.merchantName).to.eql('Cliente Que Cobra'); pm.expect(r.amount).to.eql(80); pm.expect(r.description).to.eql('Pizza de sexta'); pm.expect(r.singleUse).to.eql(true); pm.expect(r.payable).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.4 Pagar a cobrança",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{qrIdem1}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/copy-paste/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "copy-paste",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceAccountId\": \"{{qpAccountId}}\",\n  \"code\": \"{{qrCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('qrIdem1', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('PIX a caminho', () => pm.expect(pm.response.json().amount).to.eql(80));",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.5 A cobrança mostra quem pagou",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/charges/{{qrChargeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "charges",
+                "{{qrChargeId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const ch = pm.response.json();",
+                  "pm.test('Paga, 80 recebidos', () => { pm.expect(ch.status).to.eql('PAID'); pm.expect(ch.received).to.eql(80); pm.expect(ch.paymentCount).to.eql(1); });",
+                  "pm.test('Quem pagou', () => { pm.expect(ch.payments[0].payerName).to.eql('Cliente Que Paga'); pm.expect(ch.payments[0].status).to.eql('COMPLETED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.6 Pagar de novo -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/copy-paste/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "copy-paste",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceAccountId\": \"{{qpAccountId}}\",\n  \"code\": \"{{qrCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Já foi paga', () => pm.expect(pm.response.json().message).to.eql('Cobrança já foi paga'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.7 Cancelar a paga -> 422",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/charges/{{qrChargeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "charges",
+                "{{qrChargeId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.8 Vaquinha (sem valor, vários pagadores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/charges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{qrAccountId}}\",\n  \"pixKey\": \"{{qrPixKey}}\",\n  \"message\": \"Vaquinha da Ana\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const ch = pm.response.json();",
+                  "pm.test('Em aberto, aceita vários', () => { pm.expect(ch.amountOpen).to.eql(true); pm.expect(ch.singleUse).to.eql(false); });",
+                  "pm.collectionVariables.set('qrOpenId', ch.id);",
+                  "pm.collectionVariables.set('qrOpenCode', ch.pixCopyPaste);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.9 Sem informar o valor -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/copy-paste/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "copy-paste",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceAccountId\": \"{{qpAccountId}}\",\n  \"code\": \"{{qrOpenCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Informe o valor', () => pm.expect(pm.response.json().message).to.include('informe quanto'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.10 Pagar 10",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{qrIdem2}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/copy-paste/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "copy-paste",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceAccountId\": \"{{qpAccountId}}\",\n  \"code\": \"{{qrOpenCode}}\",\n  \"amount\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('qrIdem2', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.11 Pagar mais 25,50",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{qrIdem3}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/copy-paste/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "copy-paste",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceAccountId\": \"{{qpAccountId}}\",\n  \"code\": \"{{qrOpenCode}}\",\n  \"amount\": 25.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('qrIdem3', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.12 Vaquinha: 2 pagamentos, 35,50",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/charges/{{qrOpenId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "charges",
+                "{{qrOpenId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const ch = pm.response.json();",
+                  "pm.test('Continua aberta', () => { pm.expect(ch.status).to.eql('OPEN'); pm.expect(ch.paymentCount).to.eql(2); pm.expect(ch.received).to.eql(35.5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.13 Cancelar a vaquinha",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/charges/{{qrOpenId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "charges",
+                "{{qrOpenId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('CANCELLED', () => pm.expect(pm.response.json().status).to.eql('CANCELLED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.14 Ler a cancelada: não pagável",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/copy-paste/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "copy-paste",
+                "read"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{qrOpenCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cancelada', () => { const r = pm.response.json(); pm.expect(r.payable).to.eql(false); pm.expect(r.notPayableReason).to.include('cancelada'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.15 Listar as cobranças",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/charges?accountId={{qrAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "charges"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "{{qrAccountId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Duas, mais recente primeiro', () => { const l = pm.response.json(); pm.expect(l.length).to.eql(2); pm.expect(l[0].id).to.eql(pm.collectionVariables.get('qrOpenId')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.16 Chave de outra conta -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/charges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{qpAccountId}}\",\n  \"pixKey\": \"{{qrPixKey}}\",\n  \"amount\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40.17 Saldo de quem cobrou: 80 + 35,50",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{qrAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{qrAccountId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('115,50', () => pm.expect(pm.response.json().balance).to.eql(115.5));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "41. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "41.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -32817,7 +33864,7 @@
           ]
         },
         {
-          "name": "40.1.2 Aprovar KYC",
+          "name": "41.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -32848,7 +33895,7 @@
           ]
         },
         {
-          "name": "40.1.3 Abrir conta",
+          "name": "41.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -32891,7 +33938,7 @@
           ]
         },
         {
-          "name": "40.1.4 Depositar 3000",
+          "name": "41.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -32935,7 +33982,7 @@
           ]
         },
         {
-          "name": "40.2 Emitir cartão",
+          "name": "41.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -32978,7 +34025,7 @@
           ]
         },
         {
-          "name": "40.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "41.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -33031,7 +34078,7 @@
           ]
         },
         {
-          "name": "40.4 Outras compras: 600",
+          "name": "41.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -33075,7 +34122,7 @@
           ]
         },
         {
-          "name": "40.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "41.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -33111,7 +34158,7 @@
           ]
         },
         {
-          "name": "40.6 Paga só 400 de 1000",
+          "name": "41.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -33158,7 +34205,7 @@
           ]
         },
         {
-          "name": "40.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "41.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -33194,7 +34241,7 @@
           ]
         },
         {
-          "name": "40.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "41.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -33227,7 +34274,7 @@
           ]
         },
         {
-          "name": "40.9 Contestar a compra de 400",
+          "name": "41.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -33275,7 +34322,7 @@
           ]
         },
         {
-          "name": "40.10 Procedente: devolve os juros que a compra gerou",
+          "name": "41.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -33324,7 +34371,7 @@
           ]
         },
         {
-          "name": "40.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "41.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],
