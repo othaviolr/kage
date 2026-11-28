@@ -40,6 +40,13 @@ public final class NotificationTemplates {
                 + ". Nenhum valor saiu da sua conta.");
     }
 
+    /** @param message a mensagem da cobrança; nula = cobrança sem mensagem */
+    public static Text pixChargePaid(String payerName, BigDecimal amount, String message) {
+        String who = payerName == null || payerName.isBlank() ? "Alguém" : payerName;
+        String what = message == null || message.isBlank() ? "sua cobrança PIX" : "sua cobrança \"" + message + "\"";
+        return new Text("Cobrança paga", who + " pagou " + money(amount) + " de " + what + ".");
+    }
+
     public static Text scheduledPixFailed(BigDecimal amount, LocalDate scheduledDate, String reason) {
         return new Text("Seu PIX agendado não foi realizado", "O PIX de " + money(amount) + " agendado para "
                 + scheduledDate.format(DATE) + " não foi realizado: " + reason + ". Nenhum valor saiu da sua conta.");

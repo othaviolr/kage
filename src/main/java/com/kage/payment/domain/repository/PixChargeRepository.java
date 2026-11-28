@@ -11,10 +11,12 @@ public interface PixChargeRepository {
 
     /**
      * @param amount nulo = quem paga escolhe o valor
-     * @param status OPEN ou CANCELLED (pago é calculado a partir dos pagamentos)
+     * @param status    OPEN ou CANCELLED (paga e vencida são calculadas)
+     * @param expiresAt nulo = vale até ser paga ou cancelada
      */
     record Charge(UUID id, UUID accountId, String pixKey, String txid, BigDecimal amount, String message,
-                  boolean singleUse, String code, String status, LocalDateTime createdAt, LocalDateTime cancelledAt) {}
+                  boolean singleUse, String code, String status, LocalDateTime createdAt, LocalDateTime cancelledAt,
+                  LocalDateTime expiresAt) {}
 
     record Payment(UUID transactionId, UUID chargeId, UUID payerAccountId, BigDecimal amount, LocalDateTime paidAt) {}
 
@@ -36,4 +38,7 @@ public interface PixChargeRepository {
 
     /** Mais antigos primeiro. */
     List<Payment> paymentsOf(UUID chargeId);
+
+    /** O pagamento feito por esse PIX, se ele pagou uma cobrança. */
+    Optional<Payment> findPaymentByTransactionId(UUID transactionId);
 }

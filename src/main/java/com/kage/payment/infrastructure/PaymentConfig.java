@@ -69,9 +69,9 @@ public class PaymentConfig {
     @Bean
     public PixCharges pixCharges(JdbcTemplate jdbcTemplate, PixKeyRepository pixKeyRepository,
                                  PixTransactionRepository pixTransactionRepository,
-                                 AccountHolderDirectory accountHolderDirectory) {
+                                 AccountHolderDirectory accountHolderDirectory, PixEventPublisher pixEventPublisher) {
         return new PixCharges(new JdbcPixChargeRepository(jdbcTemplate), pixKeyRepository, pixTransactionRepository,
-                accountHolderDirectory);
+                accountHolderDirectory, pixEventPublisher);
     }
 
     @Bean
@@ -225,8 +225,10 @@ public class PaymentConfig {
     @Bean
     public PixEventConsumer pixEventConsumer(PixTransactionRepository pixTransactionRepository,
                                              PixRefundRepository pixRefundRepository,
-                                             ProcessedEventRepository paymentProcessedEventRepository) {
-        return new PixEventConsumer(pixTransactionRepository, pixRefundRepository, paymentProcessedEventRepository);
+                                             ProcessedEventRepository paymentProcessedEventRepository,
+                                             PixCharges pixCharges) {
+        return new PixEventConsumer(pixTransactionRepository, pixRefundRepository, paymentProcessedEventRepository,
+                pixCharges);
     }
 
     @Bean

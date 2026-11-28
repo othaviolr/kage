@@ -239,6 +239,12 @@ public class NotificationEventConsumer {
                 NotificationTemplates.scheduledPixFailed(e.amount(), e.scheduledDate(), e.reason()), e.transactionId(), messageId);
     }
 
+    @RabbitListener(queues = "notification.pix.charge.paid.queue")
+    public void onPixChargePaid(InboundEvents.PixChargePaid e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
+        toAccountOwner(e.receiverAccountId(), NotificationType.PIX_CHARGE_PAID,
+                NotificationTemplates.pixChargePaid(e.payerName(), e.amount(), e.message()), e.chargeId(), messageId);
+    }
+
     @RabbitListener(queues = "notification.pix.automatic.requested.queue")
     public void onPixAutomaticRequested(InboundEvents.PixAutomaticRequested e, @Header(name = AmqpHeaders.MESSAGE_ID, required = false) String messageId) {
         toAccountOwner(e.payerAccountId(), NotificationType.PIX_AUTOMATIC_REQUESTED, NotificationTemplates.pixAutomaticRequested(

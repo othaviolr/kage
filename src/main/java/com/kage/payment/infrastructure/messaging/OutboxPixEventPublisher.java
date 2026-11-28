@@ -35,6 +35,12 @@ public class OutboxPixEventPublisher implements PixEventPublisher {
     }
 
     @Override
+    public void publishChargePaid(com.kage.payment.application.usecase.PixCharges.ChargePaid p) {
+        outbox.publish("pix.exchange", "pix.charge.paid", new ChargePaidEvent(p.chargeId(), p.receiverAccountId(),
+                p.transactionId(), p.payerName(), p.amount(), p.message(), p.singleUse(), DomainTime.instant()));
+    }
+
+    @Override
     public void publishScheduledPixFailed(PixTransaction transaction, String reason) {
         outbox.publish("pix.exchange", "pix.scheduled.failed", new ScheduledPixFailedEvent(transaction.getTransactionId(),
                 transaction.getSourceAccountId(), transaction.getAmount().amount(),
@@ -65,6 +71,10 @@ public class OutboxPixEventPublisher implements PixEventPublisher {
                                                    java.util.UUID payerAccountId, String receiverName, String description,
                                                    java.math.BigDecimal amount, java.time.LocalDate dueDate,
                                                    int attempt, java.time.Instant occurredAt) {}
+
+    public record ChargePaidEvent(java.util.UUID chargeId, java.util.UUID receiverAccountId,
+                                  java.util.UUID transactionId, String payerName, java.math.BigDecimal amount,
+                                  String message, boolean singleUse, java.time.Instant occurredAt) {}
 
     public record ScheduledPixFailedEvent(java.util.UUID transactionId, java.util.UUID sourceAccountId,
                                           java.math.BigDecimal amount, java.time.LocalDate scheduledDate,
