@@ -25,6 +25,8 @@ public enum NotificationType {
     PIX_SCHEDULED_FAILED(PIX, true),
     PIX_AUTOMATIC_REQUESTED(PIX, true),
     PIX_AUTOMATIC_CHARGE_SCHEDULED(PIX, false),
+    /** Alguém pagou uma cobrança PIX que o cliente gerou (o PIX já concluiu). */
+    PIX_CHARGE_PAID(PIX, false),
     PIX_REFUND_SENT(PIX, false),
     PIX_REFUND_RECEIVED(PIX, false),
     PIX_REFUND_FAILED(PIX, true),

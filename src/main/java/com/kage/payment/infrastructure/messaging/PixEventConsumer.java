@@ -1,5 +1,6 @@
 package com.kage.payment.infrastructure.messaging;
 
+import com.kage.payment.application.usecase.PixCharges;
 import com.kage.payment.domain.entity.PixRefund;
 import com.kage.payment.domain.entity.PixTransaction;
 import com.kage.payment.domain.repository.PixRefundRepository;
@@ -20,10 +21,19 @@ public class PixEventConsumer {
     private final PixTransactionRepository pixTransactionRepository;
     private final PixRefundRepository pixRefundRepository;
     private final ProcessedEventRepository processedEventRepository;
+    private final PixCharges pixCharges;
 
     public PixEventConsumer(PixTransactionRepository pixTransactionRepository,
                             PixRefundRepository pixRefundRepository,
                             ProcessedEventRepository processedEventRepository) {
+        this(pixTransactionRepository, pixRefundRepository, processedEventRepository, null);
+    }
+
+    /** @param pixCharges avisa quem cobrou quando o PIX que pagou a cobrança conclui */
+    public PixEventConsumer(PixTransactionRepository pixTransactionRepository,
+                            PixRefundRepository pixRefundRepository,
+                            ProcessedEventRepository processedEventRepository, PixCharges pixCharges) {
+        this.pixCharges = pixCharges;
         this.pixTransactionRepository = pixTransactionRepository;
         this.pixRefundRepository = pixRefundRepository;
         this.processedEventRepository = processedEventRepository;
@@ -42,6 +52,7 @@ public class PixEventConsumer {
 
         transaction.complete();
         pixTransactionRepository.save(transaction);
+        if (pixCharges != null) pixCharges.paymentCompleted(transactionId);
     }
 
     /**

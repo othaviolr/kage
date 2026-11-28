@@ -10,6 +10,9 @@ public interface PixEventPublisher {
 
     void publishPixSent(SendPix.Output output);
 
+    /** Um PIX que pagou uma cobrança gerada no Kage concluiu (aviso a quem cobrou). */
+    void publishChargePaid(PixCharges.ChargePaid paid);
+
     /** Pede ao Account que devolva o valor do estorno de quem recebeu o PIX original para quem pagou. */
     void publishRefundApproved(PixRefund refund, PixTransaction originalTransaction);
 

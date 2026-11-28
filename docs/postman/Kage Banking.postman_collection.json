@@ -33804,10 +33804,633 @@
       ]
     },
     {
-      "name": "41. Estorno de juros na contestação",
+      "name": "41. Aviso e validade da cobrança PIX",
       "item": [
         {
-          "name": "41.1.1 Criar cliente",
+          "name": "41.1.1 Criar quem cobra",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Avisado\",\n  \"cpf\": \"{{vaCpf}}\",\n  \"email\": \"{{vaEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('vaCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('vaEmail', `kage.va+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('vaCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41.1.2 Aprovar KYC de quem cobra",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{vaCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{vaCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41.1.3 Abrir conta de quem cobra",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{vaCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('vaAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41.1.4 Chave aleatória de quem cobra",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/keys",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "keys"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{vaAccountId}}\",\n  \"keyType\": \"RANDOM\",\n  \"keyValue\": \"{{vaPixKey}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('vaPixKey', 'aviso-' + pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41.1.5 Criar quem paga",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente Pagador\",\n  \"cpf\": \"{{vbCpf}}\",\n  \"email\": \"{{vbEmail}}\",\n  \"phone\": \"(41) 99999-1234\",\n  \"birthDate\": \"1990-01-01\",\n  \"street\": \"Rua das Flores\",\n  \"number\": \"1\",\n  \"complement\": \"\",\n  \"city\": \"Curitiba\",\n  \"state\": \"PR\",\n  \"zipCode\": \"80010-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function digit(base) { let sum = 0, w = base.length + 1; for (const d of base) sum += d * w--; const r = 11 - (sum % 11); return r >= 10 ? 0 : r; }",
+                  "const base = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "if (base.every(d => d === base[0])) base[8] = (base[8] + 1) % 10;",
+                  "const d1 = digit(base), d2 = digit([...base, d1]);",
+                  "pm.collectionVariables.set('vbCpf', [...base, d1, d2].join(''));",
+                  "pm.collectionVariables.set('vbEmail', `kage.vb+${Date.now()}${Math.floor(Math.random()*1000)}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('vbCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41.1.6 Aprovar KYC de quem paga",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{vbCustomerId}}/kyc/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{vbCustomerId}}",
+                "kyc",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41.1.7 Abrir conta de quem paga",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{vbCustomerId}}\",\n  \"accountType\": \"CHECKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('vbAccountId', pm.response.json().accountId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41.1.8 Depositar 200 para quem paga",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{vbAccountId}}/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{vbAccountId}}",
+                "deposit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41.2 Validade fora de 1 a 365 -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/charges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{vaAccountId}}\",\n  \"pixKey\": \"{{vaPixKey}}\",\n  \"amount\": 30,\n  \"validForDays\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Validade de 1 a 365 dias', () => pm.expect(pm.response.json().message).to.eql('Validade de 1 a 365 dias'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41.3 Cobrar 30, vale 3 dias",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/charges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{vaAccountId}}\",\n  \"pixKey\": \"{{vaPixKey}}\",\n  \"amount\": 30,\n  \"message\": \"Ingresso do show\",\n  \"validForDays\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const ch = pm.response.json();",
+                  "pm.test('Aberta, vale até o fim do 3º dia', () => { pm.expect(ch.status).to.eql('OPEN'); pm.expect(ch.expiresAt).to.match(/T23:59:59$/); const days = Math.round((new Date(ch.expiresAt.slice(0, 10)) - new Date(ch.createdAt.slice(0, 10))) / 86400000); pm.expect(days).to.eql(3); });",
+                  "pm.collectionVariables.set('vaChargeId', ch.id);",
+                  "pm.collectionVariables.set('vaCode', ch.pixCopyPaste);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41.4 Sem validade: expiresAt nulo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/charges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{vaAccountId}}\",\n  \"pixKey\": \"{{vaPixKey}}\",\n  \"amount\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Sem validade', () => pm.expect(pm.response.json().expiresAt).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41.5 Pagar a cobrança",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{vaIdem1}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/copy-paste/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "copy-paste",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceAccountId\": \"{{vbAccountId}}\",\n  \"code\": \"{{vaCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('vaIdem1', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41.6 Quem cobrou foi avisado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?customerId={{vaCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{vaCustomerId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const n = pm.response.json().notifications.find(x => x.type === 'PIX_CHARGE_PAID');",
+                  "pm.test('Cobrança paga', () => { pm.expect(n, 'aviso PIX_CHARGE_PAID').to.exist; pm.expect(n.title).to.eql('Cobrança paga'); pm.expect(n.message).to.eql('Cliente Pagador pagou R$ 30,00 de sua cobrança \"Ingresso do show\".'); pm.expect(n.referenceId).to.eql(pm.collectionVariables.get('vaChargeId')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41.7 A cobrança está paga",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pix/charges/{{vaChargeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pix",
+                "charges",
+                "{{vaChargeId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('PAID', () => pm.expect(pm.response.json().status).to.eql('PAID'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "42. Estorno de juros na contestação",
+      "item": [
+        {
+          "name": "42.1.1 Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -33864,7 +34487,7 @@
           ]
         },
         {
-          "name": "41.1.2 Aprovar KYC",
+          "name": "42.1.2 Aprovar KYC",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -33895,7 +34518,7 @@
           ]
         },
         {
-          "name": "41.1.3 Abrir conta",
+          "name": "42.1.3 Abrir conta",
           "request": {
             "method": "POST",
             "header": [
@@ -33938,7 +34561,7 @@
           ]
         },
         {
-          "name": "41.1.4 Depositar 3000",
+          "name": "42.1.4 Depositar 3000",
           "request": {
             "method": "POST",
             "header": [
@@ -33982,7 +34605,7 @@
           ]
         },
         {
-          "name": "41.2 Emitir cartão",
+          "name": "42.2 Emitir cartão",
           "request": {
             "method": "POST",
             "header": [
@@ -34025,7 +34648,7 @@
           ]
         },
         {
-          "name": "41.3 Compra que vai ser contestada: 400 (janeiro/2037)",
+          "name": "42.3 Compra que vai ser contestada: 400 (janeiro/2037)",
           "request": {
             "method": "POST",
             "header": [
@@ -34078,7 +34701,7 @@
           ]
         },
         {
-          "name": "41.4 Outras compras: 600",
+          "name": "42.4 Outras compras: 600",
           "request": {
             "method": "POST",
             "header": [
@@ -34122,7 +34745,7 @@
           ]
         },
         {
-          "name": "41.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
+          "name": "42.5 Ciclo de 11/01/2037: fecha janeiro (backoffice)",
           "request": {
             "method": "POST",
             "header": [],
@@ -34158,7 +34781,7 @@
           ]
         },
         {
-          "name": "41.6 Paga só 400 de 1000",
+          "name": "42.6 Paga só 400 de 1000",
           "request": {
             "method": "POST",
             "header": [
@@ -34205,7 +34828,7 @@
           ]
         },
         {
-          "name": "41.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
+          "name": "42.7 Ciclo de 11/02/2037: o saldo vai para o rotativo",
           "request": {
             "method": "POST",
             "header": [],
@@ -34241,7 +34864,7 @@
           ]
         },
         {
-          "name": "41.8 Fevereiro: 600 de saldo anterior + 84 de juros",
+          "name": "42.8 Fevereiro: 600 de saldo anterior + 84 de juros",
           "request": {
             "method": "GET",
             "header": [],
@@ -34274,7 +34897,7 @@
           ]
         },
         {
-          "name": "41.9 Contestar a compra de 400",
+          "name": "42.9 Contestar a compra de 400",
           "request": {
             "method": "POST",
             "header": [
@@ -34322,7 +34945,7 @@
           ]
         },
         {
-          "name": "41.10 Procedente: devolve os juros que a compra gerou",
+          "name": "42.10 Procedente: devolve os juros que a compra gerou",
           "request": {
             "method": "PATCH",
             "header": [
@@ -34371,7 +34994,7 @@
           ]
         },
         {
-          "name": "41.11 Fatura atual: crédito da compra + estorno dos juros",
+          "name": "42.11 Fatura atual: crédito da compra + estorno dos juros",
           "request": {
             "method": "GET",
             "header": [],

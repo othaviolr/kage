@@ -34,7 +34,7 @@ public class PixChargeController {
     public ResponseEntity<PixCharges.ChargeView> create(@RequestBody CreateRequest request) {
         accessGuard.checkAccount(request.accountId());
         return ResponseEntity.status(HttpStatus.CREATED).body(pixCharges.create(request.accountId(), request.pixKey(),
-                request.amount(), request.message(), request.singleUse()));
+                request.amount(), request.message(), request.singleUse(), request.validForDays()));
     }
 
     @GetMapping
@@ -57,7 +57,9 @@ public class PixChargeController {
 
     /**
      * @param amount    nulo = quem paga escolhe o valor
-     * @param singleUse nulo = uso único quando tem valor
+     * @param singleUse    nulo = uso único quando tem valor
+     * @param validForDays nulo = sem validade; de 1 a 365 (vale até o fim do último dia)
      */
-    public record CreateRequest(UUID accountId, String pixKey, BigDecimal amount, String message, Boolean singleUse) {}
+    public record CreateRequest(UUID accountId, String pixKey, BigDecimal amount, String message, Boolean singleUse,
+                                Integer validForDays) {}
 }
