@@ -49,6 +49,15 @@ public final class PixBrCode {
      */
     public static String of(String pixKey, BigDecimal amount, String merchantName, String city, String txid,
                             boolean singleUse) {
+        return of(pixKey, amount, merchantName, city, txid, singleUse, null);
+    }
+
+    /**
+     * @param info mensagem para quem paga (campo 26, subcampo 02), sem acento; nula = sem mensagem. Cabe
+     *             o que sobra dos 99 caracteres da conta do recebedor depois da chave.
+     */
+    public static String of(String pixKey, BigDecimal amount, String merchantName, String city, String txid,
+                            boolean singleUse, String info) {
         if (pixKey == null || pixKey.isBlank()) throw new IllegalArgumentException("Chave PIX obrigatória");
         String id = txid == null ? "***" : txid;
         if (txid != null && !txid.matches("[A-Za-z0-9]{1," + MAX_TXID + "}")) {
@@ -57,7 +66,9 @@ public final class PixBrCode {
         StringBuilder payload = new StringBuilder()
                 .append(field("00", "01"));
         if (singleUse) payload.append(field("01", "12"));
-        payload.append(field("26", field("00", GUI) + field("01", pixKey)))
+        String account = field("00", GUI) + field("01", pixKey);
+        if (info != null && !info.isBlank()) account += field("02", ascii(info, 99));
+        payload.append(field("26", account))
                 .append(field("52", "0000"))
                 .append(field("53", "986"));
         if (amount != null) payload.append(field("54", amount.setScale(2, RoundingMode.UNNECESSARY).toPlainString()));
@@ -139,6 +150,11 @@ public final class PixBrCode {
             i = end;
         }
         return fields;
+    }
+
+    /** Quantos caracteres de mensagem cabem junto dessa chave (a conta do recebedor tem até 99). */
+    public static int maxInfoLength(String pixKey) {
+        return Math.max(0, 99 - field("00", GUI).length() - 4 - pixKey.length() - 4);
     }
 
     static String field(String id, String value) {

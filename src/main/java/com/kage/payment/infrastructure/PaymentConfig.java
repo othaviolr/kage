@@ -59,9 +59,19 @@ public class PaymentConfig {
                                      SendPix sendPix, PixBillingGateway pixBillingGateway,
                                      PixBillingPaymentRepository pixBillingPaymentRepository,
                                      AccountValidationService accountValidationService, PixAccountDebit pixAccountDebit,
-                                     PixTransactionRepository pixTransactionRepository, Clock clock) {
+                                     PixTransactionRepository pixTransactionRepository, Clock clock,
+                                     PixCharges pixCharges) {
         return new PixCopyPaste(pixKeyRepository, accountHolderDirectory, sendPix, pixBillingGateway,
-                pixBillingPaymentRepository, accountValidationService, pixAccountDebit, pixTransactionRepository, clock);
+                pixBillingPaymentRepository, accountValidationService, pixAccountDebit, pixTransactionRepository, clock,
+                pixCharges);
+    }
+
+    @Bean
+    public PixCharges pixCharges(JdbcTemplate jdbcTemplate, PixKeyRepository pixKeyRepository,
+                                 PixTransactionRepository pixTransactionRepository,
+                                 AccountHolderDirectory accountHolderDirectory) {
+        return new PixCharges(new JdbcPixChargeRepository(jdbcTemplate), pixKeyRepository, pixTransactionRepository,
+                accountHolderDirectory);
     }
 
     @Bean
